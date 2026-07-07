@@ -8,6 +8,7 @@ const links = [
   { href: "/", label: "Dashboard" },
   { href: "/contacts", label: "Matchbox" },
   { href: "/pipeline", label: "Pipeline" },
+  { href: "/moments", label: "Moments" },
   { href: "/queue", label: "Queue" },
   { href: "/settings", label: "Einstellungen" },
 ]

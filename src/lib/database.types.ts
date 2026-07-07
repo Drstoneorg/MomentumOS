@@ -52,12 +52,16 @@ export type Database = {
           age: number | null
           auto_mode: boolean
           bio: string | null
+          birthday: string | null
+          contact_frequency_days: number | null
           created_at: string
           date_idea: string | null
           external_id: string | null
           id: string
           interests: string[] | null
           language: string | null
+          last_contact_at: string | null
+          last_contact_initiator: string | null
           location: string | null
           name: string
           next_step: string | null
@@ -67,18 +71,23 @@ export type Database = {
           pipeline_stage: Database["public"]["Enums"]["pipeline_stage"]
           platform: string
           priority: Database["public"]["Enums"]["priority_level"]
+          relationship_tags: string[]
           updated_at: string
         }
         Insert: {
           age?: number | null
           auto_mode?: boolean
           bio?: string | null
+          birthday?: string | null
+          contact_frequency_days?: number | null
           created_at?: string
           date_idea?: string | null
           external_id?: string | null
           id?: string
           interests?: string[] | null
           language?: string | null
+          last_contact_at?: string | null
+          last_contact_initiator?: string | null
           location?: string | null
           name: string
           next_step?: string | null
@@ -88,18 +97,23 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
+          relationship_tags?: string[]
           updated_at?: string
         }
         Update: {
           age?: number | null
           auto_mode?: boolean
           bio?: string | null
+          birthday?: string | null
+          contact_frequency_days?: number | null
           created_at?: string
           date_idea?: string | null
           external_id?: string | null
           id?: string
           interests?: string[] | null
           language?: string | null
+          last_contact_at?: string | null
+          last_contact_initiator?: string | null
           location?: string | null
           name?: string
           next_step?: string | null
@@ -109,6 +123,7 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
+          relationship_tags?: string[]
           updated_at?: string
         }
         Relationships: []
@@ -186,6 +201,81 @@ export type Database = {
           },
         ]
       }
+      event_invites: {
+        Row: {
+          contact_id: string
+          created_at: string
+          event_id: string
+          id: string
+          invite_text: string | null
+          status: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+          invite_text?: string | null
+          status?: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          invite_text?: string | null
+          status?: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_invites_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invites_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          description: string | null
+          id: string
+          image_prompt: string | null
+          location: string | null
+          starts_at: string | null
+          title: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_prompt?: string | null
+          location?: string | null
+          starts_at?: string | null
+          title: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_prompt?: string | null
+          location?: string | null
+          starts_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       followups: {
         Row: {
           contact_id: string
@@ -220,6 +310,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      meetup_participants: {
+        Row: {
+          contact_id: string
+          id: string
+          meetup_id: string
+          rsvp: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Insert: {
+          contact_id: string
+          id?: string
+          meetup_id: string
+          rsvp?: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Update: {
+          contact_id?: string
+          id?: string
+          meetup_id?: string
+          rsvp?: Database["public"]["Enums"]["event_invite_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_participants_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetups: {
+        Row: {
+          chosen_slot: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          recap: string | null
+          slots: Json
+          status: Database["public"]["Enums"]["meetup_status"]
+          title: string
+        }
+        Insert: {
+          chosen_slot?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recap?: string | null
+          slots?: Json
+          status?: Database["public"]["Enums"]["meetup_status"]
+          title: string
+        }
+        Update: {
+          chosen_slot?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recap?: string | null
+          slots?: Json
+          status?: Database["public"]["Enums"]["meetup_status"]
+          title?: string
+        }
+        Relationships: []
       }
       memories: {
         Row: {
@@ -294,6 +453,69 @@ export type Database = {
           },
         ]
       }
+      moment_assets: {
+        Row: {
+          contact_id: string | null
+          content: string
+          created_at: string
+          event_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["asset_kind"]
+          meta: Json
+          title: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          content: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["asset_kind"]
+          meta?: Json
+          title?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          content?: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["asset_kind"]
+          meta?: Json
+          title?: string | null
+        }
+        Relationships: []
+      }
+      occasions: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["occasion_kind"]
+          label: string
+          on_date: string
+          recurring: boolean
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["occasion_kind"]
+          label: string
+          on_date: string
+          recurring?: boolean
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["occasion_kind"]
+          label?: string
+          on_date?: string
+          recurring?: boolean
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           key: string
@@ -367,7 +589,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      asset_kind: "image_prompt" | "image" | "text" | "collage"
       date_status: "proposed" | "confirmed"
+      event_invite_status: "invited" | "yes" | "no" | "no_reply"
+      meetup_status: "idea" | "proposed" | "confirmed" | "happened" | "cancelled"
       memory_kind:
         | "likes"
         | "dislikes"
@@ -377,6 +602,7 @@ export type Database = {
         | "topic_works"
       msg_direction: "in" | "out"
       msg_source: "manual" | "telegram" | "import"
+      occasion_kind: "birthday" | "anniversary" | "custom"
       pipeline_stage:
         | "new_match"
         | "first_message_pending"
@@ -438,4 +664,19 @@ export const STAGE_LABELS: Record<Enums<"pipeline_stage">, string> = {
   date_planned: "Date geplant",
   calendar_created: "Kalender erstellt",
   archived: "Archiviert",
+}
+
+export const MEETUP_STATUS_LABELS: Record<Enums<"meetup_status">, string> = {
+  idea: "Idee",
+  proposed: "Vorgeschlagen",
+  confirmed: "Bestätigt",
+  happened: "Stattgefunden",
+  cancelled: "Abgesagt",
+}
+
+export const RSVP_LABELS: Record<Enums<"event_invite_status">, string> = {
+  invited: "Eingeladen",
+  yes: "Zugesagt",
+  no: "Abgesagt",
+  no_reply: "Keine Antwort",
 }
