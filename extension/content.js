@@ -82,13 +82,16 @@
       out.innerHTML = `
         <p class="mox-ok">✓ ${esc(data.name)} ${data.isNew ? "angelegt" : "aktualisiert"}${
           data.messageCount ? ` · ${data.messageCount} Nachrichten` : ""
-        }</p>
-        <button class="mox-btn" id="mox-replies">Antwortvorschläge holen</button>
+        }${data.stage ? ` · ${esc(data.stage)}` : ""}</p>
+        <button class="mox-btn" id="mox-replies">${
+          data.autoDraft ? "Neue Vorschläge generieren" : "Antwortvorschläge holen"
+        }</button>
         <a class="mox-link" href="${baseUrl}/contacts/${data.contactId}" target="_blank">In MatchOS öffnen ↗</a>
         <div id="mox-replies-out"></div>`
       out
         .querySelector("#mox-replies")
         .addEventListener("click", () => replies(data.contactId))
+      if (data.autoDraft) renderVariants(out.querySelector("#mox-replies-out"), data.autoDraft)
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
@@ -106,30 +109,34 @@
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
-      const rows = Object.entries(data.variants || {})
-        .map(
-          ([style, text]) => `
-        <div class="mox-variant">
-          <div><span class="mox-style">${esc(style)}</span><p>${esc(text)}</p></div>
-          <button class="mox-copy" data-t="${esc(text)}">Kopieren</button>
-        </div>`
-        )
-        .join("")
-      out.innerHTML = `
-        <p class="mox-hint">${esc(data.social_read || "")}</p>
-        <p class="mox-hint"><b>Empfehlung:</b> ${esc(data.next_step || "")} — ${esc(
-          data.next_step_reason || ""
-        )}</p>
-        ${rows}`
-      out.querySelectorAll(".mox-copy").forEach((b) =>
-        b.addEventListener("click", async () => {
-          await navigator.clipboard.writeText(b.dataset.t)
-          b.textContent = "✓"
-          setTimeout(() => (b.textContent = "Kopieren"), 1200)
-        })
-      )
+      renderVariants(out, data)
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
+  }
+
+  function renderVariants(out, data) {
+    const rows = Object.entries(data.variants || {})
+      .map(
+        ([style, text]) => `
+      <div class="mox-variant">
+        <div><span class="mox-style">${esc(style)}</span><p>${esc(text)}</p></div>
+        <button class="mox-copy" data-t="${esc(text)}">Kopieren</button>
+      </div>`
+      )
+      .join("")
+    out.innerHTML = `
+      <p class="mox-hint">${esc(data.social_read || "")}</p>
+      <p class="mox-hint"><b>Empfehlung:</b> ${esc(data.next_step || "")} — ${esc(
+        data.next_step_reason || ""
+      )}</p>
+      ${rows}`
+    out.querySelectorAll(".mox-copy").forEach((b) =>
+      b.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(b.dataset.t)
+        b.textContent = "✓"
+        setTimeout(() => (b.textContent = "Kopieren"), 1200)
+      })
+    )
   }
 })()

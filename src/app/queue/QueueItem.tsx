@@ -36,10 +36,18 @@ export function QueueItem({
         </span>
         <span
           className={`ml-auto rounded-full px-2 py-0.5 text-xs ${
-            isApproved ? "bg-amber-900/60 text-amber-300" : "bg-zinc-800 text-zinc-400"
+            suggestion.auto_send_at && !isApproved
+              ? "bg-rose-900/60 text-rose-300"
+              : isApproved
+                ? "bg-amber-900/60 text-amber-300"
+                : "bg-zinc-800 text-zinc-400"
           }`}
         >
-          {isApproved ? "Freigegeben — wartet auf Worker" : "Entwurf"}
+          {suggestion.auto_send_at && !isApproved
+            ? `⚡ Autopilot — sendet ${new Date(suggestion.auto_send_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
+            : isApproved
+              ? "Freigegeben — wartet auf Worker"
+              : "Entwurf"}
         </span>
       </div>
       {suggestion.situation && (
@@ -113,6 +121,20 @@ export function QueueItem({
             >
               Freigeben & senden
             </button>
+            {suggestion.auto_send_at && (
+              <button
+                onClick={() =>
+                  start(async () => {
+                    await updateSuggestion(suggestion.id, { auto_send_at: null })
+                    router.refresh()
+                  })
+                }
+                disabled={pending}
+                className="rounded-lg border border-rose-700 px-3 py-1.5 text-sm text-rose-300 hover:bg-rose-950"
+              >
+                ✋ Autopilot stoppen
+              </button>
+            )}
             <button
               onClick={() =>
                 start(async () => {

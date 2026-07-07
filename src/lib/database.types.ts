@@ -50,6 +50,7 @@ export type Database = {
       contacts: {
         Row: {
           age: number | null
+          auto_mode: boolean
           bio: string | null
           created_at: string
           date_idea: string | null
@@ -70,6 +71,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          auto_mode?: boolean
           bio?: string | null
           created_at?: string
           date_idea?: string | null
@@ -90,6 +92,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          auto_mode?: boolean
           bio?: string | null
           created_at?: string
           date_idea?: string | null
@@ -311,6 +314,7 @@ export type Database = {
       }
       suggestions: {
         Row: {
+          auto_send_at: string | null
           channel: string
           chosen_variant: string | null
           contact_id: string
@@ -322,6 +326,7 @@ export type Database = {
           variants: Json
         }
         Insert: {
+          auto_send_at?: string | null
           channel?: string
           chosen_variant?: string | null
           contact_id: string
@@ -333,6 +338,7 @@ export type Database = {
           variants?: Json
         }
         Update: {
+          auto_send_at?: string | null
           channel?: string
           chosen_variant?: string | null
           contact_id?: string

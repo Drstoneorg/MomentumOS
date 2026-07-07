@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 import { authExtension } from "@/lib/extensionAuth"
 import { extractProfile } from "@/lib/ai/extractProfile"
+import { loadContactContext } from "@/lib/ai/context"
+import { summarizeConversation } from "@/lib/ai/summarize"
+import { analyzeStage } from "@/lib/ai/analyzeStage"
+import { generateReplies, type ReplyVariants } from "@/lib/ai/generateReplies"
+
+export const maxDuration = 60
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -101,8 +107,85 @@ export async function POST(req: Request) {
       )
     }
 
+    // Auto-Pipeline: Zusammenfassung + Stage-Analyse + Sofort-Entwurf,
+    // wenn ein Chatverlauf dabei war. Fehler hier brechen den Sync nicht ab.
+    let autoDraft: ReplyVariants | null = null
+    let stage: string | null = null
+    if (p.messages.length) {
+      try {
+        const ctx = await loadContactContext(contactId, supabase)
+        if (ctx) {
+          const [summary, analysis] = await Promise.all([
+            summarizeConversation(ctx),
+            analyzeStage(ctx),
+          ])
+          await supabase.from("conversation_summaries").insert({
+            contact_id: contactId,
+            summary: summary.summary,
+          })
+          if (summary.memories.length) {
+            await supabase.from("memories").insert(
+              summary.memories.map((m) => ({ contact_id: contactId, ...m }))
+            )
+          }
+          stage = analysis.stage
+          await supabase
+            .from("contacts")
+            .update({
+              pipeline_stage: analysis.stage,
+              next_step: analysis.next_step,
+              date_idea: analysis.date_idea ?? undefined,
+            })
+            .eq("id", contactId)
+          if (analysis.followup_in_days != null) {
+            const due = new Date()
+            due.setDate(due.getDate() + analysis.followup_in_days)
+            await supabase.from("followups").insert({
+              contact_id: contactId,
+              due_at: due.toISOString(),
+              reason: analysis.followup_reason,
+            })
+          }
+
+          // Sofort-Entwurf, wenn die Person zuletzt geschrieben hat
+          const lastMsg = ctx.messages[ctx.messages.length - 1]
+          if (lastMsg?.direction === "in") {
+            const { data: openDraft } = await supabase
+              .from("suggestions")
+              .select("id")
+              .eq("contact_id", contactId)
+              .in("status", ["draft", "approved"])
+              .limit(1)
+              .maybeSingle()
+            if (!openDraft) {
+              autoDraft = await generateReplies(
+                ctx,
+                "Antworte passend auf die letzte Nachricht der Person."
+              )
+              await supabase.from("suggestions").insert({
+                contact_id: contactId,
+                situation: "Auto-Entwurf nach Browser-Sync",
+                variants: autoDraft.variants,
+                channel: "manual",
+                status: "draft",
+              })
+            }
+          }
+        }
+      } catch {
+        // Analyse optional — Sync-Ergebnis zählt
+      }
+    }
+
     return NextResponse.json(
-      { contactId, name: p.name, isNew: !existing, messageCount: p.messages.length },
+      {
+        contactId,
+        name: p.name,
+        isNew: !existing,
+        messageCount: p.messages.length,
+        stage,
+        autoDraft,
+      },
       { headers: cors }
     )
   } catch (e) {

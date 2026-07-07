@@ -94,6 +94,29 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
             <option value="normal">Prio: normal</option>
             <option value="high">Prio: hoch</option>
           </select>
+          <button
+            onClick={() =>
+              start(async () => {
+                if (
+                  !contact.auto_mode &&
+                  !confirm(
+                    "Autopilot: Bei eingehenden Telegram-Nachrichten entsteht automatisch ein Entwurf, der nach 10 Minuten Veto-Frist automatisch gesendet wird (Stil: locker). Du wirst per Telegram benachrichtigt und kannst in der Queue stoppen. Aktivieren?"
+                  )
+                )
+                  return
+                await updateContact(contact.id, { auto_mode: !contact.auto_mode })
+                router.refresh()
+              })
+            }
+            className={
+              contact.auto_mode
+                ? "rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+                : btnGhostCls
+            }
+            title="Telegram-Autopilot mit 10-Minuten-Veto"
+          >
+            {contact.auto_mode ? "⚡ Autopilot AN" : "Autopilot"}
+          </button>
           <button onClick={runAnalysis} disabled={analyzing} className={btnGhostCls}>
             {analyzing ? "Analysiere…" : "KI-Analyse"}
           </button>
