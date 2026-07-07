@@ -2,6 +2,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { StageBadge, PriorityDot } from "@/components/ui"
 import { NewContactButton } from "./NewContactButton"
+import { SmartImportButton } from "./SmartImportButton"
 
 export const dynamic = "force-dynamic"
 
@@ -27,7 +28,10 @@ export default async function ContactsPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Matchbox</h1>
-        <NewContactButton />
+        <div className="flex gap-2">
+          <SmartImportButton />
+          <NewContactButton />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm">
