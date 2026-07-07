@@ -53,7 +53,12 @@ export function ReplyGenerator({
           />
           <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputCls + " w-auto"}>
             <option value="manual">Copy-Paste</option>
-            <option value="telegram">Telegram (Queue)</option>
+            <option value="telegram">Telegram (Queue, auto)</option>
+            <option value="whatsapp">WhatsApp (Queue, Deep-Link)</option>
+            <option value="instagram">Instagram (Queue)</option>
+            <option value="wechat">WeChat (Queue)</option>
+            <option value="tiktok">TikTok (Queue)</option>
+            <option value="snapchat">Snapchat (Queue)</option>
           </select>
           <button onClick={generate} disabled={loading} className={btnCls + " whitespace-nowrap"}>
             {loading ? "Generiere…" : "Generieren"}
@@ -95,9 +100,10 @@ export function ReplyGenerator({
               </div>
             )}
 
-            {channel === "telegram" && result.suggestionId && (
+            {channel !== "manual" && result.suggestionId && (
               <p className="text-xs text-zinc-500">
-                Als Entwurf in der Queue gespeichert — dort Variante wählen und freigeben.
+                Als Entwurf in der Queue gespeichert — dort Variante wählen und freigeben
+                {channel === "telegram" ? " (Worker sendet automatisch)" : " (Deep-Link öffnet den Chat)"}.
               </p>
             )}
           </div>

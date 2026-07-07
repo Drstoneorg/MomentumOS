@@ -7,7 +7,7 @@ export default async function QueuePage() {
   const supabase = await createClient()
   const { data: suggestions } = await supabase
     .from("suggestions")
-    .select("*, contacts(name)")
+    .select("*, contacts(name, contact_channels(channel, handle))")
     .in("status", ["draft", "approved"])
     .order("created_at", { ascending: false })
 
@@ -19,7 +19,12 @@ export default async function QueuePage() {
       </p>
       <div className="space-y-3">
         {(suggestions ?? []).map((s) => (
-          <QueueItem key={s.id} suggestion={s} contactName={s.contacts?.name ?? "?"} />
+          <QueueItem
+            key={s.id}
+            suggestion={s}
+            contactName={s.contacts?.name ?? "?"}
+            channels={s.contacts?.contact_channels ?? []}
+          />
         ))}
         {!suggestions?.length && (
           <p className="py-8 text-center text-zinc-500">

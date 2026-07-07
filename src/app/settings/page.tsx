@@ -1,16 +1,16 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { StyleForm } from "./StyleForm"
+import { ExtensionTokenForm } from "./ExtensionTokenForm"
 
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const { data: style } = await supabase
-    .from("settings")
-    .select("value")
-    .eq("key", "user_style_profile")
-    .maybeSingle()
+  const [{ data: style }, { data: extToken }] = await Promise.all([
+    supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
+  ])
 
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
   const hasTelegram = !!process.env.TELEGRAM_SESSION
@@ -24,6 +24,16 @@ export default async function SettingsPage() {
           Beschreibt, wie der Generator für dich klingt. Beispiele eigener Nachrichten reinkopieren hilft enorm.
         </p>
         <StyleForm current={typeof style?.value === "string" ? style.value : ""} />
+      </Card>
+
+      <Card title="Browser-Extension">
+        <p className="mb-2 text-sm text-zinc-400">
+          MatchOS Companion liest Tinder/Bumble/Boo/WhatsApp-Web/Instagram mit und legt
+          Kontakte + Antwortentwürfe an. Installation: siehe README (extension/-Ordner).
+        </p>
+        <ExtensionTokenForm
+          current={typeof extToken?.value === "string" ? extToken.value : ""}
+        />
       </Card>
 
       <Card title="API-Status">
