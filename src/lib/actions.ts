@@ -48,6 +48,13 @@ export async function addMessage(input: TablesInsert<"messages">) {
   const supabase = await db()
   const { error } = await supabase.from("messages").insert(input)
   if (error) throw new Error(error.message)
+  await supabase
+    .from("contacts")
+    .update({
+      last_contact_at: new Date().toISOString(),
+      last_contact_initiator: input.direction === "out" ? "me" : "them",
+    })
+    .eq("id", input.contact_id)
   revalidatePath(`/contacts/${input.contact_id}`)
 }
 

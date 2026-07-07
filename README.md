@@ -73,6 +73,19 @@ Voraussetzung: `SUPABASE_SERVICE_ROLE_KEY` als Env-Variable in Vercel (Extension
 
 Im Antwortgenerator Kanal wählen → Entwurf landet in der Queue → freigeben → Deep-Link-Buttons erscheinen (Text wird beim Klick kopiert) → „Habe gesendet" schreibt die Nachricht in den Verlauf.
 
+## MatchOS Moments
+
+Erweiterungsmodul für persönliche Momente & Freundschaftspflege (`/moments`).
+
+- **Friends Management** (Kontaktseite, Karte „Freundschaft"): Geburtstag, Beziehungsgruppen-Tags, Melde-Rhythmus, Verbindungs-Score (Balken + Tage seit letztem Kontakt), „Habe mich gemeldet". Jede Nachricht aktualisiert den letzten Kontakt automatisch.
+- **Moments-Generator** (Kontaktseite): Anlass-Nachrichten (Geburtstag/Check-in/Rückblick) in 5 Stilen; Bild-Prompt-Generator (Anlass + Stil + Format → fertiger Midjourney/DALL-E-Prompt + Caption). Ergebnisse landen in der Asset Library.
+- **Events** (`/moments/events`): anlegen, Personen/Gruppen einladen (Tag-Filter), KI-Einladungstexte pro Person, RSVP-Tracking, Deep-Link-Versand.
+- **Meetups** (`/moments/meetups`): Slot A/B/C-Terminvorschläge, Status idea→confirmed→happened, ICS mit Reminder 1 Tag + 2 h vorher, Nachbereitung („wie war's") fließt als Gedächtnis-Eintrag zu allen Teilnehmern.
+- **Moments-Hub** (`/moments`): anstehende Geburtstage, vernachlässigte Kontakte (Verbindungs-Score), offene Meetups/Events, Asset Library.
+- **Cron** `/api/cron/moments` (täglich 8:00): erzeugt Reminder für Geburtstage (≤3 Tage) und Kontaktpausen wichtiger Personen. Kein Autoversand — nur Reminder/Entwürfe, Freigabe bleibt manuell.
+
+Hinweis Bilder: MatchOS erzeugt Bild-**Prompts**, keine Pixel (DeepSeek ist textbasiert). Fertiges Bild aus Midjourney/DALL-E als URL in die Asset Library laden. Später per Image-API-Key automatisierbar.
+
 ## Deploy (Vercel)
 
 Repo importieren, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DEEPSEEK_API_KEY` setzen. Der Telegram-Worker läuft nicht auf Vercel — lokal oder auf einem kleinen Server starten.

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, StageBadge } from "@/components/ui"
 import { FollowupDone } from "@/components/FollowupDone"
 import type { Enums } from "@/lib/database.types"
+import { daysUntilBirthday } from "@/lib/moments"
 
 export const dynamic = "force-dynamic"
 
@@ -37,6 +38,10 @@ export default async function Dashboard() {
     ["new_match", "first_message_pending"].includes(c.pipeline_stage)
   )
   const highPriority = contacts.filter((c) => c.priority === "high")
+  const birthdays = contacts
+    .map((c) => ({ c, d: daysUntilBirthday(c.birthday) }))
+    .filter((x) => x.d != null && x.d <= 14)
+    .sort((a, b) => (a.d ?? 0) - (b.d ?? 0))
   const dateCandidates = contacts.filter((c) =>
     ["interest_visible", "date_idea", "on_messenger"].includes(c.pipeline_stage)
   )
@@ -116,6 +121,18 @@ export default async function Dashboard() {
 
         <Card title={`Hohe Priorität (${highPriority.length})`}>
           <ContactList contacts={highPriority} empty="Keine Kontakte mit hoher Priorität." />
+        </Card>
+
+        <Card title={`Geburtstage (${birthdays.length})`}>
+          <ul className="space-y-2 text-sm">
+            {birthdays.map(({ c, d }) => (
+              <li key={c.id}>
+                <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:underline">{c.name}</Link>{" "}
+                <span className={d === 0 ? "text-rose-400" : "text-zinc-400"}>{d === 0 ? "heute 🎂" : `in ${d}d`}</span>
+              </li>
+            ))}
+            {!birthdays.length && <li className="text-zinc-500">Keine in 14 Tagen. <Link href="/moments" className="text-rose-400 hover:underline">Moments →</Link></li>}
+          </ul>
         </Card>
       </div>
 

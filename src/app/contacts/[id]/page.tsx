@@ -7,6 +7,8 @@ import { MemoryPanel } from "./MemoryPanel"
 import { ContactHeader } from "./ContactHeader"
 import { DatePanel } from "./DatePanel"
 import { ChannelPanel } from "./ChannelPanel"
+import { FriendsPanel } from "./FriendsPanel"
+import { MomentGenerator } from "./MomentGenerator"
 
 export const dynamic = "force-dynamic"
 
@@ -45,6 +47,7 @@ export default async function ContactPage({
         <div className="space-y-4 lg:col-span-2">
           <ChatPanel contactId={id} messages={messagesRes.data ?? []} />
           <ReplyGenerator contactId={id} language={contact.language ?? "de"} />
+          <MomentGenerator contactId={id} />
         </div>
 
         <div className="space-y-4">
@@ -68,6 +71,7 @@ export default async function ContactPage({
             </p>
           </Card>
 
+          <FriendsPanel contact={contact} />
           <MemoryPanel contactId={id} memories={memoriesRes.data ?? []} />
           <ChannelPanel contactId={id} channels={channelsRes.data ?? []} />
           <DatePanel contactId={id} dates={datesRes.data ?? []} />
