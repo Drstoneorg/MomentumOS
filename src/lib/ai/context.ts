@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
-import type { Tables } from "@/lib/database.types"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database, Tables } from "@/lib/database.types"
 
 export type ContactContext = {
   contact: Tables<"contacts">
@@ -13,9 +14,10 @@ const DEFAULT_STYLE =
   "Natürlich, direkt, leicht humorvoll, charmant. Nicht generisch, nicht übertrieben, nicht peinlich, nicht cringe. Kurze Nachrichten wie echte Chat-Nachrichten, keine Aufsätze."
 
 export async function loadContactContext(
-  contactId: string
+  contactId: string,
+  client?: SupabaseClient<Database>
 ): Promise<ContactContext | null> {
-  const supabase = await createClient()
+  const supabase = client ?? (await createClient())
 
   const [contactRes, messagesRes, memoriesRes, summaryRes, styleRes] =
     await Promise.all([
