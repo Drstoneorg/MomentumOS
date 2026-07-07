@@ -152,6 +152,33 @@ export async function updateSuggestion(
   revalidatePath("/queue")
 }
 
+export async function markSuggestionSent(id: string) {
+  const supabase = await db()
+  const { data: s } = await supabase
+    .from("suggestions")
+    .select("contact_id, channel, chosen_variant, variants")
+    .eq("id", id)
+    .single()
+  if (!s) throw new Error("Suggestion nicht gefunden")
+  const variants = (s.variants ?? {}) as Record<string, string>
+  const text = s.chosen_variant ? variants[s.chosen_variant] : null
+  if (!text) throw new Error("Keine Variante gewählt")
+
+  await supabase
+    .from("suggestions")
+    .update({ status: "sent", sent_at: new Date().toISOString() })
+    .eq("id", id)
+  await supabase.from("messages").insert({
+    contact_id: s.contact_id,
+    direction: "out",
+    channel: s.channel,
+    content: text,
+    source: "manual",
+  })
+  revalidatePath("/queue")
+  revalidatePath(`/contacts/${s.contact_id}`)
+}
+
 export async function saveSetting(key: string, value: string) {
   const supabase = await db()
   const { error } = await supabase

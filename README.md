@@ -49,6 +49,30 @@ npm run worker           # läuft lokal
 
 ⚠ Automatisierung des eigenen Telegram-Accounts ist ToS-Grauzone. Eigenverantwortlich und mit moderater Frequenz nutzen. Die App umgeht keine Sicherheitsmechanismen; Dating-Apps werden bewusst per Copy-Paste angebunden.
 
+## Browser-Extension (MatchOS Companion)
+
+Läuft auf tinder.com, bumble.com, boo.world, badoo.com, web.whatsapp.com, instagram.com, web.telegram.org. Liest sichtbaren Profil-/Chattext, legt Kontakte an, liefert Antwortvarianten ins Overlay. **Sendet nie selbst.** (Hinge hat kein Web-Interface — dort Screenshot/Copy-Paste in den Smart-Import.)
+
+Installation:
+1. Chrome → `chrome://extensions` → Entwicklermodus an → „Entpackte Erweiterung laden" → Ordner `extension/` wählen.
+2. In MatchOS → Einstellungen → „Token generieren", kopieren.
+3. Extension-Icon klicken → MatchOS-URL (`https://matchos-ten.vercel.app`) + Token speichern.
+4. Auf einer unterstützten Seite: roter M-Button unten rechts → „Scannen & Syncen".
+
+Voraussetzung: `SUPABASE_SERVICE_ROLE_KEY` als Env-Variable in Vercel (Extension-API und Follow-up-Cron laufen ohne Browser-Login). Supabase Dashboard → Settings → API → `service_role` kopieren.
+
+## Kommunikationskanäle
+
+| Kanal | Automatik | Was geht |
+|---|---|---|
+| Telegram | ✓ Worker sendet nach Queue-Freigabe | voll |
+| WhatsApp | Deep-Link mit vorbefüllter Nachricht (`wa.me`) | ein Klick zum Senden |
+| Instagram | Deep-Link zum DM-Chat, Text in Zwischenablage | zwei Klicks |
+| TikTok / Snapchat / LINE | Profil-Link + Zwischenablage | manuell |
+| WeChat | kein Web-Link — Zwischenablage | manuell |
+
+Im Antwortgenerator Kanal wählen → Entwurf landet in der Queue → freigeben → Deep-Link-Buttons erscheinen (Text wird beim Klick kopiert) → „Habe gesendet" schreibt die Nachricht in den Verlauf.
+
 ## Deploy (Vercel)
 
 Repo importieren, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DEEPSEEK_API_KEY` setzen. Der Telegram-Worker läuft nicht auf Vercel — lokal oder auf einem kleinen Server starten.

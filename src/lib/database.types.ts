@@ -53,6 +53,7 @@ export type Database = {
           bio: string | null
           created_at: string
           date_idea: string | null
+          external_id: string | null
           id: string
           interests: string[] | null
           language: string | null
@@ -72,6 +73,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           date_idea?: string | null
+          external_id?: string | null
           id?: string
           interests?: string[] | null
           language?: string | null
@@ -91,6 +93,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           date_idea?: string | null
+          external_id?: string | null
           id?: string
           interests?: string[] | null
           language?: string | null

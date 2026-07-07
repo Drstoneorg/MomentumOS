@@ -1,0 +1,24 @@
+#matchos-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 2147483647;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #e11d48; color: #fff; border: 0; font-weight: 700; font-size: 18px;
+  cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+#matchos-panel {
+  position: fixed; bottom: 80px; right: 24px; z-index: 2147483647;
+  width: 340px; max-height: 70vh; overflow-y: auto;
+  background: #18181b; color: #e4e4e7; border: 1px solid #3f3f46; border-radius: 12px;
+  padding: 14px; font-family: system-ui; font-size: 13px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+#matchos-panel .mox-head { font-weight: 700; color: #f43f5e; margin-bottom: 8px; }
+#matchos-panel .mox-badge { background: #27272a; color: #a1a1aa; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 400; margin-left: 6px; }
+#matchos-panel .mox-hint { color: #a1a1aa; font-size: 12px; margin: 6px 0; }
+#matchos-panel .mox-err { color: #f87171; font-size: 12px; }
+#matchos-panel .mox-ok { color: #34d399; font-size: 12px; }
+#matchos-panel .mox-btn { width: 100%; background: #e11d48; color: #fff; border: 0; border-radius: 8px; padding: 8px; margin: 6px 0; cursor: pointer; font-size: 13px; }
+#matchos-panel .mox-link { display: block; color: #f43f5e; font-size: 12px; margin: 4px 0; text-decoration: none; }
+#matchos-panel .mox-variant { display: flex; gap: 8px; align-items: flex-start; border: 1px solid #3f3f46; border-radius: 8px; padding: 8px; margin: 6px 0; }
+#matchos-panel .mox-variant p { margin: 2px 0 0; }
+#matchos-panel .mox-style { color: #f43f5e; font-size: 10px; text-transform: uppercase; font-weight: 700; }
+#matchos-panel .mox-copy { background: transparent; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; flex-shrink: 0; }
