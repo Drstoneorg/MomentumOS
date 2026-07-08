@@ -3,6 +3,7 @@ import { Card } from "@/components/ui"
 import { StyleForm } from "./StyleForm"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TasteProfileForm } from "./TasteProfileForm"
+import { PushToggle } from "./PushToggle"
 
 export const dynamic = "force-dynamic"
 
@@ -52,6 +53,14 @@ export default async function SettingsPage() {
             autoLikeHint: tasteVal.autoLikeHint !== false,
           }}
         />
+      </Card>
+
+      <Card title="Push-Benachrichtigungen">
+        <p className="mb-2 text-sm text-zinc-400">
+          Geburtstage, fällige Follow-ups und Queue-Entwürfe direkt aufs Gerät.
+          Auf dem Handy: MatchOS erst „Zum Home-Bildschirm“ hinzufügen (PWA), dann aktivieren.
+        </p>
+        <PushToggle vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
       </Card>
 
       <Card title="API-Status">

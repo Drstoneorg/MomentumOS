@@ -21,9 +21,9 @@ Ziel: Kontakte so leicht pflegen wie in einem vollwertigen CRM.
 
 Ziel: installierbare App, Push, Realtime — Basis für BookOS.
 
-- [ ] **2.1 PWA**: `manifest.json`, Icons, Service Worker, installierbar auf Homescreen, Offline-Shell.
-- [ ] **2.2 Web Push** (VAPID): Benachrichtigungen für Geburtstage, Queue-Freigaben, später Treatment-Buchungsstatus. Subscription-Verwaltung in Settings.
-- [ ] **2.3 Supabase Realtime**: Channels aktivieren, Client-Hooks — Live-Updates für Queue und BookOS-Dispatch.
+- [x] **2.1 PWA**: `manifest.json`, Icons, Service Worker, installierbar auf Homescreen, Offline-Shell.
+- [x] **2.2 Web Push** (VAPID): Benachrichtigungen für Geburtstage, Queue-Freigaben, später Treatment-Buchungsstatus. Subscription-Verwaltung in Settings.
+- [x] **2.3 Supabase Realtime**: Channels aktivieren, Client-Hooks — Live-Updates für Queue und BookOS-Dispatch.
 
 ## Phase 3 — BookOS (On-Demand-Treatments, Uber-Modell)
 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { QueueItem } from "./QueueItem"
+import { QueueLive } from "./QueueLive"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,7 @@ export default async function QueuePage() {
 
   return (
     <div className="space-y-4">
+      <QueueLive />
       <h1 className="text-xl font-bold">Freigabe-Queue</h1>
       <p className="text-sm text-zinc-400">
         Entwürfe für Telegram. Variante wählen, freigeben — der Worker sendet. Ohne Freigabe geht nichts raus.
