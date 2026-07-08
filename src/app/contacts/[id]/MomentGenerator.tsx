@@ -10,12 +10,12 @@ const KINDS = [
 ]
 const IMG_STYLES = ["Anime", "Aquarell", "3D Render", "Retro-Poster", "Fotorealistisch", "Cartoon"]
 
-// Kostenschätzung gpt-image-1 (Bild-Output-Tokens × $40/1M), nur für UI-Hinweis.
+// Kostenschätzung gpt-image-2 (Bild-Output-Tokens × $30/1M), nur für UI-Hinweis.
 const IMG_COST: Record<string, Record<"low" | "medium" | "high", number>> = {
-  square: { low: 0.01, medium: 0.04, high: 0.17 },
-  portrait: { low: 0.02, medium: 0.06, high: 0.25 },
-  story: { low: 0.02, medium: 0.06, high: 0.25 },
-  landscape: { low: 0.02, medium: 0.06, high: 0.25 },
+  square: { low: 0.006, medium: 0.053, high: 0.211 },
+  portrait: { low: 0.009, medium: 0.041, high: 0.165 },
+  story: { low: 0.009, medium: 0.041, high: 0.165 },
+  landscape: { low: 0.009, medium: 0.041, high: 0.165 },
 }
 
 export function MomentGenerator({ contactId }: { contactId: string }) {
@@ -29,7 +29,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
 
   const [style, setStyle] = useState("Anime")
   const [format, setFormat] = useState("portrait")
-  const [quality, setQuality] = useState<"low" | "medium" | "high">("medium")
+  const [quality, setQuality] = useState<"low" | "medium" | "high">("low")
   const [imgOccasion, setImgOccasion] = useState("Geburtstag")
   const [imgResult, setImgResult] = useState<{ prompt: string; negative_prompt: string; caption: string } | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -132,7 +132,12 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
             </select>
             <button onClick={genImage} disabled={loading} className={btnGhostCls}>{loading ? "…" : "Prompt"}</button>
             <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>
-              {imgLoading ? "Male…" : `Bild erzeugen (~${((IMG_COST[format]?.[quality] ?? 0.25) * 100).toFixed(0)} ct)`}
+              {imgLoading
+                ? "Male…"
+                : `Bild erzeugen (~${(() => {
+                    const ct = (IMG_COST[format]?.[quality] ?? 0.2) * 100
+                    return ct < 1 ? "<1" : ct.toFixed(0)
+                  })()} ct)`}
             </button>
           </div>
           <input value={context} onChange={(e) => setContext(e.target.value)} placeholder="Vibe/Farben/Details" className={inputCls} />

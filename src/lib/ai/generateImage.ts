@@ -10,8 +10,12 @@ export function imageGenerationAvailable(): boolean {
   return !!imageApiKey()
 }
 
+// Standardmodell gpt-image-2 (günstiger als gpt-image-1); per IMAGE_MODEL überschreibbar,
+// falls OpenAI die Model-ID anders benennt.
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2"
+
 /**
- * Erzeugt ein Bild über die OpenAI-Images-API (gpt-image-1), lädt es in den
+ * Erzeugt ein Bild über die OpenAI-Images-API (gpt-image-2), lädt es in den
  * öffentlichen Supabase-Storage-Bucket `moment-images` und gibt die URL zurück.
  * Braucht OPENAI_API_KEY (oder IMAGE_API_KEY) in der Umgebung.
  */
@@ -25,13 +29,13 @@ export async function generateImage(
   await assertBudget()
 
   const size: ImageSize = opts.size ?? "1024x1024"
-  const quality: ImageQuality = opts.quality ?? "high"
+  const quality: ImageQuality = opts.quality ?? "low"
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: IMAGE_MODEL,
       prompt,
       size,
       quality,
@@ -59,7 +63,7 @@ export async function generateImage(
   // Echte Tokens aus der API bevorzugen; sonst Größe×Qualität aus Tabelle schätzen.
   await logUsage({
     provider: "openai",
-    model: "gpt-image-1",
+    model: IMAGE_MODEL,
     feature: "image",
     images: 1,
     tokensIn: data.usage?.input_tokens ?? 0,
