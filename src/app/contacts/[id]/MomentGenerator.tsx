@@ -30,7 +30,14 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
   const [style, setStyle] = useState("Anime")
   const [format, setFormat] = useState("portrait")
   const [quality, setQuality] = useState<"low" | "medium">("low")
+  const [customPrompt, setCustomPrompt] = useState("")
   const [shareMsg, setShareMsg] = useState<string | null>(null)
+
+  // Änderung der Bild-Eingaben verwirft einen zuvor generierten Prompt, damit
+  // "Bild erzeugen" nicht mit einem veralteten Prompt malt.
+  function invalidatePrompt() {
+    setImgResult(null)
+  }
   const [imgOccasion, setImgOccasion] = useState("Geburtstag")
   const [imgResult, setImgResult] = useState<{ prompt: string; negative_prompt: string; caption: string } | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -100,7 +107,8 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contactId, occasion: imgOccasion, name: "", style, details: context, format, quality,
-        prompt: imgResult?.prompt,
+        // Eigener Prompt gewinnt; sonst zuvor generierter; sonst baut die Route ihn aus den Details.
+        prompt: customPrompt.trim() || imgResult?.prompt || undefined,
       }),
     })
     setImgLoading(false)
@@ -141,11 +149,11 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
       ) : (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <input value={imgOccasion} onChange={(e) => setImgOccasion(e.target.value)} placeholder="Anlass" className={inputCls + " w-auto"} />
-            <select value={style} onChange={(e) => setStyle(e.target.value)} className={inputCls + " w-auto"}>
+            <input value={imgOccasion} onChange={(e) => { setImgOccasion(e.target.value); invalidatePrompt() }} placeholder="Anlass" className={inputCls + " w-auto"} />
+            <select value={style} onChange={(e) => { setStyle(e.target.value); invalidatePrompt() }} className={inputCls + " w-auto"}>
               {IMG_STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={format} onChange={(e) => setFormat(e.target.value)} className={inputCls + " w-auto"}>
+            <select value={format} onChange={(e) => { setFormat(e.target.value); invalidatePrompt() }} className={inputCls + " w-auto"}>
               <option value="portrait">Portrait 4:5</option>
               <option value="square">Quadrat 1:1</option>
               <option value="story">Story 9:16</option>
@@ -165,7 +173,24 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
                   })()} ct)`}
             </button>
           </div>
-          <input value={context} onChange={(e) => setContext(e.target.value)} placeholder="Vibe/Farben/Details" className={inputCls} />
+          <input
+            value={context}
+            onChange={(e) => { setContext(e.target.value); invalidatePrompt() }}
+            placeholder="Vibe/Farben/Details (Stichworte — die KI baut daraus den Prompt)"
+            className={inputCls}
+          />
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            rows={2}
+            placeholder="Eigener Prompt (optional) — wird 1:1 verwendet und überschreibt Anlass/Stil/Vibe"
+            className={inputCls}
+          />
+          {customPrompt.trim() && (
+            <p className="text-xs text-amber-400">
+              Eigener Prompt aktiv — „Bild erzeugen" nutzt genau diesen Text, die Felder oben werden ignoriert.
+            </p>
+          )}
           {error && <p className="text-sm text-red-400">{error}</p>}
           {imgResult && (
             <div className="space-y-2 rounded-lg border border-zinc-800 p-3 text-sm">
