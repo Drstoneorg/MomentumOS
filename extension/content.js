@@ -45,10 +45,94 @@
   function renderIdle() {
     panel.innerHTML = `
       <div class="mox-head">MatchOS <span class="mox-badge">${esc(platform)}</span></div>
+      <div id="mox-taste"></div>
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
       <button class="mox-btn" id="mox-scan">Scannen & Syncen</button>
       <div id="mox-out"></div>`
     panel.querySelector("#mox-scan").addEventListener("click", scan)
+    evalTaste()
+  }
+
+  // ---------- Beuteschema / Typ-Check ----------
+  let tasteCache = null
+
+  async function getTaste() {
+    if (tasteCache) return tasteCache
+    const { baseUrl, token } = await cfg()
+    if (!baseUrl || !token) return null
+    try {
+      const res = await fetch(`${baseUrl}/api/extension/taste-profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      tasteCache = await res.json()
+      return tasteCache
+    } catch {
+      return null
+    }
+  }
+
+  function matchTaste(text, taste) {
+    const t = text.toLowerCase()
+    const hits = (taste.include || []).filter((k) => k && t.includes(k))
+    const avoidHits = (taste.avoid || []).filter((k) => k && t.includes(k))
+    return { hits, avoidHits, recommend: hits.length > 0 && avoidHits.length === 0 }
+  }
+
+  async function evalTaste() {
+    const box = panel.querySelector("#mox-taste")
+    if (!box) return
+    const taste = await getTaste()
+    if (!taste || !(taste.include || []).length) return
+    const { hits, avoidHits, recommend } = matchTaste(visibleText(), taste)
+
+    if (recommend) {
+      box.innerHTML = `
+        <div class="mox-taste-hit">
+          <b>⭐ Passt zu deinem Typ</b>
+          <span class="mox-taste-tags">${hits.map((h) => `<span>${esc(h)}</span>`).join("")}</span>
+          ${taste.autoLikeHint ? `<button class="mox-btn mox-like" id="mox-like">❤ Liken (dein Klick)</button>` : ""}
+          <p class="mox-hint">Nur Bio-Text geprüft — Foto siehst du selbst. Like löst nur dein Klick aus.</p>
+        </div>`
+      const likeBtn = box.querySelector("#mox-like")
+      if (likeBtn) likeBtn.addEventListener("click", doLike)
+    } else if (avoidHits.length) {
+      box.innerHTML = `<div class="mox-taste-no">⚠ Ausschluss-Treffer: ${avoidHits.map(esc).join(", ")}</div>`
+    } else {
+      box.innerHTML = `<div class="mox-taste-neutral">Kein Beuteschema-Treffer im Text.</div>`
+    }
+  }
+
+  /** Führt den plattformeigenen Like-Klick aus — nur auf Nutzer-Klick, ein Profil. */
+  function doLike(e) {
+    const btn = e?.currentTarget
+    const ok = performLike()
+    if (btn) {
+      btn.textContent = ok ? "✓ geliked" : "✗ Button nicht gefunden — manuell"
+      btn.disabled = ok
+    }
+  }
+
+  function performLike() {
+    const isLike = (el) => {
+      const l = ((el.getAttribute("aria-label") || "") + " " + (el.title || "") + " " + (el.textContent || "")).toLowerCase()
+      return /(^|\b)(like|gefällt|liken|herz|heart|yes|smash)(\b|$)/.test(l) && !/super|rewind|zurück|dislike|nope|pass/.test(l)
+    }
+    // 1) explizite Like-Buttons
+    const candidates = [...document.querySelectorAll('button, [role="button"], a')]
+    const hit = candidates.find(isLike)
+    if (hit) {
+      hit.click()
+      return true
+    }
+    // 2) Tinder-Tastatur-Shortcut (Pfeil rechts = Like)
+    if (platform === "tinder") {
+      const ev = { key: "ArrowRight", code: "ArrowRight", keyCode: 39, which: 39, bubbles: true }
+      document.dispatchEvent(new KeyboardEvent("keydown", ev))
+      document.dispatchEvent(new KeyboardEvent("keyup", ev))
+      return true
+    }
+    return false
   }
 
   function visibleText() {

@@ -22,3 +22,10 @@
 #matchos-panel .mox-variant p { margin: 2px 0 0; }
 #matchos-panel .mox-style { color: #f43f5e; font-size: 10px; text-transform: uppercase; font-weight: 700; }
 #matchos-panel .mox-copy { background: transparent; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; flex-shrink: 0; }
+#matchos-panel .mox-taste-hit { border: 1px solid #be185d; background: #4c0519; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+#matchos-panel .mox-taste-hit b { color: #fda4af; }
+#matchos-panel .mox-taste-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+#matchos-panel .mox-taste-tags span { background: #831843; color: #fbcfe8; border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+#matchos-panel .mox-like { background: #ec4899; }
+#matchos-panel .mox-taste-no { border: 1px solid #92400e; background: #431407; color: #fdba74; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; font-size: 12px; }
+#matchos-panel .mox-taste-neutral { color: #71717a; font-size: 12px; margin-bottom: 8px; }

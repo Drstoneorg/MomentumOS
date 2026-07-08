@@ -2,15 +2,18 @@ import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { StyleForm } from "./StyleForm"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
+import { TasteProfileForm } from "./TasteProfileForm"
 
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: extToken }] = await Promise.all([
+  const [{ data: style }, { data: extToken }, { data: taste }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
   ])
+  const tasteVal = (taste?.value ?? {}) as { include?: string[]; avoid?: string[]; autoLikeHint?: boolean }
 
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
   const hasTelegram = !!process.env.TELEGRAM_SESSION
@@ -33,6 +36,20 @@ export default async function SettingsPage() {
         </p>
         <ExtensionTokenForm
           current={typeof extToken?.value === "string" ? extToken.value : ""}
+        />
+      </Card>
+
+      <Card title="Beuteschema (Typ-Check)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Stichwörter, auf die die Extension den Profiltext prüft. Bei Treffer zeigt das
+          Overlay „Passt zu deinem Typ" plus einen Like-Button, den du selbst drückst.
+        </p>
+        <TasteProfileForm
+          current={{
+            include: Array.isArray(tasteVal.include) ? tasteVal.include : [],
+            avoid: Array.isArray(tasteVal.avoid) ? tasteVal.avoid : [],
+            autoLikeHint: tasteVal.autoLikeHint !== false,
+          }}
         />
       </Card>
 

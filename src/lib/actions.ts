@@ -194,3 +194,18 @@ export async function saveSetting(key: string, value: string) {
   if (error) throw new Error(error.message)
   revalidatePath("/settings")
 }
+
+export type TasteProfile = {
+  include: string[]
+  avoid: string[]
+  autoLikeHint: boolean
+}
+
+export async function saveTasteProfile(profile: TasteProfile) {
+  const supabase = await db()
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ key: "taste_profile", value: profile as never, updated_at: new Date().toISOString() })
+  if (error) throw new Error(error.message)
+  revalidatePath("/settings")
+}
