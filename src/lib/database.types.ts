@@ -538,6 +538,7 @@ export type Database = {
         Row: {
           auto_send_at: string | null
           channel: string
+          image_url: string | null
           chosen_variant: string | null
           contact_id: string
           created_at: string
@@ -552,6 +553,7 @@ export type Database = {
           channel?: string
           chosen_variant?: string | null
           contact_id: string
+          image_url?: string | null
           created_at?: string
           id?: string
           sent_at?: string | null
@@ -564,6 +566,7 @@ export type Database = {
           channel?: string
           chosen_variant?: string | null
           contact_id?: string
+          image_url?: string | null
           created_at?: string
           id?: string
           sent_at?: string | null

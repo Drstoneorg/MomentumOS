@@ -194,7 +194,13 @@ async function sendApproved() {
       continue
     }
     try {
-      await client.sendMessage(handle.replace(/^@/, ""), { message: text })
+      const target = handle.replace(/^@/, "")
+      if (s.image_url) {
+        // Foto mit Bildunterschrift senden (Geburtstagsbild etc.)
+        await client.sendFile(target, { file: s.image_url, caption: text })
+      } else {
+        await client.sendMessage(target, { message: text })
+      }
       await supabase
         .from("suggestions")
         .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -203,10 +209,10 @@ async function sendApproved() {
         contact_id: s.contact_id,
         direction: "out",
         channel: "telegram",
-        content: text,
+        content: s.image_url ? `📷 ${text}` : text,
         source: "telegram",
       })
-      console.log(`→ ${handle}: ${text.slice(0, 60)}`)
+      console.log(`→ ${handle}: ${s.image_url ? "[Foto] " : ""}${text.slice(0, 60)}`)
     } catch (e) {
       console.error(`Senden an ${handle} fehlgeschlagen:`, e)
     }
