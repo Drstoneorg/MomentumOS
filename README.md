@@ -85,7 +85,14 @@ Erweiterungsmodul für persönliche Momente & Freundschaftspflege (`/moments`).
 - **Moments-Hub** (`/moments`): anstehende Geburtstage, vernachlässigte Kontakte (Verbindungs-Score), offene Meetups/Events, Asset Library.
 - **Cron** `/api/cron/moments` (täglich 8:00): erzeugt Reminder für Geburtstage (≤3 Tage) und Kontaktpausen wichtiger Personen. Kein Autoversand — nur Reminder/Entwürfe, Freigabe bleibt manuell.
 
-Hinweis Bilder: MatchOS erzeugt Bild-**Prompts**, keine Pixel (DeepSeek ist textbasiert). Fertiges Bild aus Midjourney/DALL-E als URL in die Asset Library laden. Später per Image-API-Key automatisierbar.
+### KI-Bilder & automatischer Geburtstagsversand
+
+- **Bild erzeugen**: Moments-Generator hat neben „Prompt" den Button „Bild erzeugen" — malt direkt via OpenAI Images (`gpt-image-1`), speichert in Supabase Storage (`moment-images`), zeigt Vorschau, legt Asset an. Braucht `OPENAI_API_KEY` in Vercel.
+- **Auto-Geburtstagsgruß**: Cron `/api/cron/moments` (täglich 8:00) erkennt Geburtstag heute; hat der Kontakt einen Telegram-Kanal, erzeugt es Gruß-Text (+ Bild, falls `OPENAI_API_KEY`) und legt eine **Telegram-Suggestion mit Bild** in die Queue. Autopilot-Kontakte (`auto_mode`) senden nach Veto-Frist automatisch, sonst nach manueller Freigabe. Der Worker sendet **Foto + Bildunterschrift** (`sendFile`).
+- **Automatischer Bildversand** geht nur über Telegram (eigener Account, Veto-gesichert) — andere Kanäle erlauben kein Anhängen per Deep-Link.
+- Ohne `OPENAI_API_KEY`: Text-Gruß läuft automatisch, Bild bleibt Prompt + manueller Upload.
+
+Env für Bilder: `OPENAI_API_KEY` (oder `IMAGE_API_KEY`) in Vercel. Storage-Bucket `moment-images` ist bereits angelegt (public).
 
 ## Deploy (Vercel)
 
