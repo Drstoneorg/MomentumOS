@@ -31,7 +31,13 @@ export async function POST(req: Request) {
     )
   }
 
-  const body = (await req.json()) as ImagePromptInput & { contactId?: string; eventId?: string; prompt?: string }
+  const body = (await req.json()) as ImagePromptInput & {
+    contactId?: string
+    eventId?: string
+    prompt?: string
+    quality?: "low" | "medium" | "high"
+  }
+  const quality = body.quality === "low" || body.quality === "medium" ? body.quality : "high"
 
   try {
     // Prompt entweder mitgeliefert oder frisch generieren
@@ -46,6 +52,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient()
     const { url } = await generateImage(admin, prompt, {
       size: SIZE[body.format ?? "portrait"],
+      quality,
       pathPrefix: body.contactId ?? "moment",
     })
 
