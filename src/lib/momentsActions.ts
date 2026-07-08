@@ -213,3 +213,21 @@ export async function deleteOccasion(id: string) {
   await supabase.from("occasions").delete().eq("id", id)
   revalidatePath("/moments")
 }
+
+// ---------- Asset-Versand-Log (Bild-Archiv: wohin wurde was geschickt) ----------
+export async function logAssetSend(input: {
+  assetId: string
+  contactId?: string | null
+  channel: string
+  note?: string
+}) {
+  const supabase = await db()
+  const { error } = await supabase.from("asset_sends").insert({
+    asset_id: input.assetId,
+    contact_id: input.contactId ?? null,
+    channel: input.channel,
+    note: input.note ?? null,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath("/moments/archive")
+}

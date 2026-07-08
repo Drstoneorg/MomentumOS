@@ -21,14 +21,17 @@ const PRICES: Record<string, { in: number; out: number }> = {
 const IMAGE_OUTPUT_PRICE = PRICES["gpt-image-2"].out
 const IMAGE_FALLBACK_USD = 0.2 // nur wenn ein unbekanntes Bildmodell ohne Tokens loggt
 
-// Bild-Output-Tokens von gpt-image-2 nach Größe × Qualität (aus OpenAI-Kostenkalkulator
-// abgeleitet). Dienen als Fallback, falls die API kein usage-Objekt liefert.
+// Bild-Output-Tokens von gpt-image-2 nach Größe × Qualität — kalibriert auf die
+// realen Pro-Bild-Preise (bei $30/1M: 1024² low ~1,4 ct, medium ~5,5 ct, high ~21 ct).
+// WICHTIG: das usage.output_tokens des Bild-Endpunkts ist NICHT die Render-Menge
+// (meldet nur Text-Tokens) — daher rechnen wir Bildkosten immer aus dieser Tabelle,
+// nicht aus dem API-Feld.
 export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024"
 export type ImageQuality = "low" | "medium" | "high"
 const IMAGE_OUTPUT_TOKENS: Record<ImageSize, Record<ImageQuality, number>> = {
-  "1024x1024": { low: 200, medium: 1767, high: 7033 },
-  "1024x1536": { low: 300, medium: 1367, high: 5500 },
-  "1536x1024": { low: 300, medium: 1367, high: 5500 },
+  "1024x1024": { low: 470, medium: 1830, high: 7070 },
+  "1024x1536": { low: 700, medium: 2750, high: 10600 },
+  "1536x1024": { low: 700, medium: 2750, high: 10600 },
 }
 
 export function imageOutputTokens(size: ImageSize, quality: ImageQuality): number {

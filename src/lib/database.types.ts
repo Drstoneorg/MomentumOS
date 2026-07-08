@@ -489,6 +489,41 @@ export type Database = {
           },
         ]
       }
+      asset_sends: {
+        Row: {
+          id: string
+          asset_id: string
+          contact_id: string | null
+          channel: string
+          note: string | null
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          contact_id?: string | null
+          channel: string
+          note?: string | null
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          asset_id?: string
+          contact_id?: string | null
+          channel?: string
+          note?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_sends_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "moment_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moment_assets: {
         Row: {
           contact_id: string | null
