@@ -59,6 +59,11 @@ Installation:
 3. Extension-Icon klicken → MatchOS-URL (`https://matchos-ten.vercel.app`) + Token speichern.
 4. Auf einer unterstützten Seite: roter M-Button unten rechts → „Scannen & Syncen".
 
+Weitere Extension-Funktionen (v0.3):
+- **↳ Einfügen** (WhatsApp-Web/Instagram/Telegram-Web): setzt den gewählten Antwortentwurf direkt ins Chat-Eingabefeld — Enter drückst du selbst, es wird nie automatisch gesendet.
+- **Rechtsklick → „An MatchOS senden"**: markierten Text (Profil oder Chat) per Kontextmenü syncen. Ergebnis erscheint im Overlay; auf Seiten ohne Overlay als ✓/✗-Badge am Extension-Icon.
+- **Session-Roundup**: das Overlay zählt pro Tab-Session geprüfte Profile, Typ-Treffer, Ausschlüsse, Syncs und Likes ("Session: 12 geprüft · 4 Typ-Treffer …"), Reset-Knopf inklusive.
+
 Voraussetzung: `SUPABASE_SERVICE_ROLE_KEY` als Env-Variable in Vercel (Extension-API und Follow-up-Cron laufen ohne Browser-Login). Supabase Dashboard → Settings → API → `service_role` kopieren.
 
 ## Kommunikationskanäle
@@ -95,6 +100,10 @@ Prüft ein Profilfoto gegen die im Beuteschema definierten Kriterien (`include`/
 - **In-App**: Kontaktseite → Karte „Foto-Check" (URL einfügen oder Datei hochladen).
 - **Extension**: Overlay-Knopf „📷 Foto prüfen" nimmt das größte sichtbare Profilbild.
 - Nur Kriterien-Abgleich, kein Like — die Entscheidung bleibt beim Nutzer.
+
+### KI-Verbrauch & Kosten-Limit
+
+Jeder KI-Call (DeepSeek-Chat, OpenAI-Vision, Bild-Generierung) wird in `ai_usage` mit Token-Zahlen und Kostenschätzung geloggt. Einstellungen → „KI-Verbrauch & Kosten-Limit" zeigt Monatsverbrauch pro Provider mit Fortschrittsbalken und Monatslimit (Standard $10). Bei Erreichen des Limits blocken alle KI-Funktionen mit der Meldung „KI-Budget erreicht" — Limit erhöhen schaltet sie wieder frei. Preisschätzungen in `lib/ai/usage.ts` (bewusst konservativ).
 
 ### BookOS-Dispatch-Watchdog
 

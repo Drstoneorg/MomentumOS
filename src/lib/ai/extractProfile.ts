@@ -40,7 +40,7 @@ messages: nur wenn ein Chatverlauf erkennbar ist. "out" = vom Nutzer (oft mit 'i
 memories: was über die Person gelernt wurde. Leer lassen wenn nichts.
 Wenn kein Name erkennbar: "Unbekannt".`
 
-  const rawResult = await chatJSON(system, raw)
+  const rawResult = await chatJSON(system, raw, "extract_profile")
   const parsed = JSON.parse(rawResult) as ExtractedProfile
   parsed.interests = parsed.interests ?? []
   parsed.messages = (parsed.messages ?? []).filter(

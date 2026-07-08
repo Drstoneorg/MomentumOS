@@ -45,7 +45,7 @@ Antworte als JSON:
   const user = `Person: ${input.name}
 Kontext: ${input.context || "—"}`
 
-  const raw = await chatJSON(system, user)
+  const raw = await chatJSON(system, user, "moment_message")
   const parsed = JSON.parse(raw) as MomentMessages
   return { variants: parsed.variants ?? {}, note: parsed.note ?? "" }
 }

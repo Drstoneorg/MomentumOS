@@ -1,6 +1,8 @@
 // Foto-Analyse via OpenAI-Vision (Chat mit Bild-Input). Prüft ein Profilfoto
 // gegen das Beuteschema (include/avoid). Key-gated wie die Bild-Generierung.
 
+import { assertBudget, logUsage } from "@/lib/ai/usage"
+
 export function visionApiKey(): string | null {
   return process.env.OPENAI_API_KEY || process.env.VISION_API_KEY || null
 }
@@ -35,6 +37,7 @@ export async function analyzePhoto(
   if (!key) throw new Error("Kein Vision-API-Key (OPENAI_API_KEY) gesetzt")
   const imageUrl = image.dataUrl || image.url
   if (!imageUrl) throw new Error("Kein Bild übergeben")
+  await assertBudget()
 
   const system = `Du hilfst einem Nutzer, Dating-Profilfotos gegen seine selbst definierten Vorlieben abzugleichen.
 Beschreibe sichtbare, neutrale Merkmale (Stil, Setting, Vibe, Aktivität, Hobbys-Hinweise). Identifiziere KEINE realen Personen und rate keine sensiblen Attribute (Ethnie, Religion, Gesundheit) über das hinaus, was der Nutzer als Kriterien nennt.
@@ -72,7 +75,17 @@ Antworte als JSON:
   if (!res.ok) {
     throw new Error(`Vision-API-Fehler ${res.status}: ${(await res.text()).slice(0, 200)}`)
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[]
+    usage?: { prompt_tokens?: number; completion_tokens?: number }
+  }
+  await logUsage({
+    provider: "openai",
+    model: MODEL,
+    feature: "vision",
+    tokensIn: data.usage?.prompt_tokens,
+    tokensOut: data.usage?.completion_tokens,
+  })
   const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}") as Partial<PhotoVerdict>
 
   return {

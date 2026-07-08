@@ -210,6 +210,16 @@ export async function saveTasteProfile(profile: TasteProfile) {
   revalidatePath("/settings")
 }
 
+export async function saveAiBudget(monthlyLimitUsd: number) {
+  const supabase = await db()
+  const limit = Math.max(0, Number(monthlyLimitUsd) || 0)
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ key: "ai_budget", value: { monthlyLimitUsd: limit } as never, updated_at: new Date().toISOString() })
+  if (error) throw new Error(error.message)
+  revalidatePath("/settings")
+}
+
 // ---------- Bulk-Import (vCard/CSV) ----------
 export type ImportRow = {
   name: string

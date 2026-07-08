@@ -42,9 +42,35 @@
     return d.innerHTML
   }
 
+  // ---------- Session-Zähler (pro Tab-Session) ----------
+  function session() {
+    try {
+      return JSON.parse(sessionStorage.getItem("moxSession") || "{}")
+    } catch {
+      return {}
+    }
+  }
+  function bump(key) {
+    const s = session()
+    s[key] = (s[key] || 0) + 1
+    try {
+      sessionStorage.setItem("moxSession", JSON.stringify(s))
+    } catch {}
+  }
+  function roundupHtml() {
+    const s = session()
+    const total = (s.scanned || 0) + (s.synced || 0)
+    if (!total) return ""
+    return `<div class="mox-roundup">Session: ${s.scanned || 0} geprüft · ${s.tasteHits || 0} Typ-Treffer · ${
+      s.avoided || 0
+    } Ausschluss · ${s.synced || 0} gesynct · ${s.liked || 0} Likes
+      <button class="mox-copy" id="mox-roundup-reset">Reset</button></div>`
+  }
+
   function renderIdle() {
     panel.innerHTML = `
       <div class="mox-head">MatchOS <span class="mox-badge">${esc(platform)}</span></div>
+      ${roundupHtml()}
       <div id="mox-taste"></div>
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
       <button class="mox-btn" id="mox-scan">Scannen & Syncen</button>
@@ -53,6 +79,12 @@
       <div id="mox-out"></div>`
     panel.querySelector("#mox-scan").addEventListener("click", scan)
     panel.querySelector("#mox-photo").addEventListener("click", checkPhotos)
+    const reset = panel.querySelector("#mox-roundup-reset")
+    if (reset)
+      reset.addEventListener("click", () => {
+        sessionStorage.removeItem("moxSession")
+        renderIdle()
+      })
     evalTaste()
   }
 
@@ -88,6 +120,9 @@
     const taste = await getTaste()
     if (!taste || !(taste.include || []).length) return
     const { hits, avoidHits, recommend } = matchTaste(visibleText(), taste)
+    bump("scanned")
+    if (recommend) bump("tasteHits")
+    else if (avoidHits.length) bump("avoided")
 
     if (recommend) {
       box.innerHTML = `
@@ -110,6 +145,7 @@
   function doLike(e) {
     const btn = e?.currentTarget
     const ok = performLike()
+    if (ok) bump("liked")
     if (btn) {
       btn.textContent = ok ? "✓ geliked" : "✗ Button nicht gefunden — manuell"
       btn.disabled = ok
@@ -233,6 +269,7 @@
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
+      bump("synced")
       out.innerHTML = `
         <p class="mox-ok">✓ ${esc(data.name)} ${data.isNew ? "angelegt" : "aktualisiert"}${
           data.messageCount ? ` · ${data.messageCount} Nachrichten` : ""
@@ -269,13 +306,60 @@
     }
   }
 
+  // ---------- Inline-Einfügen ins Chatfeld (WhatsApp-Web/Instagram/Telegram) ----------
+  // Findet das Nachrichten-Eingabefeld und fügt Text ein. Sendet NIE — Enter drückt der Nutzer.
+  function findComposer() {
+    const selectors = [
+      'footer [contenteditable="true"]', // WhatsApp-Web
+      'div[role="textbox"][contenteditable="true"]', // Instagram (Lexical), Telegram-Web
+      'textarea[placeholder]',
+      '[contenteditable="true"]',
+    ]
+    for (const sel of selectors) {
+      const els = [...document.querySelectorAll(sel)].filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 100 && r.height > 10 && r.bottom > window.innerHeight * 0.4
+      })
+      if (els.length) return els[els.length - 1] // unterstes = Chat-Composer
+    }
+    return null
+  }
+
+  function insertIntoComposer(text) {
+    const box = findComposer()
+    if (!box) return false
+    box.focus()
+    if (box.tagName === "TEXTAREA" || box.tagName === "INPUT") {
+      const setter = Object.getOwnPropertyDescriptor(
+        box.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+        "value"
+      ).set
+      setter.call(box, text)
+      box.dispatchEvent(new Event("input", { bubbles: true }))
+      return true
+    }
+    // contenteditable (Lexical/Draft): execCommand feuert die richtigen Editor-Events
+    const ok = document.execCommand("insertText", false, text)
+    if (!ok) {
+      box.dispatchEvent(
+        new InputEvent("beforeinput", { inputType: "insertText", data: text, bubbles: true, cancelable: true })
+      )
+    }
+    return true
+  }
+
+  const canInsert = ["whatsapp", "instagram", "telegram"].includes(platform)
+
   function renderVariants(out, data) {
     const rows = Object.entries(data.variants || {})
       .map(
         ([style, text]) => `
       <div class="mox-variant">
         <div><span class="mox-style">${esc(style)}</span><p>${esc(text)}</p></div>
-        <button class="mox-copy" data-t="${esc(text)}">Kopieren</button>
+        <div class="mox-variant-actions">
+          ${canInsert ? `<button class="mox-copy mox-insert" data-t="${esc(text)}">↳ Einfügen</button>` : ""}
+          <button class="mox-copy" data-t="${esc(text)}">Kopieren</button>
+        </div>
       </div>`
       )
       .join("")
@@ -285,12 +369,35 @@
         data.next_step_reason || ""
       )}</p>
       ${rows}`
-    out.querySelectorAll(".mox-copy").forEach((b) =>
+    out.querySelectorAll(".mox-copy:not(.mox-insert)").forEach((b) =>
       b.addEventListener("click", async () => {
         await navigator.clipboard.writeText(b.dataset.t)
         b.textContent = "✓"
         setTimeout(() => (b.textContent = "Kopieren"), 1200)
       })
     )
+    out.querySelectorAll(".mox-insert").forEach((b) =>
+      b.addEventListener("click", () => {
+        const ok = insertIntoComposer(b.dataset.t)
+        b.textContent = ok ? "✓ drin" : "✗ Feld?"
+        setTimeout(() => (b.textContent = "↳ Einfügen"), 1500)
+      })
+    )
   }
+
+  // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.type !== "matchos-sync-result") return
+    panel.hidden = false
+    renderIdle()
+    const out = panel.querySelector("#mox-out")
+    if (msg.ok) {
+      bump("synced")
+      out.innerHTML = `<p class="mox-ok">✓ ${esc(msg.name || "Kontakt")} ${msg.isNew ? "angelegt" : "aktualisiert"}${
+        msg.messageCount ? ` · ${msg.messageCount} Nachrichten` : ""
+      }</p>`
+    } else {
+      out.innerHTML = `<p class="mox-err">Fehler: ${esc(msg.error || "unbekannt")}</p>`
+    }
+  })
 })()

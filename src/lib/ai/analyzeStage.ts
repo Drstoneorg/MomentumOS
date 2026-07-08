@@ -25,7 +25,7 @@ Antworte als JSON:
 }
 followup_in_days: null wenn Antwort der Person aussteht und noch frisch ist.`
 
-  const raw = await chatJSON(system, contextToPrompt(ctx))
+  const raw = await chatJSON(system, contextToPrompt(ctx), "analyze_stage")
   const parsed = JSON.parse(raw) as StageAnalysis
   if (!PIPELINE_STAGES.includes(parsed.stage)) {
     parsed.stage = ctx.contact.pipeline_stage
