@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import type { Enums, TablesInsert, TablesUpdate } from "@/lib/database.types"
+import type { Enums, Json, TablesInsert, TablesUpdate } from "@/lib/database.types"
 
 async function db() {
   const supabase = await createClient()
@@ -157,6 +157,32 @@ export async function finishMeetup(id: string, recap: string) {
   }
   revalidatePath(`/moments/meetups/${id}`)
   revalidatePath("/moments/meetups")
+}
+
+/**
+ * Meetup-Broadcast an Telegram-Teilnehmer über die Queue.
+ * Legt pro Teilnehmer mit Telegram-Kanal einen freigabepflichtigen Entwurf an.
+ */
+export async function queueMeetupTelegram(
+  meetupId: string,
+  contactIds: string[],
+  text: string
+) {
+  const supabase = await db()
+  if (!text.trim() || !contactIds.length) return 0
+  const rows: TablesInsert<"suggestions">[] = contactIds.map((contact_id) => ({
+    contact_id,
+    situation: "Meetup-Einladung",
+    variants: { einladung: text } as Json,
+    chosen_variant: "einladung",
+    channel: "telegram",
+    status: "draft",
+  }))
+  const { error } = await supabase.from("suggestions").insert(rows)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/moments/meetups/${meetupId}`)
+  revalidatePath("/queue")
+  return rows.length
 }
 
 // ---------- Assets ----------

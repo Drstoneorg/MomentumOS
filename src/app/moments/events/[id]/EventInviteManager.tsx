@@ -120,10 +120,6 @@ export function EventInviteManager({
 
       <ul className="space-y-2">
         {invites.map((inv) => {
-          const primary = inv.contacts?.contact_channels?.[0]
-          const link = primary && inv.invite_text
-            ? channelDeepLink(primary.channel, primary.handle, inv.invite_text)
-            : null
           return (
             <li key={inv.id} className="rounded-lg border border-zinc-800 p-3">
               <div className="flex items-center gap-2">
@@ -147,11 +143,24 @@ export function EventInviteManager({
                 {inv.invite_text && (
                   <button onClick={() => navigator.clipboard.writeText(inv.invite_text!)} className={btnGhostCls}>Kopieren</button>
                 )}
-                {link?.url && (
-                  <a href={link.url} target="_blank" rel="noreferrer" onClick={() => inv.invite_text && navigator.clipboard.writeText(inv.invite_text)} className={btnGhostCls}>
-                    {link.label} ↗
-                  </a>
-                )}
+                {inv.invite_text &&
+                  (inv.contacts?.contact_channels ?? []).map((ch) => {
+                    const l = channelDeepLink(ch.channel, ch.handle, inv.invite_text!)
+                    if (!l.url) return null
+                    return (
+                      <a
+                        key={ch.channel}
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={l.hint}
+                        onClick={() => navigator.clipboard.writeText(inv.invite_text!)}
+                        className={btnGhostCls}
+                      >
+                        {l.label} ↗
+                      </a>
+                    )
+                  })}
               </div>
             </li>
           )

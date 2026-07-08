@@ -72,7 +72,52 @@ export const CHANNELS: Record<string, ChannelInfo> = {
     deepLink: (h) => `https://line.me/ti/p/~${clean(h)}`,
     hint: "Öffnet Profil — Nachricht kopieren.",
   },
+  email: {
+    id: "email",
+    label: "E-Mail",
+    prefill: true,
+    auto: false,
+    deepLink: (h, text) =>
+      `mailto:${h.trim()}${text ? `?subject=${encodeURIComponent("Einladung")}&body=${encodeURIComponent(text)}` : ""}`,
+    hint: "Öffnet Mail-Programm mit vorbefülltem Text.",
+  },
+  sms: {
+    id: "sms",
+    label: "SMS",
+    prefill: true,
+    auto: false,
+    deepLink: (h, text) =>
+      `sms:${phone(h) ? "+" + phone(h) : h.trim()}${text ? `?&body=${encodeURIComponent(text)}` : ""}`,
+    hint: "Öffnet SMS-App mit vorbefülltem Text.",
+  },
+  signal: {
+    id: "signal",
+    label: "Signal",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => `https://signal.me/#p/${phone(h) ? "+" + phone(h) : clean(h)}`,
+    hint: "Öffnet Signal-Chat — Nachricht kopieren.",
+  },
+  messenger: {
+    id: "messenger",
+    label: "Messenger",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => `https://m.me/${clean(h)}`,
+    hint: "Öffnet Facebook-Messenger-Chat — Nachricht kopieren.",
+  },
+  discord: {
+    id: "discord",
+    label: "Discord",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => (/^\d{5,}$/.test(clean(h)) ? `https://discord.com/users/${clean(h)}` : null),
+    hint: "Bei User-ID öffnet Profil, sonst Namen kopieren.",
+  },
 }
+
+/** Alle Kanal-IDs für Auswahl-Dropdowns. */
+export const CHANNEL_IDS = Object.keys(CHANNELS)
 
 export function channelDeepLink(
   channel: string,

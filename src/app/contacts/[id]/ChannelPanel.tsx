@@ -6,7 +6,7 @@ import { addChannel } from "@/lib/actions"
 import type { Tables } from "@/lib/database.types"
 import { Card, inputCls, btnCls } from "@/components/ui"
 
-const CHANNELS = ["telegram", "whatsapp", "instagram", "tiktok", "snapchat", "wechat", "line"]
+const CHANNELS = ["telegram", "whatsapp", "instagram", "tiktok", "snapchat", "wechat", "line", "email", "sms", "signal", "messenger", "discord"]
 
 export function ChannelPanel({
   contactId,
