@@ -37,7 +37,8 @@ export async function POST(req: Request) {
     prompt?: string
     quality?: "low" | "medium" | "high"
   }
-  const quality = body.quality === "low" || body.quality === "medium" ? body.quality : "high"
+  // High-Quality bewusst deaktiviert (Kosten) — alles außer "medium" wird "low".
+  const quality = body.quality === "medium" ? "medium" : "low"
 
   try {
     // Prompt entweder mitgeliefert oder frisch generieren
