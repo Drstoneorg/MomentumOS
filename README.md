@@ -85,6 +85,23 @@ Erweiterungsmodul für persönliche Momente & Freundschaftspflege (`/moments`).
 - **Moments-Hub** (`/moments`): anstehende Geburtstage, vernachlässigte Kontakte (Verbindungs-Score), offene Meetups/Events, Asset Library.
 - **Cron** `/api/cron/moments` (täglich 8:00): erzeugt Reminder für Geburtstage (≤3 Tage) und Kontaktpausen wichtiger Personen. Kein Autoversand — nur Reminder/Entwürfe, Freigabe bleibt manuell.
 
+### Match-Score (Dating)
+
+Jeder Kontakt bekommt einen Match-Score 0–100 aus dem Chat-Verlauf (`lib/scoring.ts`): Momentum (Pipeline-Stufe), Erwiderung (in/out-Balance), Aktualität, Antworttempo, Substanz. Als Badge in der Matchbox-Liste (sortierbar) und als Aufschlüsselung auf der Kontaktseite. Rein lokal berechnet, kein KI-Call.
+
+### Foto-Check (Vision, Beuteschema)
+
+Prüft ein Profilfoto gegen die im Beuteschema definierten Kriterien (`include`/`avoid`) via OpenAI-Vision. Beschreibt neutrale Merkmale, identifiziert keine realen Personen. Braucht `OPENAI_API_KEY`.
+- **In-App**: Kontaktseite → Karte „Foto-Check" (URL einfügen oder Datei hochladen).
+- **Extension**: Overlay-Knopf „📷 Foto prüfen" nimmt das größte sichtbare Profilbild.
+- Nur Kriterien-Abgleich, kein Like — die Entscheidung bleibt beim Nutzer.
+
+### BookOS-Dispatch-Watchdog
+
+- **Client** (Buchungsseite offen): prüft alle 10 s, ob alle Anbieter-Angebote abgelaufen sind, und startet automatisch eine neue Dispatch-Runde.
+- **Cron** `/api/cron/dispatch`: räumt abgelaufene Angebote weg, dispatcht hängende Sofort-Buchungen neu und stößt fällige Terminbuchungen an (30 Min Vorlauf).
+- **Takt**: Vercel Hobby erlaubt Crons nur **1×/Tag** (daher `0 6 * * *`). Für Minuten-Takt entweder Vercel Pro **oder** ein externer Cron (z. B. cron-job.org), der `GET /api/cron/dispatch` mit Header `Authorization: Bearer <CRON_SECRET>` jede Minute aufruft.
+
 ### KI-Bilder & automatischer Geburtstagsversand
 
 - **Bild erzeugen**: Moments-Generator hat neben „Prompt" den Button „Bild erzeugen" — malt direkt via OpenAI Images (`gpt-image-1`), speichert in Supabase Storage (`moment-images`), zeigt Vorschau, legt Asset an. Braucht `OPENAI_API_KEY` in Vercel.
