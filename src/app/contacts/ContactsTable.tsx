@@ -5,12 +5,19 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { bulkAddTags } from "@/lib/actions"
 import { connectionScore, daysUntilBirthday, scoreColor } from "@/lib/moments"
+import type { MatchScore } from "@/lib/scoring"
 import { StageBadge, PriorityDot, inputCls, btnCls } from "@/components/ui"
 import type { Tables } from "@/lib/database.types"
 
-type SortKey = "name" | "platform" | "location" | "birthday" | "last_contact" | "score" | "stage"
+type SortKey = "name" | "platform" | "location" | "birthday" | "last_contact" | "score" | "match" | "stage"
 
-export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) {
+export function ContactsTable({
+  contacts,
+  scores = {},
+}: {
+  contacts: Tables<"contacts">[]
+  scores?: Record<string, MatchScore>
+}) {
   const router = useRouter()
   const [q, setQ] = useState("")
   const [sort, setSort] = useState<SortKey>("last_contact")
@@ -39,6 +46,7 @@ export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) 
         case "birthday": return daysUntilBirthday(c.birthday) ?? 9999
         case "last_contact": return c.last_contact_at ?? c.updated_at ?? ""
         case "score": return connectionScore(c).score
+        case "match": return scores[c.id]?.score ?? -1
         case "stage": return c.pipeline_stage
       }
     }
@@ -47,7 +55,7 @@ export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) 
       const cmp = va < vb ? -1 : va > vb ? 1 : 0
       return asc ? cmp : -cmp
     })
-  }, [contacts, q, sort, asc])
+  }, [contacts, q, sort, asc, scores])
 
   function header(key: SortKey, label: string) {
     return (
@@ -122,6 +130,7 @@ export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) 
               {header("location", "Ort")}
               {header("birthday", "Geburtstag")}
               {header("last_contact", "Letzter Kontakt")}
+              {header("match", "Match")}
               {header("score", "Verbindung")}
               {header("stage", "Stage")}
               <th className="px-3 py-2">Tags</th>
@@ -152,6 +161,18 @@ export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) 
                     {conn.daysSince === null ? "—" : conn.daysSince === 0 ? "heute" : `vor ${conn.daysSince}d`}
                   </td>
                   <td className="px-3 py-2">
+                    {scores[c.id] ? (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white ${scores[c.id].color}`}
+                        title={scores[c.id].factors.map((f) => `${f.label}: ${f.note}`).join(" · ")}
+                      >
+                        {scores[c.id].score} {scores[c.id].label}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-zinc-800">
                       <div
                         className={`h-full ${scoreColor(conn.score)}`}
@@ -175,7 +196,7 @@ export function ContactsTable({ contacts }: { contacts: Tables<"contacts">[] }) 
             })}
             {!rows.length && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-zinc-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-zinc-500">
                   {contacts.length ? "Keine Treffer." : "Noch keine Kontakte. Leg den ersten an."}
                 </td>
               </tr>

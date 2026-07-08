@@ -10,6 +10,10 @@ import { ChannelPanel } from "./ChannelPanel"
 import { FriendsPanel } from "./FriendsPanel"
 import { MomentGenerator } from "./MomentGenerator"
 import { Timeline, type TimelineItem } from "./Timeline"
+import { MatchScoreCard } from "./MatchScoreCard"
+import { PhotoAnalyzeCard } from "./PhotoAnalyzeCard"
+import { datingScore, type ScoreMessage } from "@/lib/scoring"
+import { visionAvailable } from "@/lib/ai/vision"
 
 export const dynamic = "force-dynamic"
 
@@ -42,6 +46,11 @@ export default async function ContactPage({
 
   const contact = contactRes.data
   if (!contact) notFound()
+
+  const matchScore = datingScore(
+    (messagesRes.data ?? []).map((m) => ({ direction: m.direction, sent_at: m.sent_at }) as ScoreMessage),
+    { pipeline_stage: contact.pipeline_stage }
+  )
 
   const timeline: TimelineItem[] = [
     ...(messagesRes.data ?? []).map((m) => ({
@@ -115,6 +124,8 @@ export default async function ContactPage({
             </p>
           </Card>
 
+          <MatchScoreCard score={matchScore} />
+          <PhotoAnalyzeCard available={visionAvailable()} />
           <FriendsPanel contact={contact} />
           <MemoryPanel contactId={id} memories={memoriesRes.data ?? []} />
           <ChannelPanel contactId={id} channels={channelsRes.data ?? []} />

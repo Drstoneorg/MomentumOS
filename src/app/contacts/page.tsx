@@ -4,6 +4,7 @@ import { NewContactButton } from "./NewContactButton"
 import { SmartImportButton } from "./SmartImportButton"
 import { FileImportButton } from "./FileImportButton"
 import { ContactsTable } from "./ContactsTable"
+import { datingScore, type MatchScore, type ScoreMessage } from "@/lib/scoring"
 
 export const dynamic = "force-dynamic"
 
@@ -24,6 +25,25 @@ export default async function ContactsPage({
   const { data: contacts } = await query
 
   const platforms = [...new Set((contacts ?? []).map((c) => c.platform))]
+
+  // Match-Score pro Kontakt aus Nachrichten-Metadaten (ein Query für alle).
+  const ids = (contacts ?? []).map((c) => c.id)
+  const scores: Record<string, MatchScore> = {}
+  if (ids.length) {
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("contact_id, direction, sent_at")
+      .in("contact_id", ids)
+    const byContact = new Map<string, ScoreMessage[]>()
+    for (const m of msgs ?? []) {
+      const arr = byContact.get(m.contact_id) ?? []
+      arr.push({ direction: m.direction as "in" | "out", sent_at: m.sent_at })
+      byContact.set(m.contact_id, arr)
+    }
+    for (const c of contacts ?? []) {
+      scores[c.id] = datingScore(byContact.get(c.id) ?? [], { pipeline_stage: c.pipeline_stage })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -54,7 +74,7 @@ export default async function ContactsPage({
         ))}
       </div>
 
-      <ContactsTable contacts={contacts ?? []} />
+      <ContactsTable contacts={contacts ?? []} scores={scores} />
     </div>
   )
 }
