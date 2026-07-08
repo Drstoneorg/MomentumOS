@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
+import { assertBudget, logUsage } from "@/lib/ai/usage"
 
 export function imageApiKey(): string | null {
   return process.env.OPENAI_API_KEY || process.env.IMAGE_API_KEY || null
@@ -23,6 +24,7 @@ export async function generateImage(
 ): Promise<{ url: string }> {
   const key = imageApiKey()
   if (!key) throw new Error("Kein Bild-API-Key (OPENAI_API_KEY) gesetzt")
+  await assertBudget()
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
@@ -49,6 +51,7 @@ export async function generateImage(
   } else {
     throw new Error("Bild-API lieferte kein Bild")
   }
+  await logUsage({ provider: "openai", model: "gpt-image-1", feature: "image", images: 1 })
 
   const path = `${opts.pathPrefix ?? "moment"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
   const { error } = await supabase.storage

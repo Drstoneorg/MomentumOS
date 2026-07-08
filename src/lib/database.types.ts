@@ -12,6 +12,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          id: string
+          provider: string
+          model: string
+          feature: string
+          tokens_in: number
+          tokens_out: number
+          images: number
+          cost_usd: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          provider: string
+          model: string
+          feature?: string
+          tokens_in?: number
+          tokens_out?: number
+          images?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          provider?: string
+          model?: string
+          feature?: string
+          tokens_in?: number
+          tokens_out?: number
+          images?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       contact_channels: {
         Row: {
           channel: string

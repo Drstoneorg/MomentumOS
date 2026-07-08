@@ -44,6 +44,6 @@ Stil: ${input.style}
 Details/Vibe: ${input.details || "—"}
 Format: ${input.format} (${RATIO[input.format]})`
 
-  const raw = await chatJSON(system, user)
+  const raw = await chatJSON(system, user, "image_prompt")
   return JSON.parse(raw) as ImagePromptResult
 }

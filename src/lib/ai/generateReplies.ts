@@ -50,7 +50,7 @@ Jede Variante: eine echte Chat-Nachricht, passend zur Situation, nicht generisch
 ## Situation / Auftrag
 ${situation || "Schreibe die passende nächste Nachricht."}`
 
-  const raw = await chatJSON(system, user)
+  const raw = await chatJSON(system, user, "replies")
   const parsed = JSON.parse(raw) as ReplyVariants
   return { cjk: null, ...parsed }
 }

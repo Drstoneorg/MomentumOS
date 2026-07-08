@@ -30,3 +30,6 @@
 #matchos-panel .mox-like { background: #ec4899; }
 #matchos-panel .mox-taste-no { border: 1px solid #92400e; background: #431407; color: #fdba74; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; font-size: 12px; }
 #matchos-panel .mox-taste-neutral { color: #71717a; font-size: 12px; margin-bottom: 8px; }
+#matchos-panel .mox-roundup { color: #a1a1aa; font-size: 11px; background: #27272a; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+#matchos-panel .mox-variant-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+#matchos-panel .mox-insert { border-color: #0ea5e9; color: #7dd3fc; }

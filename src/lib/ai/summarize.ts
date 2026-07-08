@@ -27,7 +27,7 @@ Antworte als JSON:
 }
 Nur NEUE Gedächtnis-Einträge, die noch nicht im bestehenden Gedächtnis stehen. Maximal 8.`
 
-  const raw = await chatJSON(system, contextToPrompt(ctx))
+  const raw = await chatJSON(system, contextToPrompt(ctx), "summarize")
   const parsed = JSON.parse(raw) as SummaryResult
   parsed.memories = (parsed.memories ?? []).filter((m) =>
     (KINDS as readonly string[]).includes(m.kind)

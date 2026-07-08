@@ -4,6 +4,8 @@ import { StyleForm } from "./StyleForm"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
+import { AiBudgetForm } from "./AiBudgetForm"
+import { monthlyUsage, type UsageSummary } from "@/lib/ai/usage"
 
 export const dynamic = "force-dynamic"
 
@@ -15,6 +17,13 @@ export default async function SettingsPage() {
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
   ])
   const tasteVal = (taste?.value ?? {}) as { include?: string[]; avoid?: string[]; autoLikeHint?: boolean }
+
+  let usage: UsageSummary | null = null
+  try {
+    usage = await monthlyUsage(supabase)
+  } catch {
+    // kein SERVICE_ROLE_KEY lokal — Karte zeigt Hinweis
+  }
 
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
   const hasTelegram = !!process.env.TELEGRAM_SESSION
@@ -63,6 +72,48 @@ export default async function SettingsPage() {
           Auf dem Handy: MatchOS erst „Zum Home-Bildschirm“ hinzufügen (PWA), dann aktivieren.
         </p>
         <PushToggle vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
+      </Card>
+
+      <Card title="KI-Verbrauch & Kosten-Limit">
+        <p className="mb-2 text-sm text-zinc-400">
+          Jeder KI-Call (DeepSeek, Vision, Bilder) wird mit Kostenschätzung geloggt. Bei
+          Erreichen des Monatslimits blocken alle KI-Funktionen mit klarer Fehlermeldung.
+        </p>
+        {usage ? (
+          <div className="mb-3 space-y-2">
+            <div className="flex items-baseline justify-between text-sm">
+              <span>
+                Diesen Monat:{" "}
+                <b className={usage.monthCostUsd >= usage.limitUsd ? "text-rose-400" : "text-emerald-400"}>
+                  ${usage.monthCostUsd.toFixed(2)}
+                </b>{" "}
+                von ${usage.limitUsd.toFixed(2)}
+              </span>
+              <span className="text-zinc-500">
+                {Math.min(100, Math.round((usage.monthCostUsd / usage.limitUsd) * 100))}%
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className={`h-full ${usage.monthCostUsd >= usage.limitUsd ? "bg-rose-500" : "bg-emerald-500"}`}
+                style={{ width: `${Math.min(100, (usage.monthCostUsd / usage.limitUsd) * 100)}%` }}
+              />
+            </div>
+            <ul className="text-xs text-zinc-500">
+              {Object.entries(usage.byProvider).map(([p, v]) => (
+                <li key={p}>
+                  {p}: ${v.costUsd.toFixed(3)} · {v.calls} Calls
+                </li>
+              ))}
+              {!Object.keys(usage.byProvider).length && <li>Noch keine KI-Calls diesen Monat.</li>}
+            </ul>
+          </div>
+        ) : (
+          <p className="mb-3 text-sm text-amber-400">
+            Verbrauch nicht abrufbar — SUPABASE_SERVICE_ROLE_KEY fehlt in dieser Umgebung.
+          </p>
+        )}
+        <AiBudgetForm current={usage?.limitUsd ?? 10} />
       </Card>
 
       <Card title="API-Status">
