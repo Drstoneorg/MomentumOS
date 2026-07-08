@@ -10,6 +10,14 @@ const KINDS = [
 ]
 const IMG_STYLES = ["Anime", "Aquarell", "3D Render", "Retro-Poster", "Fotorealistisch", "Cartoon"]
 
+// Kostenschätzung gpt-image-1 (Bild-Output-Tokens × $40/1M), nur für UI-Hinweis.
+const IMG_COST: Record<string, Record<"low" | "medium" | "high", number>> = {
+  square: { low: 0.01, medium: 0.04, high: 0.17 },
+  portrait: { low: 0.02, medium: 0.06, high: 0.25 },
+  story: { low: 0.02, medium: 0.06, high: 0.25 },
+  landscape: { low: 0.02, medium: 0.06, high: 0.25 },
+}
+
 export function MomentGenerator({ contactId }: { contactId: string }) {
   const [tab, setTab] = useState<"text" | "image">("text")
   const [kind, setKind] = useState("birthday")
@@ -21,6 +29,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
 
   const [style, setStyle] = useState("Anime")
   const [format, setFormat] = useState("portrait")
+  const [quality, setQuality] = useState<"low" | "medium" | "high">("medium")
   const [imgOccasion, setImgOccasion] = useState("Geburtstag")
   const [imgResult, setImgResult] = useState<{ prompt: string; negative_prompt: string; caption: string } | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -64,7 +73,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contactId, occasion: imgOccasion, name: "", style, details: context, format,
+        contactId, occasion: imgOccasion, name: "", style, details: context, format, quality,
         prompt: imgResult?.prompt,
       }),
     })
@@ -116,8 +125,15 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               <option value="story">Story 9:16</option>
               <option value="landscape">Quer 16:9</option>
             </select>
+            <select value={quality} onChange={(e) => setQuality(e.target.value as typeof quality)} className={inputCls + " w-auto"}>
+              <option value="low">Qualität niedrig</option>
+              <option value="medium">Qualität mittel</option>
+              <option value="high">Qualität hoch</option>
+            </select>
             <button onClick={genImage} disabled={loading} className={btnGhostCls}>{loading ? "…" : "Prompt"}</button>
-            <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>{imgLoading ? "Male…" : "Bild erzeugen"}</button>
+            <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>
+              {imgLoading ? "Male…" : `Bild erzeugen (~${((IMG_COST[format]?.[quality] ?? 0.25) * 100).toFixed(0)} ct)`}
+            </button>
           </div>
           <input value={context} onChange={(e) => setContext(e.target.value)} placeholder="Vibe/Farben/Details" className={inputCls} />
           {error && <p className="text-sm text-red-400">{error}</p>}

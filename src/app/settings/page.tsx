@@ -99,14 +99,34 @@ export default async function SettingsPage() {
                 style={{ width: `${Math.min(100, (usage.monthCostUsd / usage.limitUsd) * 100)}%` }}
               />
             </div>
-            <ul className="text-xs text-zinc-500">
-              {Object.entries(usage.byProvider).map(([p, v]) => (
-                <li key={p}>
-                  {p}: ${v.costUsd.toFixed(3)} · {v.calls} Calls
-                </li>
-              ))}
-              {!Object.keys(usage.byProvider).length && <li>Noch keine KI-Calls diesen Monat.</li>}
-            </ul>
+            {usage.byFeature.length ? (
+              <>
+                <p className="pt-1 text-xs font-semibold uppercase text-zinc-500">Nach Funktion</p>
+                <table className="w-full text-xs text-zinc-400">
+                  <tbody>
+                    {usage.byFeature.map((f) => (
+                      <tr key={f.feature} className="border-t border-zinc-800/60">
+                        <td className="py-1">{f.label}</td>
+                        <td className="py-1 text-right text-zinc-500">
+                          {f.calls}×{f.images ? ` · ${f.images} Bilder` : ""}
+                        </td>
+                        <td className="py-1 text-right tabular-nums text-zinc-200">
+                          ${f.costUsd.toFixed(f.costUsd >= 0.1 ? 2 : 4)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-xs text-zinc-600">
+                  Provider:{" "}
+                  {Object.entries(usage.byProvider)
+                    .map(([p, v]) => `${p} $${v.costUsd.toFixed(2)} (${v.calls})`)
+                    .join(" · ")}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-zinc-500">Noch keine KI-Calls diesen Monat.</p>
+            )}
           </div>
         ) : (
           <p className="mb-3 text-sm text-amber-400">

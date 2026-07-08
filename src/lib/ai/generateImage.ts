@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { assertBudget, logUsage } from "@/lib/ai/usage"
+import { assertBudget, logUsage, imageOutputTokens, type ImageSize, type ImageQuality } from "@/lib/ai/usage"
 
 export function imageApiKey(): string | null {
   return process.env.OPENAI_API_KEY || process.env.IMAGE_API_KEY || null
@@ -10,8 +10,6 @@ export function imageGenerationAvailable(): boolean {
   return !!imageApiKey()
 }
 
-type Size = "1024x1024" | "1024x1536" | "1536x1024"
-
 /**
  * Erzeugt ein Bild über die OpenAI-Images-API (gpt-image-1), lädt es in den
  * öffentlichen Supabase-Storage-Bucket `moment-images` und gibt die URL zurück.
@@ -20,11 +18,14 @@ type Size = "1024x1024" | "1024x1536" | "1536x1024"
 export async function generateImage(
   supabase: SupabaseClient<Database>,
   prompt: string,
-  opts: { size?: Size; pathPrefix?: string } = {}
+  opts: { size?: ImageSize; quality?: ImageQuality; pathPrefix?: string } = {}
 ): Promise<{ url: string }> {
   const key = imageApiKey()
   if (!key) throw new Error("Kein Bild-API-Key (OPENAI_API_KEY) gesetzt")
   await assertBudget()
+
+  const size: ImageSize = opts.size ?? "1024x1024"
+  const quality: ImageQuality = opts.quality ?? "high"
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
@@ -32,14 +33,18 @@ export async function generateImage(
     body: JSON.stringify({
       model: "gpt-image-1",
       prompt,
-      size: opts.size ?? "1024x1024",
+      size,
+      quality,
       n: 1,
     }),
   })
   if (!res.ok) {
     throw new Error(`Bild-API-Fehler ${res.status}: ${(await res.text()).slice(0, 200)}`)
   }
-  const data = (await res.json()) as { data?: { b64_json?: string; url?: string }[] }
+  const data = (await res.json()) as {
+    data?: { b64_json?: string; url?: string }[]
+    usage?: { input_tokens?: number; output_tokens?: number }
+  }
   const b64 = data.data?.[0]?.b64_json
   const remoteUrl = data.data?.[0]?.url
   let bytes: Uint8Array
@@ -51,7 +56,15 @@ export async function generateImage(
   } else {
     throw new Error("Bild-API lieferte kein Bild")
   }
-  await logUsage({ provider: "openai", model: "gpt-image-1", feature: "image", images: 1 })
+  // Echte Tokens aus der API bevorzugen; sonst Größe×Qualität aus Tabelle schätzen.
+  await logUsage({
+    provider: "openai",
+    model: "gpt-image-1",
+    feature: "image",
+    images: 1,
+    tokensIn: data.usage?.input_tokens ?? 0,
+    tokensOut: data.usage?.output_tokens ?? imageOutputTokens(size, quality),
+  })
 
   const path = `${opts.pathPrefix ?? "moment"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
   const { error } = await supabase.storage
