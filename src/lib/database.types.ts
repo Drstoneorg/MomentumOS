@@ -611,15 +611,305 @@ export type Database = {
           },
         ]
       }
+      treatments: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          duration_min: number
+          base_price_cents: number
+          active: boolean
+          sort: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          duration_min?: number
+          base_price_cents?: number
+          active?: boolean
+          sort?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          duration_min?: number
+          base_price_cents?: number
+          active?: boolean
+          sort?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      providers: {
+        Row: {
+          id: string
+          name: string
+          bio: string | null
+          avatar_url: string | null
+          skills: string[]
+          base_location: unknown | null
+          current_location: unknown | null
+          service_radius_km: number
+          is_online: boolean
+          last_seen: string | null
+          rating_avg: number
+          rating_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          bio?: string | null
+          avatar_url?: string | null
+          skills?: string[]
+          service_radius_km?: number
+          is_online?: boolean
+          last_seen?: string | null
+          rating_avg?: number
+          rating_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          bio?: string | null
+          avatar_url?: string | null
+          skills?: string[]
+          service_radius_km?: number
+          is_online?: boolean
+          last_seen?: string | null
+          rating_avg?: number
+          rating_count?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      bookings: {
+        Row: {
+          id: string
+          treatment_id: string | null
+          provider_id: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          address: string
+          location: unknown | null
+          scheduled_at: string | null
+          duration_min: number
+          price_cents: number
+          travel_fee_cents: number
+          customer_note: string | null
+          contact_phone: string | null
+          payment_intent_id: string | null
+          payment_status: string
+          created_at: string
+          accepted_at: string | null
+          started_at: string | null
+          completed_at: string | null
+          cancelled_at: string | null
+          cancel_reason: string | null
+        }
+        Insert: {
+          id?: string
+          treatment_id?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          address: string
+          scheduled_at?: string | null
+          duration_min?: number
+          price_cents?: number
+          travel_fee_cents?: number
+          customer_note?: string | null
+          contact_phone?: string | null
+          payment_intent_id?: string | null
+          payment_status?: string
+          created_at?: string
+          accepted_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+        }
+        Update: {
+          id?: string
+          treatment_id?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          address?: string
+          scheduled_at?: string | null
+          duration_min?: number
+          price_cents?: number
+          travel_fee_cents?: number
+          customer_note?: string | null
+          contact_phone?: string | null
+          payment_intent_id?: string | null
+          payment_status?: string
+          created_at?: string
+          accepted_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_offers: {
+        Row: {
+          id: string
+          booking_id: string
+          provider_id: string
+          status: Database["public"]["Enums"]["offer_status"]
+          distance_km: number | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          provider_id: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          distance_km?: number | null
+          expires_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          provider_id?: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          distance_km?: number | null
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_offers_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          id: string
+          booking_id: string
+          provider_id: string | null
+          author: string
+          rating: number
+          comment: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          provider_id?: string | null
+          author?: string
+          rating: number
+          comment?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          provider_id?: string | null
+          author?: string
+          rating?: number
+          comment?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      nearby_providers: {
+        Args: { p_lat: number; p_lng: number; p_limit?: number }
+        Returns: {
+          id: string
+          name: string
+          rating_avg: number
+          rating_count: number
+          distance_km: number
+        }[]
+      }
+      set_provider_location: {
+        Args: { p_provider: string; p_lat: number; p_lng: number }
+        Returns: undefined
+      }
+      provider_distance_km: {
+        Args: { p_provider: string; p_lat: number; p_lng: number }
+        Returns: number
+      }
+      set_booking_location: {
+        Args: { p_booking: string; p_lat: number; p_lng: number }
+        Returns: undefined
+      }
+      accept_offer: {
+        Args: { p_offer: string; p_travel_fee_cents?: number }
+        Returns: boolean
+      }
+      submit_review: {
+        Args: { p_booking: string; p_rating: number; p_comment?: string }
+        Returns: undefined
+      }
+      booking_geo: {
+        Args: { p_booking: string }
+        Returns: {
+          b_lat: number
+          b_lng: number
+          p_lat: number
+          p_lng: number
+          distance_km: number
+        }[]
+      }
     }
     Enums: {
       asset_kind: "image_prompt" | "image" | "text" | "collage"
+      booking_status:
+        | "requested"
+        | "accepted"
+        | "en_route"
+        | "arrived"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      offer_status: "offered" | "accepted" | "declined" | "expired"
       date_status: "proposed" | "confirmed"
       event_invite_status: "invited" | "yes" | "no" | "no_reply"
       meetup_status: "idea" | "proposed" | "confirmed" | "happened" | "cancelled"
@@ -710,3 +1000,25 @@ export const RSVP_LABELS: Record<Enums<"event_invite_status">, string> = {
   no: "Abgesagt",
   no_reply: "Keine Antwort",
 }
+
+export const BOOKING_STATUS_LABELS: Record<Enums<"booking_status">, string> = {
+  requested: "Angefragt",
+  accepted: "Angenommen",
+  en_route: "Auf dem Weg",
+  arrived: "Angekommen",
+  in_progress: "Läuft",
+  completed: "Abgeschlossen",
+  cancelled: "Storniert",
+}
+
+// Reihenfolge der aktiven Status für Fortschrittsanzeige
+export const BOOKING_FLOW: Enums<"booking_status">[] = [
+  "requested",
+  "accepted",
+  "en_route",
+  "arrived",
+  "in_progress",
+  "completed",
+]
+
+// (BookOS-RPCs manuell ergänzt — nicht in Functions-Block der Row-Typen)

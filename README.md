@@ -94,6 +94,25 @@ Erweiterungsmodul für persönliche Momente & Freundschaftspflege (`/moments`).
 
 Env für Bilder: `OPENAI_API_KEY` (oder `IMAGE_API_KEY`) in Vercel. Storage-Bucket `moment-images` ist bereits angelegt (public).
 
+## BookOS — On-Demand-Treatments (PWA)
+
+Uber-artige Echtzeit-Buchung von Wellness-Treatments (`/book`). Eigenes Produkt im Nav-Dropdown (MatchOS · Moments · BookOS).
+
+- **Buchen** (`/book`): Treatment aus Katalog wählen, Adresse per OpenStreetMap-Geocoding (Nominatim, kein Key), „jetzt" oder Termin, Notiz/Telefon.
+- **Dispatch**: Bei Sofort-Buchung fragt das System die nächsten Online-Anbieter im Umkreis an (PostGIS `nearby_providers`, nach Distanz + Rating). Jeder bekommt ein Angebot mit Ablauffrist (`BOOKOS_OFFER_TTL`, Default 45 s). **Erster Accept gewinnt** — atomar über die RPC `accept_offer`.
+- **Live-Status** (`/book/bookings/[id]`): Fortschrittsleiste (requested→…→completed), Leaflet-Karte mit Kunden- + Anbieter-Position, ETA aus Distanz, Rechnung, Storno, Bewertung nach Abschluss. Aktualisiert sich per Supabase-Realtime.
+- **Anbieter** (`/provider`): online/offline-Toggle (teilt Live-Standort per Geolocation-Watch), eingehende Anfragen mit Countdown, Annehmen/Ablehnen, Statusführung (Losfahren→Angekommen→Start→Abschluss), Navigations-Deep-Link.
+- **Preis**: Treatment-Basispreis + gestaffelte Anfahrtspauschale (0–15 € nach km).
+- **Zahlung**: Stripe (manual capture — Autorisierung bei Match, Einzug bei Abschluss, Refund bei Storno). Ohne `STRIPE_SECRET_KEY` läuft alles im **Testmodus** (Buchung wird als `test` beglichen markiert).
+- **Bewertung**: beidseitig vorbereitet, Kundenbewertung fließt in den Anbieter-Durchschnitt.
+
+Env für BookOS: `STRIPE_SECRET_KEY` (optional, sonst Testmodus). PostGIS ist in Supabase aktiviert; Demo-Treatments + zwei Demo-Anbieter (Berlin) sind geseedet.
+
+### PWA & Push
+
+- Installierbar (Manifest + Service Worker + Offline-Seite). Auf dem Handy „Zum Home-Bildschirm".
+- Web Push (VAPID): Einstellungen → Push aktivieren. Crons (Geburtstage, neue Follow-up-Entwürfe) und später Buchungsstatus benachrichtigen aufs Gerät. Env: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` (in Vercel gesetzt).
+
 ## Deploy (Vercel)
 
 Repo importieren, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DEEPSEEK_API_KEY` setzen. Der Telegram-Worker läuft nicht auf Vercel — lokal oder auf einem kleinen Server starten.
