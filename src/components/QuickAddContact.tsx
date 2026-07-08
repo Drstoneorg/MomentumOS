@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import { createContact, addChannel } from "@/lib/actions"
 import { updateFriendMeta } from "@/lib/momentsActions"
@@ -118,8 +119,8 @@ export function QuickAddContact() {
       >
         + Kontakt
       </button>
-      {open && (
-        <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10">
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10">
           <form
             onSubmit={submit}
             className="w-full max-w-lg space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-6"
@@ -175,7 +176,8 @@ export function QuickAddContact() {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

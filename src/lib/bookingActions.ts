@@ -92,6 +92,39 @@ export async function dispatchBooking(bookingId: string, lat: number, lng: numbe
   return { offers: rows.length }
 }
 
+// Watchdog: Buchung wartet noch, alle Offers abgelaufen → neue Dispatch-Runde.
+// Wird vom Kunden-Client periodisch aufgerufen, solange status=requested.
+export async function ensureDispatch(bookingId: string): Promise<{ offers: number } | null> {
+  const supabase = await db()
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id, status, scheduled_at")
+    .eq("id", bookingId)
+    .maybeSingle()
+  if (!booking || booking.status !== "requested" || booking.scheduled_at) return null
+
+  // Läuft noch mindestens ein Offer? Dann nichts tun.
+  const { count } = await supabase
+    .from("booking_offers")
+    .select("id", { count: "exact", head: true })
+    .eq("booking_id", bookingId)
+    .eq("status", "offered")
+    .gt("expires_at", new Date().toISOString())
+  if ((count ?? 0) > 0) return null
+
+  // Abgelaufene Offers markieren, dann neue Runde (Upsert reaktiviert dieselben Anbieter).
+  await supabase
+    .from("booking_offers")
+    .update({ status: "expired" })
+    .eq("booking_id", bookingId)
+    .eq("status", "offered")
+
+  const { data: geoRows } = await supabase.rpc("booking_geo", { p_booking: bookingId })
+  const geo = Array.isArray(geoRows) && geoRows[0] ? geoRows[0] : null
+  if (!geo) return null
+  return dispatchBooking(bookingId, geo.b_lat, geo.b_lng)
+}
+
 // Anbieter nimmt an — atomar, erster gewinnt. Setzt Anfahrtspauschale.
 export async function acceptOffer(offerId: string, distanceKm: number | null) {
   const supabase = await db()

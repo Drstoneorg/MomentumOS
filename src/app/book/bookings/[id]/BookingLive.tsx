@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { LiveMap } from "@/components/LiveMap"
 import { useRealtimeRefresh } from "@/components/useRealtimeRefresh"
-import { cancelBooking, submitReview } from "@/lib/bookingActions"
+import { cancelBooking, ensureDispatch, submitReview } from "@/lib/bookingActions"
 import { BOOKING_STATUS_LABELS, BOOKING_FLOW, type Tables } from "@/lib/database.types"
 import { formatPrice, totalCents, etaMinutes, STATUS_COLOR, isActiveBooking } from "@/lib/bookos"
 import { btnCls, btnGhostCls } from "@/components/ui"
@@ -25,10 +25,28 @@ export function BookingLive({
   hasReview: boolean
 }) {
   useRealtimeRefresh("bookings")
+  // Anbieter-Position bewegt sich live auf der Karte (watchPosition schreibt providers-Zeile)
+  useRealtimeRefresh("providers")
   const router = useRouter()
   const [pending, start] = useTransition()
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState("")
+  const [searchSecs, setSearchSecs] = useState(0)
+
+  // Watchdog: solange gesucht wird, alle 10s prüfen ob Offers abgelaufen → neue Runde
+  useEffect(() => {
+    if (booking.status !== "requested" || booking.scheduled_at) return
+    setSearchSecs(0)
+    const tick = setInterval(() => setSearchSecs((s) => s + 1), 1000)
+    const watchdog = setInterval(async () => {
+      const redispatched = await ensureDispatch(booking.id).catch(() => null)
+      if (redispatched) router.refresh()
+    }, 10000)
+    return () => {
+      clearInterval(tick)
+      clearInterval(watchdog)
+    }
+  }, [booking.status, booking.scheduled_at, booking.id, router])
 
   const flowIdx = BOOKING_FLOW.indexOf(booking.status)
   const eta = etaMinutes(geo?.distance_km)
@@ -70,8 +88,28 @@ export function BookingLive({
             <span className="ml-auto text-sm text-sky-400">ETA ~{eta} Min · {geo?.distance_km} km</span>
           )}
         </div>
-        {booking.status === "requested" && (
-          <p className="mt-2 text-sm text-zinc-400">Wir fragen die nächsten verfügbaren Anbieter an …</p>
+        {booking.status === "requested" && !booking.scheduled_at && (
+          <div className="mt-3 flex flex-col items-center gap-3 py-4">
+            {/* Radar-Puls wie bei Uber */}
+            <div className="relative flex h-20 w-20 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-500/30" />
+              <span className="absolute inline-flex h-12 w-12 animate-ping rounded-full bg-sky-500/40 [animation-delay:300ms]" />
+              <span className="relative inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-xs">
+                📍
+              </span>
+            </div>
+            <p className="text-sm text-zinc-300">Anbieter in deiner Nähe werden gesucht …</p>
+            <p className="text-xs text-zinc-500">
+              {searchSecs > 90
+                ? "Dauert länger als üblich — wir fragen weiter an. Du kannst jederzeit stornieren."
+                : `Suche läuft seit ${searchSecs}s`}
+            </p>
+          </div>
+        )}
+        {booking.status === "requested" && booking.scheduled_at && (
+          <p className="mt-2 text-sm text-zinc-400">
+            Terminanfrage — Anbieter werden vor dem Wunschtermin angefragt.
+          </p>
         )}
       </div>
 
