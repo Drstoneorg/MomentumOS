@@ -9,6 +9,7 @@ import { DatePanel } from "./DatePanel"
 import { ChannelPanel } from "./ChannelPanel"
 import { FriendsPanel } from "./FriendsPanel"
 import { MomentGenerator } from "./MomentGenerator"
+import { Timeline, type TimelineItem } from "./Timeline"
 
 export const dynamic = "force-dynamic"
 
@@ -20,7 +21,7 @@ export default async function ContactPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes] =
+  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes, followupsRes, meetupsRes, invitesRes] =
     await Promise.all([
       supabase.from("contacts").select("*").eq("id", id).single(),
       supabase.from("messages").select("*").eq("contact_id", id).order("sent_at"),
@@ -34,10 +35,52 @@ export default async function ContactPage({
         .maybeSingle(),
       supabase.from("contact_channels").select("*").eq("contact_id", id),
       supabase.from("dates").select("*").eq("contact_id", id).order("starts_at"),
+      supabase.from("followups").select("*").eq("contact_id", id),
+      supabase.from("meetup_participants").select("rsvp, meetups(title, status, created_at)").eq("contact_id", id),
+      supabase.from("event_invites").select("status, created_at, events(title, starts_at)").eq("contact_id", id),
     ])
 
   const contact = contactRes.data
   if (!contact) notFound()
+
+  const timeline: TimelineItem[] = [
+    ...(messagesRes.data ?? []).map((m) => ({
+      at: m.sent_at,
+      kind: (m.direction === "in" ? "message_in" : "message_out") as TimelineItem["kind"],
+      title: m.content.length > 90 ? m.content.slice(0, 90) + "…" : m.content,
+      detail: m.channel,
+    })),
+    ...(memoriesRes.data ?? []).map((m) => ({
+      at: m.created_at,
+      kind: "memory" as const,
+      title: m.content,
+      detail: m.kind,
+    })),
+    ...(followupsRes.data ?? []).map((f) => ({
+      at: f.due_at,
+      kind: "followup" as const,
+      title: f.reason ?? "Follow-up",
+      detail: f.done ? "erledigt" : "offen",
+    })),
+    ...(datesRes.data ?? []).map((d) => ({
+      at: d.starts_at,
+      kind: "date" as const,
+      title: d.idea ?? "Date",
+      detail: d.place,
+    })),
+    ...(meetupsRes.data ?? []).map((p) => ({
+      at: p.meetups?.created_at ?? new Date().toISOString(),
+      kind: "meetup" as const,
+      title: p.meetups?.title ?? "Meetup",
+      detail: `RSVP: ${p.rsvp} · ${p.meetups?.status ?? ""}`,
+    })),
+    ...(invitesRes.data ?? []).map((i) => ({
+      at: i.events?.starts_at ?? i.created_at,
+      kind: "event" as const,
+      title: i.events?.title ?? "Event",
+      detail: `Einladung: ${i.status}`,
+    })),
+  ].sort((a, b) => (a.at < b.at ? 1 : -1))
 
   return (
     <div className="space-y-4">
@@ -48,6 +91,7 @@ export default async function ContactPage({
           <ChatPanel contactId={id} messages={messagesRes.data ?? []} />
           <ReplyGenerator contactId={id} language={contact.language ?? "de"} />
           <MomentGenerator contactId={id} />
+          <Timeline items={timeline} />
         </div>
 
         <div className="space-y-4">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { updateContact, deleteContact } from "@/lib/actions"
 import { PIPELINE_STAGES, STAGE_LABELS, type Tables } from "@/lib/database.types"
 import { inputCls, btnGhostCls, PriorityDot } from "@/components/ui"
+import { InlineField } from "@/components/InlineField"
 
 export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
   const router = useRouter()
@@ -54,11 +55,37 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
       <div className="flex flex-wrap items-center gap-3">
         <PriorityDot priority={contact.priority} />
         <h1 className="text-xl font-bold">
-          {contact.name}
-          {contact.age ? <span className="ml-2 text-zinc-500">{contact.age}</span> : null}
+          <InlineField
+            value={contact.name}
+            onSave={async (v) => {
+              await updateContact(contact.id, { name: v.trim() || contact.name })
+              router.refresh()
+            }}
+          />
+          <span className="ml-2 text-zinc-500">
+            <InlineField
+              value={contact.age ? String(contact.age) : ""}
+              placeholder="Alter?"
+              type="number"
+              className="w-16"
+              onSave={async (v) => {
+                await updateContact(contact.id, { age: v ? Number(v) : null })
+                router.refresh()
+              }}
+            />
+          </span>
         </h1>
         <span className="text-sm text-zinc-400">
-          {contact.platform} · {contact.location ?? "Ort unbekannt"} · {contact.language}
+          {contact.platform} ·{" "}
+          <InlineField
+            value={contact.location ?? ""}
+            placeholder="Ort?"
+            onSave={async (v) => {
+              await updateContact(contact.id, { location: v.trim() || null })
+              router.refresh()
+            }}
+          />{" "}
+          · {contact.language}
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -139,17 +166,60 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
         </div>
       </div>
 
-      {contact.bio && !edit && (
-        <p className="mt-2 text-sm text-zinc-400">{contact.bio}</p>
+      {!edit && (
+        <p className="mt-2 text-sm text-zinc-400">
+          <InlineField
+            value={contact.bio ?? ""}
+            placeholder="Bio hinzufügen …"
+            multiline
+            onSave={async (v) => {
+              await updateContact(contact.id, { bio: v.trim() || null })
+              router.refresh()
+            }}
+          />
+        </p>
       )}
-      {(contact.interests?.length ?? 0) > 0 && !edit && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {contact.interests!.map((i) => (
-            <span key={i} className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
-              {i}
-            </span>
-          ))}
+      {!edit && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          <span className="text-xs text-zinc-500">
+            <InlineField
+              value={(contact.interests ?? []).join(", ")}
+              placeholder="+ Interessen"
+              className="w-56"
+              display={
+                (contact.interests?.length ?? 0) > 0 ? (
+                  <span className="flex flex-wrap gap-1">
+                    {contact.interests!.map((i) => (
+                      <span key={i} className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
+                        {i}
+                      </span>
+                    ))}
+                  </span>
+                ) : undefined
+              }
+              onSave={async (v) => {
+                await updateContact(contact.id, {
+                  interests: v.split(",").map((s) => s.trim()).filter(Boolean),
+                })
+                router.refresh()
+              }}
+            />
+          </span>
         </div>
+      )}
+      {!edit && (
+        <p className="mt-1 text-xs text-zinc-500">
+          Notizen:{" "}
+          <InlineField
+            value={contact.notes ?? ""}
+            placeholder="hinzufügen …"
+            multiline
+            onSave={async (v) => {
+              await updateContact(contact.id, { notes: v.trim() || null })
+              router.refresh()
+            }}
+          />
+        </p>
       )}
 
       {edit && (
