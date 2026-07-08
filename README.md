@@ -81,6 +81,7 @@ Erweiterungsmodul für persönliche Momente & Freundschaftspflege (`/moments`).
 - **Moments-Generator** (Kontaktseite): Anlass-Nachrichten (Geburtstag/Check-in/Rückblick) in 5 Stilen; Bild-Prompt-Generator (Anlass + Stil + Format → fertiger Midjourney/DALL-E-Prompt + Caption). Ergebnisse landen in der Asset Library.
 - **Events** (`/moments/events`): anlegen, Personen/Gruppen einladen (Tag-Filter), KI-Einladungstexte pro Person, RSVP-Tracking, Deep-Link-Versand.
 - **Meetups** (`/moments/meetups`): Slot A/B/C-Terminvorschläge, Status idea→confirmed→happened, ICS mit Reminder 1 Tag + 2 h vorher, Nachbereitung („wie war's") fließt als Gedächtnis-Eintrag zu allen Teilnehmern.
+- **Einladen & Benachrichtigen** (Meetup-Detailseite): erzeugt einen Einladungstext mit Ort+Zeit und verschickt ihn pro Teilnehmer über dessen Kanäle — WhatsApp/SMS/E-Mail vorbefüllt per Deep-Link, Telegram automatisch über die Queue (Worker sendet nach Freigabe), Instagram/Signal/Messenger/WeChat/Discord per Chat-Link + Zwischenablage. Kanäle: Telegram, WhatsApp, Instagram, TikTok, Snapchat, WeChat, LINE, E-Mail, SMS, Signal, Messenger, Discord.
 - **Moments-Hub** (`/moments`): anstehende Geburtstage, vernachlässigte Kontakte (Verbindungs-Score), offene Meetups/Events, Asset Library.
 - **Cron** `/api/cron/moments` (täglich 8:00): erzeugt Reminder für Geburtstage (≤3 Tage) und Kontaktpausen wichtiger Personen. Kein Autoversand — nur Reminder/Entwürfe, Freigabe bleibt manuell.
 
