@@ -19,6 +19,8 @@ export default async function SettingsPage() {
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
   const hasTelegram = !!process.env.TELEGRAM_SESSION
   const hasImage = !!(process.env.OPENAI_API_KEY || process.env.IMAGE_API_KEY)
+  const hasPush = !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
+  const hasStripe = !!process.env.STRIPE_SECRET_KEY
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -73,6 +75,12 @@ export default async function SettingsPage() {
           </li>
           <li className={hasImage ? "text-emerald-400" : "text-zinc-500"}>
             {hasImage ? "✓" : "○"} Bild-Generierung {hasImage ? "aktiv" : "— OPENAI_API_KEY in Vercel setzen für echte KI-Bilder"}
+          </li>
+          <li className={hasPush ? "text-emerald-400" : "text-zinc-500"}>
+            {hasPush ? "✓" : "○"} Web Push {hasPush ? "aktiv (VAPID gesetzt)" : "— VAPID-Keys fehlen"}
+          </li>
+          <li className={hasStripe ? "text-emerald-400" : "text-amber-400"}>
+            {hasStripe ? "✓" : "○"} BookOS-Zahlung {hasStripe ? "Stripe aktiv" : "— Testmodus (STRIPE_SECRET_KEY für echte Zahlungen)"}
           </li>
         </ul>
       </Card>

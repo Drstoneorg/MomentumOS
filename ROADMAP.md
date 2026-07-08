@@ -29,14 +29,14 @@ Ziel: installierbare App, Push, Realtime — Basis für BookOS.
 
 Ziel: Treatment in Echtzeit buchen — Anfrage, Live-Dispatch an Anbieter, Statusverfolgung auf Karte, Bezahlung, Bewertung.
 
-- [ ] **3.1 Schema**: `providers` (Profil, Skills, Radius, Verfügbarkeit), `bookings` (Status-Maschine: requested → accepted → en_route → arrived → in_progress → completed → rated; cancelled), `booking_offers` (Dispatch), `reviews`, `provider_locations` (Live-Position).
-- [ ] **3.2 Geolocation**: PostGIS-Extension, Umkreissuche („verfügbare Anbieter in X km"), Adress-Autocomplete (Nominatim).
-- [ ] **3.3 Realtime-Dispatch**: Buchung anlegen → verfügbare Anbieter im Radius erhalten Offer → erster Accept gewinnt → Kunde sieht Live-Status.
-- [ ] **3.4 Karte**: Leaflet + OpenStreetMap, Anbieter-Position live, ETA (Haversine, später OSRM).
-- [ ] **3.5 Provider-Ansicht** `/provider`: online/offline-Toggle, eingehende Offers mit Countdown, Buchungs-Statusführung, Navigations-Link.
-- [ ] **3.6 Payments**: Stripe — Payment Intent bei Buchung, Capture bei completed, Connect für Anbieter-Auszahlung. Testmodus bis Live-Keys da.
-- [ ] **3.7 Preislogik**: Basispreis + Dauer + Anfahrt, Stornoregeln (Frist, Gebühr).
-- [ ] **3.8 Ratings** beidseitig (Kunde ↔ Anbieter), fließen in Dispatch-Ranking.
+- [x] **3.1 Schema**: `providers` (Profil, Skills, Radius, Verfügbarkeit), `bookings` (Status-Maschine: requested → accepted → en_route → arrived → in_progress → completed → rated; cancelled), `booking_offers` (Dispatch), `reviews`, `provider_locations` (Live-Position).
+- [x] **3.2 Geolocation**: PostGIS-Extension, Umkreissuche („verfügbare Anbieter in X km"), Adress-Autocomplete (Nominatim).
+- [x] **3.3 Realtime-Dispatch**: Buchung anlegen → verfügbare Anbieter im Radius erhalten Offer → erster Accept gewinnt → Kunde sieht Live-Status.
+- [x] **3.4 Karte**: Leaflet + OpenStreetMap, Anbieter-Position live, ETA (Haversine, später OSRM).
+- [x] **3.5 Provider-Ansicht** `/provider`: online/offline-Toggle, eingehende Offers mit Countdown, Buchungs-Statusführung, Navigations-Link.
+- [x] **3.6 Payments**: Stripe — Payment Intent bei Buchung, Capture bei completed, Connect für Anbieter-Auszahlung. Testmodus bis Live-Keys da.
+- [x] **3.7 Preislogik**: Basispreis + Dauer + Anfahrt, Stornoregeln (Frist, Gebühr).
+- [x] **3.8 Ratings** beidseitig (Kunde ↔ Anbieter), fließen in Dispatch-Ranking.
 
 ### Offene Realität Phase 3 (nicht wegbaubar)
 Provider-Onboarding, Gewerbe/Rechtliches, Stripe-KYC, echte Anbieter. App kann fertig sein, Marktplatz braucht Menschen.
