@@ -209,3 +209,99 @@ export async function saveTasteProfile(profile: TasteProfile) {
   if (error) throw new Error(error.message)
   revalidatePath("/settings")
 }
+
+// ---------- Bulk-Import (vCard/CSV) ----------
+export type ImportRow = {
+  name: string
+  phone?: string
+  email?: string
+  birthday?: string
+  location?: string
+  tags?: string[]
+  notes?: string
+}
+
+export type ImportResult = {
+  created: number
+  skipped: { name: string; reason: string }[]
+}
+
+export async function bulkImportContacts(rows: ImportRow[]): Promise<ImportResult> {
+  const supabase = await db()
+  const result: ImportResult = { created: 0, skipped: [] }
+
+  const { data: existing } = await supabase
+    .from("contacts")
+    .select("id, name, contact_channels(handle)")
+  const names = new Set((existing ?? []).map((c) => c.name.trim().toLowerCase()))
+  const handles = new Set(
+    (existing ?? []).flatMap((c) =>
+      (c.contact_channels ?? []).map((ch) => ch.handle.replace(/[\s\-()]/g, "").toLowerCase())
+    )
+  )
+
+  for (const row of rows.slice(0, 500)) {
+    const name = row.name?.trim()
+    if (!name) {
+      result.skipped.push({ name: "(leer)", reason: "kein Name" })
+      continue
+    }
+    const phoneKey = row.phone?.replace(/[\s\-()]/g, "").toLowerCase()
+    const emailKey = row.email?.trim().toLowerCase()
+    if (names.has(name.toLowerCase())) {
+      result.skipped.push({ name, reason: "Name existiert bereits" })
+      continue
+    }
+    if ((phoneKey && handles.has(phoneKey)) || (emailKey && handles.has(emailKey))) {
+      result.skipped.push({ name, reason: "Kanal-Handle existiert bereits" })
+      continue
+    }
+
+    const { data: contact, error } = await supabase
+      .from("contacts")
+      .insert({
+        name,
+        platform: "freund",
+        location: row.location || null,
+        birthday: row.birthday || null,
+        relationship_tags: row.tags ?? [],
+        notes: row.notes || null,
+      })
+      .select("id")
+      .single()
+    if (error || !contact) {
+      result.skipped.push({ name, reason: error?.message ?? "Insert-Fehler" })
+      continue
+    }
+
+    const channels: TablesInsert<"contact_channels">[] = []
+    if (row.phone) channels.push({ contact_id: contact.id, channel: "sms", handle: row.phone.trim(), is_primary: true })
+    if (row.email) channels.push({ contact_id: contact.id, channel: "email", handle: row.email.trim(), is_primary: !row.phone })
+    if (channels.length) await supabase.from("contact_channels").insert(channels)
+
+    names.add(name.toLowerCase())
+    if (phoneKey) handles.add(phoneKey)
+    if (emailKey) handles.add(emailKey)
+    result.created++
+  }
+
+  revalidatePath("/contacts")
+  revalidatePath("/moments")
+  return result
+}
+
+export async function bulkAddTags(contactIds: string[], tags: string[]) {
+  const supabase = await db()
+  const clean = tags.map((t) => t.trim()).filter(Boolean)
+  if (!clean.length || !contactIds.length) return
+  const { data: rows } = await supabase
+    .from("contacts")
+    .select("id, relationship_tags")
+    .in("id", contactIds)
+  for (const row of rows ?? []) {
+    const merged = [...new Set([...(row.relationship_tags ?? []), ...clean])]
+    await supabase.from("contacts").update({ relationship_tags: merged }).eq("id", row.id)
+  }
+  revalidatePath("/contacts")
+  revalidatePath("/moments")
+}
