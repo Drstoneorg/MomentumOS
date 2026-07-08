@@ -29,7 +29,8 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
 
   const [style, setStyle] = useState("Anime")
   const [format, setFormat] = useState("portrait")
-  const [quality, setQuality] = useState<"low" | "medium" | "high">("low")
+  const [quality, setQuality] = useState<"low" | "medium">("low")
+  const [shareMsg, setShareMsg] = useState<string | null>(null)
   const [imgOccasion, setImgOccasion] = useState("Geburtstag")
   const [imgResult, setImgResult] = useState<{ prompt: string; negative_prompt: string; caption: string } | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -39,6 +40,31 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
     await navigator.clipboard.writeText(t)
     setCopied(k)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  // Direktversand: native Share-Sheet des Geräts (Handy/PWA → WhatsApp, Telegram,
+  // Signal, Mail …). Teilt das echte Bild als Datei, sonst URL, sonst kopiert URL.
+  async function shareImage() {
+    if (!imgUrl) return
+    const caption = imgResult?.caption ?? ""
+    try {
+      const blob = await (await fetch(imgUrl)).blob()
+      const file = new File([blob], "matchos-bild.png", { type: blob.type || "image/png" })
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
+      if (nav.canShare?.({ files: [file] })) {
+        await nav.share({ files: [file], text: caption })
+        return
+      }
+      if (navigator.share) {
+        await navigator.share({ url: imgUrl, text: caption })
+        return
+      }
+      await navigator.clipboard.writeText(imgUrl)
+      setShareMsg("Teilen nicht unterstützt — Bild-URL kopiert.")
+      setTimeout(() => setShareMsg(null), 2500)
+    } catch {
+      // Nutzer hat abgebrochen o.ä. — still ignorieren
+    }
   }
 
   async function genText() {
@@ -128,7 +154,6 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
             <select value={quality} onChange={(e) => setQuality(e.target.value as typeof quality)} className={inputCls + " w-auto"}>
               <option value="low">Qualität niedrig</option>
               <option value="medium">Qualität mittel</option>
-              <option value="high">Qualität hoch</option>
             </select>
             <button onClick={genImage} disabled={loading} className={btnGhostCls}>{loading ? "…" : "Prompt"}</button>
             <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>
@@ -159,10 +184,20 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
             </div>
           )}
           {imgUrl && (
-            <div className="space-y-1 rounded-lg border border-zinc-800 p-3">
+            <div className="space-y-2 rounded-lg border border-zinc-800 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imgUrl} alt="Generiertes Bild" className="max-h-80 w-full rounded-lg object-contain" />
-              <a href={imgUrl} target="_blank" rel="noreferrer" className="text-xs text-rose-400 hover:underline">Bild öffnen ↗</a>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={shareImage} className={btnCls}>📤 Teilen / Senden</button>
+                <button onClick={() => copy("imgurl", imgUrl)} className={btnGhostCls}>
+                  {copied === "imgurl" ? "✓ kopiert" : "Bild-URL kopieren"}
+                </button>
+                <a href={imgUrl} target="_blank" rel="noreferrer" className="text-xs text-rose-400 hover:underline">Bild öffnen ↗</a>
+              </div>
+              {shareMsg && <p className="text-xs text-amber-400">{shareMsg}</p>}
+              <p className="text-xs text-zinc-600">
+                „Teilen" öffnet auf dem Handy die App-Auswahl (WhatsApp, Telegram, Signal, Mail …) mit dem Bild als Datei. Am Desktop: „Bild-URL kopieren" und im Chat einfügen.
+              </p>
             </div>
           )}
         </div>
