@@ -53,6 +53,13 @@ export function QueueItem({
       {suggestion.situation && (
         <p className="mb-2 text-xs text-zinc-500">Situation: {suggestion.situation}</p>
       )}
+      {suggestion.image_url && (
+        <div className="mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={suggestion.image_url} alt="Anhang" className="max-h-56 rounded-lg border border-zinc-800" />
+          <p className="text-[10px] text-zinc-500">📷 Bild wird als Foto mit Text gesendet</p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {Object.entries(variants).map(([style, text]) => (

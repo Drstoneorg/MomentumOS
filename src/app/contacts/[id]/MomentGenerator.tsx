@@ -23,6 +23,8 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
   const [format, setFormat] = useState("portrait")
   const [imgOccasion, setImgOccasion] = useState("Geburtstag")
   const [imgResult, setImgResult] = useState<{ prompt: string; negative_prompt: string; caption: string } | null>(null)
+  const [imgUrl, setImgUrl] = useState<string | null>(null)
+  const [imgLoading, setImgLoading] = useState(false)
 
   async function copy(k: string, t: string) {
     await navigator.clipboard.writeText(t)
@@ -54,6 +56,22 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
     const data = await res.json()
     if (!res.ok) return setError(data.error ?? "Fehler")
     setImgResult(data)
+  }
+
+  async function genRealImage() {
+    setImgLoading(true); setError(null); setImgUrl(null)
+    const res = await fetch("/api/moments/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contactId, occasion: imgOccasion, name: "", style, details: context, format,
+        prompt: imgResult?.prompt,
+      }),
+    })
+    setImgLoading(false)
+    const data = await res.json()
+    if (!res.ok) return setError(data.error ?? "Fehler")
+    setImgUrl(data.url)
   }
 
   return (
@@ -98,7 +116,8 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               <option value="story">Story 9:16</option>
               <option value="landscape">Quer 16:9</option>
             </select>
-            <button onClick={genImage} disabled={loading} className={btnCls}>{loading ? "…" : "Prompt"}</button>
+            <button onClick={genImage} disabled={loading} className={btnGhostCls}>{loading ? "…" : "Prompt"}</button>
+            <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>{imgLoading ? "Male…" : "Bild erzeugen"}</button>
           </div>
           <input value={context} onChange={(e) => setContext(e.target.value)} placeholder="Vibe/Farben/Details" className={inputCls} />
           {error && <p className="text-sm text-red-400">{error}</p>}
@@ -114,8 +133,15 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               <p className="text-zinc-500"><b>Negativ:</b> {imgResult.negative_prompt}</p>
               <p className="text-zinc-400"><b>Caption:</b> {imgResult.caption}</p>
               <p className="text-xs text-zinc-600">
-                In Midjourney/DALL-E einfügen, fertiges Bild in der Asset Library als URL speichern. Prompt ist bereits gespeichert.
+                „Bild erzeugen" malt direkt (braucht OPENAI_API_KEY). Alternativ Prompt in Midjourney/DALL-E nutzen.
               </p>
+            </div>
+          )}
+          {imgUrl && (
+            <div className="space-y-1 rounded-lg border border-zinc-800 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imgUrl} alt="Generiertes Bild" className="max-h-80 w-full rounded-lg object-contain" />
+              <a href={imgUrl} target="_blank" rel="noreferrer" className="text-xs text-rose-400 hover:underline">Bild öffnen ↗</a>
             </div>
           )}
         </div>

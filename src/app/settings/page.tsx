@@ -17,6 +17,7 @@ export default async function SettingsPage() {
 
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
   const hasTelegram = !!process.env.TELEGRAM_SESSION
+  const hasImage = !!(process.env.OPENAI_API_KEY || process.env.IMAGE_API_KEY)
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -60,6 +61,9 @@ export default async function SettingsPage() {
           </li>
           <li className={hasTelegram ? "text-emerald-400" : "text-zinc-500"}>
             {hasTelegram ? "✓" : "○"} Telegram {hasTelegram ? "Session vorhanden" : "— optional, siehe README (npm run telegram:login)"}
+          </li>
+          <li className={hasImage ? "text-emerald-400" : "text-zinc-500"}>
+            {hasImage ? "✓" : "○"} Bild-Generierung {hasImage ? "aktiv" : "— OPENAI_API_KEY in Vercel setzen für echte KI-Bilder"}
           </li>
         </ul>
       </Card>
