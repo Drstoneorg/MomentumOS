@@ -20,6 +20,7 @@ export function BookingForm({ treatments }: { treatments: Tables<"treatments">[]
   const [note, setNote] = useState("")
   const [phone, setPhone] = useState("")
   const [searching, setSearching] = useState(false)
+  const [locating, setLocating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -41,6 +42,39 @@ export function BookingForm({ treatments }: { treatments: Tables<"treatments">[]
       setResults(data.results ?? [])
       setSearching(false)
     }, 500)
+  }
+
+  // „Mein Standort" wie bei Uber: GPS → Reverse-Geocoding → Adresse gesetzt
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setError("Standortdienst nicht verfügbar.")
+      return
+    }
+    setError(null)
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        try {
+          const res = await fetch(`/api/book/geocode?lat=${lat}&lng=${lng}`)
+          const data = await res.json()
+          const hit: Geo | undefined = data.results?.[0]
+          const geo: Geo = hit ?? { label: `Aktuelle Position (${lat.toFixed(5)}, ${lng.toFixed(5)})`, lat, lng }
+          setPicked(geo)
+          setAddr(geo.label)
+          setResults([])
+        } catch {
+          setError("Adresse konnte nicht ermittelt werden.")
+        } finally {
+          setLocating(false)
+        }
+      },
+      () => {
+        setLocating(false)
+        setError("Standortfreigabe abgelehnt — bitte Adresse eintippen.")
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   function submit() {
@@ -96,12 +130,23 @@ export function BookingForm({ treatments }: { treatments: Tables<"treatments">[]
 
       <div className="relative">
         <label className="mb-1 block text-sm text-zinc-400">Adresse</label>
-        <input
-          value={addr}
-          onChange={(e) => onAddr(e.target.value)}
-          placeholder="Straße, Hausnummer, Stadt"
-          className={inputCls}
-        />
+        <div className="flex gap-2">
+          <input
+            value={addr}
+            onChange={(e) => onAddr(e.target.value)}
+            placeholder="Straße, Hausnummer, Stadt"
+            className={inputCls}
+          />
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={locating}
+            title="Meinen Standort verwenden"
+            className="shrink-0 rounded-lg border border-zinc-700 px-3 text-sm text-sky-400 hover:bg-zinc-800 disabled:opacity-50"
+          >
+            {locating ? "…" : "📍 Standort"}
+          </button>
+        </div>
         {searching && <p className="mt-1 text-xs text-zinc-500">Suche…</p>}
         {results.length > 0 && !picked && (
           <ul className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 text-sm shadow-xl">

@@ -10,7 +10,30 @@ export async function GET(req: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
 
-  const q = new URL(req.url).searchParams.get("q")?.trim()
+  const params = new URL(req.url).searchParams
+
+  // Reverse-Geocoding: lat/lng → Adresse (für „Mein Standort")
+  const lat = params.get("lat")
+  const lng = params.get("lng")
+  if (lat && lng) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,
+        { headers: { "User-Agent": "MatchOS-BookOS/1.0 (effystone00@icloud.com)" } }
+      )
+      if (!res.ok) return NextResponse.json({ results: [] })
+      const r = (await res.json()) as { display_name?: string }
+      return NextResponse.json({
+        results: r.display_name
+          ? [{ label: r.display_name, lat: Number(lat), lng: Number(lng) }]
+          : [],
+      })
+    } catch {
+      return NextResponse.json({ results: [] })
+    }
+  }
+
+  const q = params.get("q")?.trim()
   if (!q || q.length < 3) return NextResponse.json({ results: [] })
 
   const url =
