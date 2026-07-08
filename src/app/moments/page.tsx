@@ -32,6 +32,7 @@ export default async function MomentsHub() {
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-bold">Moments</h1>
         <div className="ml-auto flex gap-2">
+          <Link href="/moments/archive" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Bild-Archiv</Link>
           <Link href="/moments/events" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Events</Link>
           <Link href="/moments/meetups" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Meetups</Link>
         </div>
@@ -84,12 +85,21 @@ export default async function MomentsHub() {
         </Card>
 
         <Card title="Asset Library" className="md:col-span-2">
+          <div className="mb-2 flex">
+            <Link href="/moments/archive" className="ml-auto text-xs text-rose-400 hover:underline">Bild-Archiv mit Versand-Historie →</Link>
+          </div>
           <ul className="grid gap-2 sm:grid-cols-2">
             {(assetsRes.data ?? []).map((a) => (
-              <li key={a.id} className="rounded-lg border border-zinc-800 p-2 text-sm">
-                <span className="text-xs font-semibold uppercase text-rose-400">{a.kind}</span>
-                {a.title && <span className="ml-2 text-zinc-400">{a.title}</span>}
-                <p className="mt-1 line-clamp-2 text-zinc-300">{a.content}</p>
+              <li key={a.id} className="flex gap-2 rounded-lg border border-zinc-800 p-2 text-sm">
+                {a.kind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.content} alt={a.title ?? "Bild"} className="h-14 w-14 shrink-0 rounded object-cover" />
+                ) : null}
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold uppercase text-rose-400">{a.kind}</span>
+                  {a.title && <span className="ml-2 text-zinc-400">{a.title}</span>}
+                  {a.kind !== "image" && <p className="mt-1 line-clamp-2 text-zinc-300">{a.content}</p>}
+                </div>
               </li>
             ))}
             {!assetsRes.data?.length && <li className="text-zinc-500">Noch keine Assets — über den Moments-Generator auf einer Kontaktseite erzeugen.</li>}

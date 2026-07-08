@@ -47,7 +47,6 @@ export async function generateImage(
   }
   const data = (await res.json()) as {
     data?: { b64_json?: string; url?: string }[]
-    usage?: { input_tokens?: number; output_tokens?: number }
   }
   const b64 = data.data?.[0]?.b64_json
   const remoteUrl = data.data?.[0]?.url
@@ -60,14 +59,14 @@ export async function generateImage(
   } else {
     throw new Error("Bild-API lieferte kein Bild")
   }
-  // Echte Tokens aus der API bevorzugen; sonst Größe×Qualität aus Tabelle schätzen.
+  // Kosten immer aus der Stufen-Tabelle (Größe×Qualität) — das usage-Feld des
+  // Bild-Endpunkts zählt nur Text-Tokens und würde die Render-Kosten grob unterschätzen.
   await logUsage({
     provider: "openai",
     model: IMAGE_MODEL,
     feature: "image",
     images: 1,
-    tokensIn: data.usage?.input_tokens ?? 0,
-    tokensOut: data.usage?.output_tokens ?? imageOutputTokens(size, quality),
+    tokensOut: imageOutputTokens(size, quality),
   })
 
   const path = `${opts.pathPrefix ?? "moment"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`

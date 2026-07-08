@@ -57,16 +57,20 @@ export async function POST(req: Request) {
       pathPrefix: body.contactId ?? "moment",
     })
 
-    await supabase.from("moment_assets").insert({
-      contact_id: body.contactId ?? null,
-      event_id: body.eventId ?? null,
-      kind: "image",
-      title: `${body.occasion ?? "Bild"} · ${body.style ?? ""}`.trim(),
-      content: url,
-      meta: { prompt, caption, format: body.format },
-    })
+    const { data: asset } = await supabase
+      .from("moment_assets")
+      .insert({
+        contact_id: body.contactId ?? null,
+        event_id: body.eventId ?? null,
+        kind: "image",
+        title: `${body.occasion ?? "Bild"} · ${body.style ?? ""}`.trim(),
+        content: url,
+        meta: { prompt, caption, format: body.format, quality },
+      })
+      .select("id")
+      .single()
 
-    return NextResponse.json({ url, prompt, caption })
+    return NextResponse.json({ url, prompt, caption, assetId: asset?.id ?? null })
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Bild-Fehler" },

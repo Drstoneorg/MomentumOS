@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
+import { logAssetSend } from "@/lib/momentsActions"
+
+const SEND_CHANNELS = ["WhatsApp", "Telegram", "Signal", "Instagram", "E-Mail", "Anderes"]
 
 const KINDS = [
   { id: "birthday", label: "Geburtstagsgruß" },
@@ -32,6 +35,8 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
   const [quality, setQuality] = useState<"low" | "medium">("low")
   const [customPrompt, setCustomPrompt] = useState("")
   const [shareMsg, setShareMsg] = useState<string | null>(null)
+  const [assetId, setAssetId] = useState<string | null>(null)
+  const [sentVia, setSentVia] = useState<string[]>([])
 
   // Änderung der Bild-Eingaben verwirft einen zuvor generierten Prompt, damit
   // "Bild erzeugen" nicht mit einem veralteten Prompt malt.
@@ -115,6 +120,19 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
     const data = await res.json()
     if (!res.ok) return setError(data.error ?? "Fehler")
     setImgUrl(data.url)
+    setAssetId(data.assetId ?? null)
+    setSentVia([])
+  }
+
+  // Versand notieren: hält im Bild-Archiv fest, an wen/über welchen Kanal gesendet wurde.
+  async function markSent(channel: string) {
+    if (!assetId || sentVia.includes(channel)) return
+    setSentVia((v) => [...v, channel])
+    try {
+      await logAssetSend({ assetId, contactId, channel })
+    } catch {
+      setSentVia((v) => v.filter((c) => c !== channel))
+    }
   }
 
   return (
@@ -223,6 +241,28 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               <p className="text-xs text-zinc-600">
                 „Teilen" öffnet auf dem Handy die App-Auswahl (WhatsApp, Telegram, Signal, Mail …) mit dem Bild als Datei. Am Desktop: „Bild-URL kopieren" und im Chat einfügen.
               </p>
+              {assetId && (
+                <div className="border-t border-zinc-800 pt-2">
+                  <p className="mb-1 text-xs text-zinc-500">Gesendet über (fürs Archiv notieren):</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SEND_CHANNELS.map((ch) => (
+                      <button
+                        key={ch}
+                        onClick={() => markSent(ch)}
+                        disabled={sentVia.includes(ch)}
+                        className={
+                          "rounded-full border px-2.5 py-1 text-xs " +
+                          (sentVia.includes(ch)
+                            ? "border-emerald-600 bg-emerald-950 text-emerald-300"
+                            : "border-zinc-700 text-zinc-300 hover:bg-zinc-800")
+                        }
+                      >
+                        {sentVia.includes(ch) ? `✓ ${ch}` : ch}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
