@@ -113,7 +113,7 @@ Jeder KI-Call (DeepSeek-Chat, OpenAI-Vision, Bild-Generierung) wird in `ai_usage
 
 ### KI-Bilder & automatischer Geburtstagsversand
 
-- **Bild erzeugen**: Moments-Generator hat neben „Prompt" den Button „Bild erzeugen" — malt direkt via OpenAI Images (`gpt-image-1`), speichert in Supabase Storage (`moment-images`), zeigt Vorschau, legt Asset an. Braucht `OPENAI_API_KEY` in Vercel.
+- **Bild erzeugen**: Moments-Generator hat neben „Prompt" den Button „Bild erzeugen" — malt direkt via OpenAI Images (`gpt-image-2`, per `IMAGE_MODEL` überschreibbar), speichert in Supabase Storage (`moment-images`), zeigt Vorschau, legt Asset an. Braucht `OPENAI_API_KEY` in Vercel. Qualitätsschalter (niedrig/mittel/hoch) mit Live-Kostenhinweis am Button; Standard „niedrig" (~0,6 ct/Bild bei Quadrat). Kosten token-genau aus der API geloggt.
 - **Auto-Geburtstagsgruß**: Cron `/api/cron/moments` (täglich 8:00) erkennt Geburtstag heute; hat der Kontakt einen Telegram-Kanal, erzeugt es Gruß-Text (+ Bild, falls `OPENAI_API_KEY`) und legt eine **Telegram-Suggestion mit Bild** in die Queue. Autopilot-Kontakte (`auto_mode`) senden nach Veto-Frist automatisch, sonst nach manueller Freigabe. Der Worker sendet **Foto + Bildunterschrift** (`sendFile`).
 - **Automatischer Bildversand** geht nur über Telegram (eigener Account, Veto-gesichert) — andere Kanäle erlauben kein Anhängen per Deep-Link.
 - Ohne `OPENAI_API_KEY`: Text-Gruß läuft automatisch, Bild bleibt Prompt + manueller Upload.

@@ -8,25 +8,27 @@ import type { Database } from "@/lib/database.types"
 
 type Db = SupabaseClient<Database>
 
-// Preise USD pro 1M Tokens (Stand 2026-07). gpt-image-1 rechnet über Tokens:
-// Text-Input $5/1M, Bild-Output $40/1M — daher hier als in/out-Preis modelliert
+// Preise USD pro 1M Tokens (Stand 2026-07). Bildmodelle rechnen über Tokens:
+// Text-Input + Bild-Output — daher als in/out-Preis modelliert
 // (tokensIn = Text-Input, tokensOut = Bild-Output-Tokens).
 const PRICES: Record<string, { in: number; out: number }> = {
   "deepseek-chat": { in: 0.27, out: 1.1 },
   "gpt-4o-mini": { in: 0.15, out: 0.6 },
   "gpt-4o": { in: 2.5, out: 10 },
   "gpt-image-1": { in: 5, out: 40 },
+  "gpt-image-2": { in: 5, out: 30 }, // Bild-Output günstiger als gpt-image-1
 }
-const IMAGE_FALLBACK_USD = 0.25 // nur wenn ein unbekanntes Bildmodell ohne Tokens loggt
+const IMAGE_OUTPUT_PRICE = PRICES["gpt-image-2"].out
+const IMAGE_FALLBACK_USD = 0.2 // nur wenn ein unbekanntes Bildmodell ohne Tokens loggt
 
-// Bild-Output-Tokens von gpt-image-1 nach Größe × Qualität (OpenAI-Tabelle).
-// Dienen als Fallback, falls die API kein usage-Objekt liefert.
+// Bild-Output-Tokens von gpt-image-2 nach Größe × Qualität (aus OpenAI-Kostenkalkulator
+// abgeleitet). Dienen als Fallback, falls die API kein usage-Objekt liefert.
 export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024"
 export type ImageQuality = "low" | "medium" | "high"
 const IMAGE_OUTPUT_TOKENS: Record<ImageSize, Record<ImageQuality, number>> = {
-  "1024x1024": { low: 272, medium: 1056, high: 4160 },
-  "1024x1536": { low: 408, medium: 1584, high: 6240 },
-  "1536x1024": { low: 400, medium: 1568, high: 6208 },
+  "1024x1024": { low: 200, medium: 1767, high: 7033 },
+  "1024x1536": { low: 300, medium: 1367, high: 5500 },
+  "1536x1024": { low: 300, medium: 1367, high: 5500 },
 }
 
 export function imageOutputTokens(size: ImageSize, quality: ImageQuality): number {
@@ -35,7 +37,7 @@ export function imageOutputTokens(size: ImageSize, quality: ImageQuality): numbe
 
 /** Grobe Vorab-Kostenschätzung eines Bildes (für UI-Hinweise). */
 export function estimateImageCost(size: ImageSize, quality: ImageQuality): number {
-  return (imageOutputTokens(size, quality) * PRICES["gpt-image-1"].out) / 1_000_000
+  return (imageOutputTokens(size, quality) * IMAGE_OUTPUT_PRICE) / 1_000_000
 }
 
 export const DEFAULT_MONTHLY_LIMIT_USD = 10
