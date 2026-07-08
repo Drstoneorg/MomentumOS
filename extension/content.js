@@ -48,8 +48,11 @@
       <div id="mox-taste"></div>
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
       <button class="mox-btn" id="mox-scan">Scannen & Syncen</button>
+      <button class="mox-btn mox-btn-2" id="mox-photo">📷 Foto prüfen (KI)</button>
+      <div id="mox-photo-out"></div>
       <div id="mox-out"></div>`
     panel.querySelector("#mox-scan").addEventListener("click", scan)
+    panel.querySelector("#mox-photo").addEventListener("click", checkPhotos)
     evalTaste()
   }
 
@@ -133,6 +136,73 @@
       return true
     }
     return false
+  }
+
+  // Größtes sichtbares Profilbild finden (heuristisch): flächengrößtes <img>,
+  // Data-/Blob-URLs raus (die kann der Server nicht laden).
+  function biggestPhoto() {
+    let best = null
+    let bestArea = 0
+    for (const img of document.querySelectorAll("img")) {
+      const src = img.currentSrc || img.src || ""
+      if (!/^https?:/.test(src)) continue
+      const r = img.getBoundingClientRect()
+      const area = r.width * r.height
+      if (area > bestArea && r.width > 100 && r.height > 100) {
+        bestArea = area
+        best = src
+      }
+    }
+    // CSS-Hintergrundbilder als Fallback (viele Dating-Apps nutzen die)
+    if (!best) {
+      for (const el of document.querySelectorAll('[style*="background-image"]')) {
+        const m = /url\(["']?(https?:[^"')]+)/.exec(el.getAttribute("style") || "")
+        const r = el.getBoundingClientRect()
+        const area = r.width * r.height
+        if (m && area > bestArea && r.width > 100 && r.height > 100) {
+          bestArea = area
+          best = m[1]
+        }
+      }
+    }
+    return best
+  }
+
+  async function checkPhotos() {
+    const out = panel.querySelector("#mox-photo-out")
+    const { baseUrl, token } = await cfg()
+    if (!baseUrl || !token) {
+      out.innerHTML = `<p class="mox-err">Erst URL + Token im Popup speichern.</p>`
+      return
+    }
+    const imageUrl = biggestPhoto()
+    if (!imageUrl) {
+      out.innerHTML = `<p class="mox-err">Kein Profilfoto gefunden. Auf ein größeres Bild scrollen.</p>`
+      return
+    }
+    out.innerHTML = `<p class="mox-hint">KI prüft Foto…</p>`
+    try {
+      const res = await fetch(`${baseUrl}/api/extension/photo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageUrl }),
+      })
+      const d = await res.json()
+      if (!res.ok) {
+        out.innerHTML = `<p class="mox-err">${esc(d.error === "no_vision_key" ? "Kein OPENAI_API_KEY gesetzt." : d.error || "Fehler")}</p>`
+        return
+      }
+      const cls = d.score >= 70 ? "mox-taste-hit" : d.score >= 45 ? "mox-taste-neutral" : "mox-taste-no"
+      out.innerHTML = `
+        <div class="${cls}">
+          <b>📷 ${d.score} · ${d.matches ? "passt" : "eher nicht"}</b>
+          <p class="mox-hint">${esc(d.summary || "")}</p>
+          ${d.hits && d.hits.length ? `<p class="mox-hint">✓ ${d.hits.map(esc).join(", ")}</p>` : ""}
+          ${d.concerns && d.concerns.length ? `<p class="mox-hint">⚠ ${d.concerns.map(esc).join(", ")}</p>` : ""}
+        </div>`
+    } catch (e) {
+      out.innerHTML = `<p class="mox-err">Netzwerkfehler.</p>`
+    }
   }
 
   function visibleText() {
