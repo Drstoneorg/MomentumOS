@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { loadContactContext } from "@/lib/ai/context"
 import { generateReplies } from "@/lib/ai/generateReplies"
+import { sendPushToAll } from "@/lib/push"
 
 export const maxDuration = 60
 
@@ -79,6 +80,15 @@ export async function GET(req: Request) {
         status: `error: ${e instanceof Error ? e.message : "unknown"}`,
       })
     }
+  }
+
+  const drafts = results.filter((r) => r.status === "draft_created").length
+  if (drafts) {
+    await sendPushToAll({
+      title: "MatchOS Follow-ups",
+      body: `${drafts} neue Antwort-Entwürfe warten in der Queue`,
+      url: "/queue",
+    }).catch(() => {})
   }
 
   return NextResponse.json({ scanned: contacts?.length ?? 0, results })

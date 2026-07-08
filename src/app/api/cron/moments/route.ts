@@ -4,6 +4,7 @@ import { daysUntilBirthday, connectionScore, turningAge } from "@/lib/moments"
 import { generateMomentMessages } from "@/lib/ai/momentMessage"
 import { generateImagePrompt } from "@/lib/ai/imagePrompt"
 import { generateImage, imageGenerationAvailable } from "@/lib/ai/generateImage"
+import { sendPushToAll } from "@/lib/push"
 
 export const maxDuration = 120
 
@@ -145,6 +146,18 @@ export async function GET(req: Request) {
       reason,
     })
     results.push({ contactId: c.id, action: `reminder: ${reason}` })
+  }
+
+  if (results.length) {
+    await sendPushToAll({
+      title: "MatchOS Moments",
+      body: results
+        .map((r) => r.action)
+        .slice(0, 3)
+        .join(" · ")
+        .slice(0, 120),
+      url: "/moments",
+    }).catch(() => {})
   }
 
   return NextResponse.json({ scanned: contacts?.length ?? 0, created: results.length, results })

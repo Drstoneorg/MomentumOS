@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import "./globals.css"
 import { Nav } from "@/components/Nav"
+import { PwaSetup } from "@/components/PwaSetup"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="de" className={`${geistSans.variable} dark`}>
       <body className="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
+        <PwaSetup />
         <Nav />
         <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
       </body>
