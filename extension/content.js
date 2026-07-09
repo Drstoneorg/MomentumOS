@@ -264,11 +264,18 @@
     // Nur echte Chat-Ansichten haben ein Nachrichten-Eingabefeld. Profilkarten
     // (Swipe-Ansicht) nicht — dort keinen "Chatverlauf" erfinden, sonst landen
     // Profilinfos als Nachrichten in der DB.
-    if (!findComposer()) return ""
+    const composer = findComposer()
+    if (!composer) return ""
     const scope = document.querySelector("main") || document.body
-    const box = scope.getBoundingClientRect()
-    if (box.width < 120) return ""
-    const midX = box.left + box.width / 2
+    // Chat-Spalte = horizontaler Bereich des Eingabefelds. Alles außerhalb
+    // (z. B. Tinder-Profilpanel rechts neben dem Chat) gehört NICHT zum Verlauf —
+    // sonst landen Profilinfos als [me]-Nachrichten in der DB.
+    const cRect = composer.getBoundingClientRect()
+    if (cRect.width < 120) return ""
+    const colLeft = cRect.left - 12
+    const colRight = cRect.right + 12
+    const colWidth = colRight - colLeft
+    const midX = (colLeft + colRight) / 2
     const topCut = window.innerHeight * 0.15 // Kopfzeile/Navigation ignorieren
 
     // Innerste Textknoten = einzelne Bubble-Texte (Blattelemente mit Text).
@@ -277,7 +284,10 @@
       const t = (el.textContent || "").trim()
       if (t.length < 1 || t.length > 800) return false
       const r = el.getBoundingClientRect()
-      return r.width >= 24 && r.height >= 8 && r.top >= topCut && r.width < box.width * 0.95
+      const center = r.left + r.width / 2
+      // Nur Elemente innerhalb der Chat-Spalte zählen.
+      if (center < colLeft || center > colRight) return false
+      return r.width >= 24 && r.height >= 8 && r.top >= topCut && r.width < colWidth * 0.95
     })
 
     const rows = leaves
@@ -285,7 +295,7 @@
         const r = el.getBoundingClientRect()
         const center = r.left + r.width / 2
         // Deutliche Rechts-/Linkslage; Mitte (Systemtext/Datum) markieren wir neutral.
-        const off = (center - midX) / box.width
+        const off = (center - midX) / colWidth
         const dir = off > 0.08 ? "me" : off < -0.08 ? "them" : "sys"
         return { top: Math.round(r.top), dir, text: el.textContent.trim() }
       })
@@ -394,8 +404,15 @@
       out.querySelector("#mox-idea").addEventListener("keydown", (ev) => {
         if (ev.key === "Enter") rephrase(data.contactId)
       })
-      if (data.autoDraft)
+      if (data.autoDraft) {
         renderVariants(out.querySelector("#mox-replies-out"), data.autoDraft, data.contactId)
+      } else {
+        // Kein Auto-Entwurf vom Server, aber letzte sichtbare Nachricht ist von der
+        // Person → Vorschläge automatisch holen (kein extra Klick nötig).
+        const chat = chatAnnotatedText()
+        const lastLine = chat.split("\n").filter(Boolean).pop() || ""
+        if (lastLine.startsWith("[them]")) replies(data.contactId, "")
+      }
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
@@ -405,11 +422,19 @@
     const out = panel.querySelector("#mox-replies-out")
     const { baseUrl, token } = await cfg()
     out.innerHTML = `<p class="mox-hint">Generiere…</p>`
+    // Live-Chat-Ende mitschicken: garantiert, dass die allerletzte Nachricht der
+    // Person berücksichtigt wird, auch wenn der DB-Sync sie (noch) nicht hat.
+    const liveChat = chatAnnotatedText().split("\n").filter(Boolean).slice(-8).join("\n")
     try {
       const res = await fetch(`${baseUrl}/api/extension/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ contactId, situation: situation || undefined, nowLocal: new Date().toString() }),
+        body: JSON.stringify({
+          contactId,
+          situation: situation || undefined,
+          liveChat: liveChat || undefined,
+          nowLocal: new Date().toString(),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)

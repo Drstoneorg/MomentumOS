@@ -78,6 +78,7 @@ export async function POST(req: Request) {
     }
 
     // Nur neue Nachrichten anhängen (naive Dedupe: content+direction gegen letzte 50)
+    let freshInbound = false // kam in DIESEM Sync eine neue Nachricht der Person rein?
     if (p.messages.length) {
       const { data: recent } = await supabase
         .from("messages")
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
         .limit(50)
       const seen = new Set((recent ?? []).map((m) => `${m.direction}|${m.content}`))
       const fresh = p.messages.filter((m) => !seen.has(`${m.direction}|${m.content}`))
+      freshInbound = fresh.some((m) => m.direction === "in")
       if (fresh.length) {
         const base = Date.now() - fresh.length * 1000
         await supabase.from("messages").insert(
@@ -158,9 +160,25 @@ export async function POST(req: Request) {
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle()
-            if (openDraft) {
-              // Offener Entwurf vorhanden — direkt im Overlay anzeigen statt nichts
+            if (openDraft && !freshInbound) {
+              // Offener Entwurf, nichts Neues von der Person — Entwurf direkt anzeigen
               autoDraft = { variants: (openDraft.variants ?? {}) as Record<string, string> }
+            } else if (openDraft && freshInbound) {
+              // Neue Nachricht der Person: alter Entwurf ist veraltet — neu generieren
+              // und den offenen Entwurf aktualisieren (kein Duplikat in der Queue).
+              autoDraft = await generateReplies(
+                ctx,
+                "Antworte passend auf die letzte Nachricht der Person.",
+                nowLocal
+              )
+              await supabase
+                .from("suggestions")
+                .update({
+                  situation: "Auto-Entwurf nach Browser-Sync (aktualisiert)",
+                  variants: autoDraft.variants,
+                  status: "draft",
+                })
+                .eq("id", openDraft.id)
             } else {
               autoDraft = await generateReplies(
                 ctx,
