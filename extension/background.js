@@ -11,15 +11,28 @@ const PLATFORM_MAP = [
   ["badoo.com", "badoo"],
   ["web.whatsapp.com", "whatsapp"],
   ["instagram.com", "instagram"],
+  ["tiktok.com", "tiktok"],
   ["web.telegram.org", "telegram"],
 ]
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "matchos-send",
-    title: "An MatchOS senden",
-    contexts: ["selection"],
+function setupMenu() {
+  // removeAll verhindert "duplicate id"-Fehler bei Extension-Reload
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "matchos-send",
+      title: "An MatchOS senden",
+      contexts: ["selection"],
+    })
   })
+}
+chrome.runtime.onInstalled.addListener(setupMenu)
+chrome.runtime.onStartup.addListener(setupMenu)
+
+// Tastenkürzel Alt+M: Panel im aktiven Tab auf/zu
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-panel") return
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (tab?.id != null) chrome.tabs.sendMessage(tab.id, { type: "matchos-toggle" }).catch(() => {})
 })
 
 function badge(text, color) {
