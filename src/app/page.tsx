@@ -14,7 +14,7 @@ export default async function Dashboard() {
   const supabase = await createClient()
   const now = new Date().toISOString()
 
-  const [contactsRes, followupsRes, datesRes, draftsRes] = await Promise.all([
+  const [contactsRes, followupsRes, datesRes, draftsRes, heartbeatsRes] = await Promise.all([
     supabase.from("contacts").select("*").neq("pipeline_stage", "archived"),
     supabase
       .from("followups")
@@ -32,7 +32,21 @@ export default async function Dashboard() {
       .select("id")
       .eq("status", "draft")
       .eq("channel", "telegram"),
+    supabase.from("settings").select("key, value").like("key", "cron_heartbeat_%"),
   ])
+
+  // Cron-Watchdog: warnen, wenn ein Cron nie oder seit >36h nicht gelaufen ist
+  // (Vercel-Hobby-Limit kann Crons stillschweigend nicht ausführen).
+  const CRONS = ["followups", "moments", "dispatch", "digest"]
+  const beats = new Map(
+    (heartbeatsRes.data ?? []).map((r) => [r.key.replace("cron_heartbeat_", ""), String(r.value)])
+  )
+  const cronProblems = CRONS.map((name) => {
+    const last = beats.get(name)
+    if (!last) return { name, info: "noch nie gelaufen" }
+    const ageH = (Date.now() - new Date(last).getTime()) / 3600_000
+    return ageH > 36 ? { name, info: `zuletzt vor ${Math.round(ageH)}h` } : null
+  }).filter((x): x is { name: string; info: string } => x !== null)
 
   const contacts = contactsRes.data ?? []
   const newMatches = contacts.filter((c) =>
@@ -73,6 +87,15 @@ export default async function Dashboard() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Dashboard</h1>
+
+      {cronProblems.length > 0 && (
+        <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
+          ⚠️ Cron-Jobs laufen nicht: {cronProblems.map((c) => `${c.name} (${c.info})`).join(", ")}.
+          Vercel-Hobby erlaubt nur begrenzt Crons — fehlende bei cron-job.com anlegen:
+          URL <code className="text-amber-100">/api/cron/&lt;name&gt;</code>, Header{" "}
+          <code className="text-amber-100">Authorization: Bearer &lt;CRON_SECRET&gt;</code>.
+        </div>
+      )}
 
       {todayCount > 0 && (
         <Card title={`☀️ Heute dran (${todayCount})`}>

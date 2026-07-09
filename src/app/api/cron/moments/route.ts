@@ -5,6 +5,7 @@ import { generateMomentMessages } from "@/lib/ai/momentMessage"
 import { generateImagePrompt } from "@/lib/ai/imagePrompt"
 import { generateImage, imageGenerationAvailable } from "@/lib/ai/generateImage"
 import { sendPushToAll } from "@/lib/push"
+import { beatCron } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 120
 
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient()
+  await beatCron(supabase, "moments")
   const [{ data: contacts }, { data: styleRow }] = await Promise.all([
     supabase.from("contacts").select("*").neq("pipeline_stage", "archived"),
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
