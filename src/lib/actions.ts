@@ -224,12 +224,19 @@ export async function saveTasteProfile(profile: TasteProfile) {
   revalidatePath("/settings")
 }
 
-export async function saveAiBudget(monthlyLimitUsd: number) {
+export async function saveAiBudget(monthlyLimitUsd: number, imageCostUsd?: number | null) {
   const supabase = await db()
   const limit = Math.max(0, Number(monthlyLimitUsd) || 0)
+  // imageCostUsd: echter Pro-Bild-Preis aus dem OpenAI-Dashboard (Kalibrierung).
+  // 0/leer = keine Kalibrierung, Token-Schätzung gilt weiter.
+  const img = Number(imageCostUsd)
+  const value = {
+    monthlyLimitUsd: limit,
+    ...(Number.isFinite(img) && img > 0 ? { imageCostUsd: img } : {}),
+  }
   const { error } = await supabase
     .from("settings")
-    .upsert({ key: "ai_budget", value: { monthlyLimitUsd: limit } as never, updated_at: new Date().toISOString() })
+    .upsert({ key: "ai_budget", value: value as never, updated_at: new Date().toISOString() })
   if (error) throw new Error(error.message)
   revalidatePath("/settings")
 }
