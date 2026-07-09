@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { StyleForm } from "./StyleForm"
 import { StyleRulesForm } from "./StyleRulesForm"
+import { StyleLearnCard } from "./StyleLearnCard"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
@@ -12,9 +13,10 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: styleRules }, { data: extToken }, { data: taste }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "learned_style").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
   ])
@@ -42,6 +44,23 @@ export default async function SettingsPage() {
           Beschreibt, wie der Generator für dich klingt. Beispiele eigener Nachrichten reinkopieren hilft enorm.
         </p>
         <StyleForm current={typeof style?.value === "string" ? style.value : ""} />
+      </Card>
+
+      <Card title="Stil-Lernen aus echten Chats">
+        <p className="mb-2 text-sm text-zinc-400">
+          Die KI analysiert deine echten gesendeten Nachrichten (gesyncte Chats +
+          optional WhatsApp/Instagram-Exporte) und baut daraus ein Stilprofil samt
+          Beispielen — imitiert dich deutlich besser als jede Beschreibung.
+        </p>
+        <StyleLearnCard
+          current={
+            learnedStyle?.value &&
+            typeof learnedStyle.value === "object" &&
+            "profile" in (learnedStyle.value as object)
+              ? (learnedStyle.value as unknown as { profile: string; examples: string[] })
+              : null
+          }
+        />
       </Card>
 
       <Card title="Harte Stil-Regeln (werden nie gebrochen)">
