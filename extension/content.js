@@ -14,6 +14,7 @@
     ["badoo.com", "badoo"],
     ["web.whatsapp.com", "whatsapp"],
     ["instagram.com", "instagram"],
+    ["tiktok.com", "tiktok"],
     ["web.telegram.org", "telegram"],
   ]
   const platform =
@@ -277,18 +278,30 @@
         <button class="mox-btn" id="mox-replies">${
           data.autoDraft ? "Neue Vorschläge generieren" : "Antwortvorschläge holen"
         }</button>
+        <input class="mox-input" id="mox-situation" placeholder="Situation/Wunsch (optional), z. B. 'sie hat nach meinem Job gefragt'" />
+        <div class="mox-chips">
+          ${["kürzer", "lockerer", "direkter", "witziger", "Gegenfrage stellen", "Date vorschlagen"]
+            .map((c) => `<button class="mox-copy mox-chip" data-c="${c}">${c}</button>`)
+            .join("")}
+        </div>
         <a class="mox-link" href="${baseUrl}/contacts/${data.contactId}" target="_blank">In MatchOS öffnen ↗</a>
         <div id="mox-replies-out"></div>`
+      const situationOf = () => out.querySelector("#mox-situation").value.trim()
       out
         .querySelector("#mox-replies")
-        .addEventListener("click", () => replies(data.contactId))
+        .addEventListener("click", () => replies(data.contactId, situationOf()))
+      out.querySelectorAll(".mox-chip").forEach((b) =>
+        b.addEventListener("click", () =>
+          replies(data.contactId, [situationOf(), `Antwort bitte: ${b.dataset.c}`].filter(Boolean).join(". "))
+        )
+      )
       if (data.autoDraft) renderVariants(out.querySelector("#mox-replies-out"), data.autoDraft)
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
   }
 
-  async function replies(contactId) {
+  async function replies(contactId, situation) {
     const out = panel.querySelector("#mox-replies-out")
     const { baseUrl, token } = await cfg()
     out.innerHTML = `<p class="mox-hint">Generiere…</p>`
@@ -296,7 +309,7 @@
       const res = await fetch(`${baseUrl}/api/extension/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ contactId }),
+        body: JSON.stringify({ contactId, situation: situation || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
@@ -348,7 +361,9 @@
     return true
   }
 
-  const canInsert = ["whatsapp", "instagram", "telegram"].includes(platform)
+  // Einfügen auf allen Plattformen versuchen — findComposer ist generisch,
+  // bei Misserfolg zeigt der Button "✗ Feld?" und Kopieren bleibt als Fallback.
+  const canInsert = true
 
   function renderVariants(out, data) {
     const rows = Object.entries(data.variants || {})
@@ -387,6 +402,12 @@
 
   // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
   chrome.runtime.onMessage.addListener((msg) => {
+    if (msg && msg.type === "matchos-toggle") {
+      // Alt+M: Panel auf/zu
+      panel.hidden = !panel.hidden
+      if (!panel.hidden) renderIdle()
+      return
+    }
     if (!msg || msg.type !== "matchos-sync-result") return
     panel.hidden = false
     renderIdle()

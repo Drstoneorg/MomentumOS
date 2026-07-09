@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MatchOS Companion",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Liest Dating-Profile und Chats mit, legt Kontakte in MatchOS an und liefert Antwortentwürfe. Sendet nie selbst.",
   "permissions": ["storage", "activeTab", "contextMenus"],
   "background": { "service_worker": "background.js" },
@@ -12,6 +12,7 @@
     "https://*.badoo.com/*",
     "https://web.whatsapp.com/*",
     "https://www.instagram.com/*",
+    "https://www.tiktok.com/*",
     "https://web.telegram.org/*"
   ],
   "content_scripts": [
@@ -23,12 +24,19 @@
         "https://*.badoo.com/*",
         "https://web.whatsapp.com/*",
         "https://www.instagram.com/*",
+        "https://www.tiktok.com/*",
         "https://web.telegram.org/*"
       ],
       "js": ["content.js"],
       "css": ["content.css"]
     }
   ],
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": { "default": "Alt+M" },
+      "description": "MatchOS-Panel öffnen/schließen"
+    }
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "MatchOS Companion"
