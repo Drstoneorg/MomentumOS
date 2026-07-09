@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { generateImagePrompt, type ImagePromptInput } from "@/lib/ai/imagePrompt"
-import { generateImage, imageGenerationAvailable } from "@/lib/ai/generateImage"
+import { generateImage, imageGenerationAvailable, ImageSafetyError } from "@/lib/ai/generateImage"
 
 export const maxDuration = 120
 
@@ -72,6 +72,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url, prompt, caption, assetId: asset?.id ?? null })
   } catch (e) {
+    // Safety-Ablehnung ist ein Eingabeproblem (400), kein Serverfehler.
+    if (e instanceof ImageSafetyError) {
+      return NextResponse.json({ error: e.message }, { status: 400 })
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Bild-Fehler" },
       { status: 500 }

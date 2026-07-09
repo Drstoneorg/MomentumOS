@@ -14,6 +14,48 @@ export function imageGenerationAvailable(): boolean {
 // falls OpenAI die Model-ID anders benennt.
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2"
 
+// Wörter, die OpenAIs Safety-System bei Bild-Prompts häufig blockt (Romantik/Körper/
+// Anzüglichkeit). Wird beim Retry entfernt und durch neutrale Begriffe ersetzt.
+const RISKY_WORDS = [
+  "sexy", "hot", "nude", "naked", "nackt", "lingerie", "dessous", "bikini", "cleavage",
+  "seductive", "sensual", "erotic", "erotisch", "kiss", "kissing", "kuss", "küssen",
+  "bed", "bett", "bedroom", "schlafzimmer", "romantic", "romantisch", "flirt", "flirty",
+  "girlfriend", "boyfriend", "freundin", "freund", "date", "crush", "body", "curves",
+  "attractive", "beautiful woman", "beautiful man", "hübsche frau", "hübscher mann",
+]
+
+/**
+ * Neutralisiert einen Prompt für einen sicheren Retry nach Safety-Ablehnung:
+ * entfernt riskante Wörter und rahmt ihn als harmlose, festliche Illustration ohne
+ * reale/identifizierbare Personen. Deterministisch (keine KI, keine Extra-Kosten).
+ */
+export function sanitizeImagePrompt(prompt: string): string {
+  let p = prompt
+  for (const w of RISKY_WORDS) {
+    p = p.replace(new RegExp(`\\b${w}\\b`, "gi"), "")
+  }
+  p = p.replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim()
+  return `A wholesome, festive illustration. No real or identifiable people, no romantic or suggestive content. ${p}`.slice(0, 1000)
+}
+
+// Erkennt eine Safety-/Moderations-Ablehnung von OpenAI (nicht jeden 400).
+function isSafetyRejection(status: number, bodyText: string): boolean {
+  if (status !== 400) return false
+  const t = bodyText.toLowerCase()
+  return t.includes("safety system") || t.includes("moderation") || t.includes("content policy") || t.includes("rejected")
+}
+
+// Klartext-Fehler für die UI, statt roher OpenAI-Antwort.
+export class ImageSafetyError extends Error {
+  constructor() {
+    super(
+      "OpenAI hat den Bild-Prompt aus Sicherheitsgründen abgelehnt — auch nach automatischer Entschärfung. " +
+        "Formuliere neutraler: kein echter Name, kein Körper-/Romantik-/Anzüglich-Wording. " +
+        "Beispiel: „festliche Geburtstags-Illustration, Kuchen, Konfetti, warme Farben, Anime-Stil“."
+    )
+  }
+}
+
 /**
  * Erzeugt ein Bild über die OpenAI-Images-API (gpt-image-2), lädt es in den
  * öffentlichen Supabase-Storage-Bucket `moment-images` und gibt die URL zurück.
@@ -31,19 +73,28 @@ export async function generateImage(
   const size: ImageSize = opts.size ?? "1024x1024"
   const quality: ImageQuality = opts.quality ?? "low"
 
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: IMAGE_MODEL,
-      prompt,
-      size,
-      quality,
-      n: 1,
-    }),
-  })
+  async function callApi(p: string) {
+    return fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: IMAGE_MODEL, prompt: p, size, quality, n: 1 }),
+    })
+  }
+
+  let res = await callApi(prompt)
+  // Bei Safety-Ablehnung einmal automatisch mit entschärftem Prompt neu versuchen.
   if (!res.ok) {
-    throw new Error(`Bild-API-Fehler ${res.status}: ${(await res.text()).slice(0, 200)}`)
+    const bodyText = await res.text()
+    if (isSafetyRejection(res.status, bodyText)) {
+      res = await callApi(sanitizeImagePrompt(prompt))
+      if (!res.ok) {
+        const t2 = await res.text()
+        if (isSafetyRejection(res.status, t2)) throw new ImageSafetyError()
+        throw new Error(`Bild-API-Fehler ${res.status}: ${t2.slice(0, 200)}`)
+      }
+    } else {
+      throw new Error(`Bild-API-Fehler ${res.status}: ${bodyText.slice(0, 200)}`)
+    }
   }
   const data = (await res.json()) as {
     data?: { b64_json?: string; url?: string }[]

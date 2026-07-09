@@ -184,31 +184,50 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
             <button onClick={genImage} disabled={loading} className={btnGhostCls}>{loading ? "…" : "Prompt"}</button>
             <button onClick={genRealImage} disabled={imgLoading} className={btnCls}>
               {imgLoading
-                ? "Male…"
+                ? "Erzeuge…"
                 : `Bild erzeugen (~${(() => {
                     const ct = (IMG_COST[format]?.[quality] ?? 0.2) * 100
                     return ct < 1 ? "<1" : ct.toFixed(0)
                   })()} ct)`}
             </button>
           </div>
-          <input
-            value={context}
-            onChange={(e) => { setContext(e.target.value); invalidatePrompt() }}
-            placeholder="Vibe/Farben/Details (Stichworte — die KI baut daraus den Prompt)"
-            className={inputCls}
-          />
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            rows={2}
-            placeholder="Eigener Prompt (optional) — wird 1:1 verwendet und überschreibt Anlass/Stil/Vibe"
-            className={inputCls}
-          />
-          {customPrompt.trim() && (
-            <p className="text-xs text-amber-400">
-              Eigener Prompt aktiv — „Bild erzeugen" nutzt genau diesen Text, die Felder oben werden ignoriert.
+          <div className={"space-y-1 " + (customPrompt.trim() ? "opacity-40" : "")}>
+            <label className="text-xs font-semibold text-zinc-300">
+              Vibe / Details <span className="font-normal text-zinc-500">— Stichworte, KI baut den Prompt</span>
+            </label>
+            <input
+              value={context}
+              onChange={(e) => { setContext(e.target.value); invalidatePrompt() }}
+              placeholder="z. B. warme Farben, Konfetti, Sonnenuntergang, verspielt"
+              className={inputCls}
+              disabled={!!customPrompt.trim()}
+            />
+            <p className="text-xs text-zinc-600">
+              Nur Stimmung/Farben/Objekte — keine echten Namen, kein Körper-/Romantik-Wording (blockt OpenAI).
             </p>
-          )}
+          </div>
+
+          <div className="space-y-1 border-t border-zinc-800 pt-2">
+            <label className="text-xs font-semibold text-zinc-300">
+              Eigener Prompt <span className="font-normal text-zinc-500">— optional, für Profis</span>
+            </label>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              rows={2}
+              placeholder="Kompletten Bild-Text selbst schreiben (Englisch am besten). Wird 1:1 an die KI geschickt."
+              className={inputCls}
+            />
+            <p className="text-xs text-zinc-600">
+              {customPrompt.trim() ? (
+                <span className="text-amber-400">
+                  Aktiv — „Bild erzeugen" nutzt genau diesen Text. Anlass/Stil/Vibe oben werden ignoriert.
+                </span>
+              ) : (
+                "Leer lassen, wenn du oben mit Anlass + Vibe arbeitest. Gefüllt = überschreibt alles darüber."
+              )}
+            </p>
+          </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           {imgResult && (
             <div className="space-y-2 rounded-lg border border-zinc-800 p-3 text-sm">
