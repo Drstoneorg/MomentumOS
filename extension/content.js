@@ -362,7 +362,13 @@
       out.innerHTML = `<p class="mox-err">Erst URL + Token im Extension-Popup speichern.</p>`
       return
     }
-    out.innerHTML = `<p class="mox-hint">Analysiere…</p>`
+    // Selbsttest: Chat-Ansicht offen (Composer da), aber 0 Nachrichten erkannt
+    // = vermutlich DOM-Änderung der Plattform. Sichtbar warnen statt still kaputt.
+    const domWarn =
+      findComposer() && !chatAnnotatedText()
+        ? `<p class="mox-err">⚠ Chat sichtbar, aber 0 Nachrichten erkannt — Plattform-Layout evtl. geändert. Chattext markieren und erneut scannen.</p>`
+        : ""
+    out.innerHTML = `${domWarn}<p class="mox-hint">Analysiere…</p>`
     try {
       const res = await fetch(`${baseUrl}/api/extension/sync`, {
         method: "POST",
@@ -373,6 +379,7 @@
       if (!res.ok) throw new Error(data.error || res.status)
       bump("synced")
       out.innerHTML = `
+        ${domWarn}
         <p class="mox-ok">✓ ${esc(data.name)} ${data.isNew ? "angelegt" : "aktualisiert"}${
           data.messageCount ? ` · ${data.messageCount} Nachrichten` : ""
         }${data.stage ? ` · ${esc(data.stage)}` : ""}</p>

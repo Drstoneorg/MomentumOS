@@ -163,7 +163,7 @@ export default async function SettingsPage() {
             Verbrauch nicht abrufbar — SUPABASE_SERVICE_ROLE_KEY fehlt in dieser Umgebung.
           </p>
         )}
-        <AiBudgetForm current={usage?.limitUsd ?? 10} />
+        <AiBudgetForm current={usage?.limitUsd ?? 10} currentImageCost={usage?.imageCostUsd ?? null} />
       </Card>
 
       <Card title="API-Status">

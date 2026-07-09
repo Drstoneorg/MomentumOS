@@ -100,6 +100,16 @@ async function anyDb(): Promise<Db> {
 export async function logUsage(e: UsageEntry): Promise<void> {
   try {
     const admin = await anyDb()
+    let cost = estimateCost(e)
+    // Kalibrierung: echter Pro-Bild-Preis aus den Einstellungen (OpenAI-Dashboard-Wert)
+    // überschreibt die Token-Schätzung — Text-Input-Anteil bleibt geschätzt.
+    if ((e.images ?? 0) > 0) {
+      const { data } = await admin.from("settings").select("value").eq("key", "ai_budget").maybeSingle()
+      const per = Number((data?.value as { imageCostUsd?: number } | null)?.imageCostUsd)
+      if (Number.isFinite(per) && per > 0) {
+        cost = (e.images ?? 0) * per + ((e.tokensIn ?? 0) * (PRICES[e.model]?.in ?? 0)) / 1_000_000
+      }
+    }
     await admin.from("ai_usage").insert({
       provider: e.provider,
       model: e.model,
@@ -107,7 +117,7 @@ export async function logUsage(e: UsageEntry): Promise<void> {
       tokens_in: e.tokensIn ?? 0,
       tokens_out: e.tokensOut ?? 0,
       images: e.images ?? 0,
-      cost_usd: estimateCost(e),
+      cost_usd: cost,
     })
   } catch {
     // Tracking darf Feature nie brechen
@@ -119,6 +129,8 @@ export type FeatureBucket = UsageBucket & { feature: string; label: string }
 export type UsageSummary = {
   monthCostUsd: number
   limitUsd: number
+  imageCostUsd: number | null // kalibrierter echter Pro-Bild-Preis (Einstellungen), null = Schätzung
+
   byProvider: Record<string, UsageBucket>
   byFeature: FeatureBucket[] // absteigend nach Kosten sortiert
 }
@@ -150,10 +162,13 @@ export async function monthlyUsage(client?: Db): Promise<UsageSummary> {
     f.calls += 1
     f.images += r.images ?? 0
   }
-  const limit = Number((budget?.value as { monthlyLimitUsd?: number } | null)?.monthlyLimitUsd)
+  const budgetVal = budget?.value as { monthlyLimitUsd?: number; imageCostUsd?: number } | null
+  const limit = Number(budgetVal?.monthlyLimitUsd)
+  const imgCost = Number(budgetVal?.imageCostUsd)
   return {
     monthCostUsd: total,
     limitUsd: Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_MONTHLY_LIMIT_USD,
+    imageCostUsd: Number.isFinite(imgCost) && imgCost > 0 ? imgCost : null,
     byProvider,
     byFeature: Object.values(featureMap).sort((a, b) => b.costUsd - a.costUsd),
   }

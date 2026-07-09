@@ -77,7 +77,11 @@ export async function POST(req: Request) {
       contactId = created.id
     }
 
-    // Nur neue Nachrichten anhängen (naive Dedupe: content+direction gegen letzte 50)
+    // Nur neue Nachrichten anhängen. Dedupe normalisiert (Whitespace/Groß-Klein/
+    // Satzzeichen am Ende), vergleicht gegen letzte 300 UND innerhalb des Batches —
+    // sonst erzeugen erneute Scans langer Chats Duplikate.
+    const normMsg = (s: string) =>
+      s.toLowerCase().replace(/\s+/g, " ").replace(/[.!?…]+$/g, "").trim()
     let freshInbound = false // kam in DIESEM Sync eine neue Nachricht der Person rein?
     if (p.messages.length) {
       const { data: recent } = await supabase
@@ -85,9 +89,14 @@ export async function POST(req: Request) {
         .select("direction, content")
         .eq("contact_id", contactId)
         .order("sent_at", { ascending: false })
-        .limit(50)
-      const seen = new Set((recent ?? []).map((m) => `${m.direction}|${m.content}`))
-      const fresh = p.messages.filter((m) => !seen.has(`${m.direction}|${m.content}`))
+        .limit(300)
+      const seen = new Set((recent ?? []).map((m) => `${m.direction}|${normMsg(m.content)}`))
+      const fresh = p.messages.filter((m) => {
+        const key = `${m.direction}|${normMsg(m.content)}`
+        if (seen.has(key)) return false
+        seen.add(key) // Batch-interne Duplikate ebenfalls raus
+        return true
+      })
       freshInbound = fresh.some((m) => m.direction === "in")
       if (fresh.length) {
         const base = Date.now() - fresh.length * 1000
