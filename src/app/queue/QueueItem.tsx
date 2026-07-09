@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { markSuggestionSent, updateSuggestion } from "@/lib/actions"
 import { channelDeepLink } from "@/lib/channels"
+import { stripDashes } from "@/lib/text"
 import type { Tables } from "@/lib/database.types"
 import { btnCls, btnGhostCls } from "@/components/ui"
 
@@ -19,7 +20,11 @@ export function QueueItem({
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
-  const variants = (suggestion.variants ?? {}) as Record<string, string>
+  const rawVariants = (suggestion.variants ?? {}) as Record<string, string>
+  // Alt-Entwürfe können noch Striche enthalten — beim Anzeigen bereinigen.
+  const variants = Object.fromEntries(
+    Object.entries(rawVariants).map(([k, v]) => [k, stripDashes(v)])
+  ) as Record<string, string>
   const [chosen, setChosen] = useState(
     suggestion.chosen_variant ?? Object.keys(variants)[0] ?? ""
   )
