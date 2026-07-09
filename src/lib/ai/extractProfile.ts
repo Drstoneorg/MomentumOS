@@ -36,7 +36,7 @@ Antworte als JSON:
   "messages": [ { "direction": "in|out", "content": "..." } ],
   "memories": [ { "kind": "${KINDS.join("|")}", "content": "..." } ]
 }
-messages: nur wenn ein Chatverlauf erkennbar ist. "out" = vom Nutzer (oft mit 'ich:' markiert), "in" = von der Person. Reihenfolge chronologisch.
+messages: nur wenn ein Chatverlauf erkennbar ist. Zeilen mit Präfix "[me]" = Nutzer (direction "out"), "[them]" = die Person (direction "in"). Ohne Präfix: 'ich:' = "out", sonst "in". Präfixe/Klammern nicht in den content übernehmen. Reihenfolge chronologisch. Auch eine einzelne neue Nachricht der Person zählt als Chatverlauf.
 memories: was über die Person gelernt wurde. Leer lassen wenn nichts.
 Wenn kein Name erkennbar: "Unbekannt".`
 
