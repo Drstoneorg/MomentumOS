@@ -76,10 +76,16 @@
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
       <button class="mox-btn" id="mox-scan">Scannen & Syncen</button>
       <button class="mox-btn mox-btn-2" id="mox-photo">📷 Foto prüfen (KI)</button>
+      <label class="mox-hint" style="display:flex;gap:6px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="mox-autoscan" /> Auto-Scan bei Chatwechsel
+      </label>
       <div id="mox-photo-out"></div>
       <div id="mox-out"></div>`
     panel.querySelector("#mox-scan").addEventListener("click", scan)
     panel.querySelector("#mox-photo").addEventListener("click", checkPhotos)
+    const autoBox = panel.querySelector("#mox-autoscan")
+    getAutoScan().then((on) => (autoBox.checked = on))
+    autoBox.addEventListener("change", () => setAutoScan(autoBox.checked))
     const reset = panel.querySelector("#mox-roundup-reset")
     if (reset)
       reset.addEventListener("click", () => {
@@ -538,6 +544,64 @@
       })
     )
   }
+
+  // ---------- Auto-Scan bei Chatwechsel ----------
+  // Erkennt Profil-/Chatwechsel über URL + ersten [them]-Text. Bei Wechsel und
+  // vorhandenem Composer: kurz warten (DOM stabil), dann automatisch scannen+syncen.
+  // Nur Lesen + Sync — gesendet wird weiterhin nie automatisch.
+  let autoScanOn = false
+  async function getAutoScan() {
+    if (!extAlive()) return false
+    return new Promise((r) => {
+      try {
+        chrome.storage.sync.get(["autoScan"], (v) => r(v?.autoScan !== false))
+      } catch {
+        r(false)
+      }
+    })
+  }
+  function setAutoScan(on) {
+    autoScanOn = on
+    try {
+      chrome.storage.sync.set({ autoScan: on })
+    } catch {}
+  }
+
+  function chatSignature() {
+    if (!findComposer()) return ""
+    const chat = chatAnnotatedText()
+    if (!chat) return ""
+    const firstThem = chat.split("\n").find((l) => l.startsWith("[them]")) || ""
+    return location.href + "::" + firstThem.slice(0, 120)
+  }
+
+  let lastSig = ""
+  let sigStableSince = 0
+  let lastAutoScan = 0
+  getAutoScan().then((on) => (autoScanOn = on))
+  setInterval(() => {
+    if (!autoScanOn || !extAlive()) return
+    const sig = chatSignature()
+    if (!sig) return
+    if (sig !== lastSig) {
+      lastSig = sig
+      sigStableSince = Date.now()
+      return
+    }
+    // Neue Signatur seit >1,5s stabil, letzter Auto-Scan >20s her → scannen
+    if (
+      sigStableSince &&
+      Date.now() - sigStableSince > 1500 &&
+      Date.now() - lastAutoScan > 20000 &&
+      sig !== window.__moxLastScanned
+    ) {
+      window.__moxLastScanned = sig
+      lastAutoScan = Date.now()
+      panel.hidden = false
+      renderIdle()
+      scan()
+    }
+  }, 2000)
 
   // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
   try {

@@ -66,9 +66,41 @@ export default async function Dashboard() {
     )
   })
 
+  // „Heute dran": eine Abarbeitungsliste statt Suchen in Einzel-Boxen.
+  const todayBirthdays = birthdays.filter((b) => b.d === 0)
+  const todayCount = (followupsRes.data?.length ?? 0) + stale.length + todayBirthdays.length
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Dashboard</h1>
+
+      {todayCount > 0 && (
+        <Card title={`☀️ Heute dran (${todayCount})`}>
+          <ul className="space-y-2 text-sm">
+            {todayBirthdays.map(({ c }) => (
+              <li key={`b-${c.id}`} className="flex items-center gap-2">
+                <span>🎂</span>
+                <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:underline">{c.name}</Link>
+                <span className="text-zinc-400">hat heute Geburtstag — Gruß in der <Link href="/queue" className="text-rose-400 hover:underline">Queue</Link> prüfen</span>
+              </li>
+            ))}
+            {(followupsRes.data ?? []).map((f) => (
+              <li key={`f-${f.id}`} className="flex items-center gap-2">
+                <span>⏰</span>
+                <Link href={`/contacts/${f.contact_id}`} className="font-medium text-white hover:underline">{f.contacts?.name}</Link>
+                <span className="text-zinc-400">{f.reason ?? "Nachfassen"}</span>
+              </li>
+            ))}
+            {stale.map((c) => (
+              <li key={`s-${c.id}`} className="flex items-center gap-2">
+                <span>💤</span>
+                <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:underline">{c.name}</Link>
+                <span className="text-zinc-400">eingeschlafen — wieder anknüpfen</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card title={`Fällige Follow-ups (${followupsRes.data?.length ?? 0})`}>
