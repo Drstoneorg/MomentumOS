@@ -109,7 +109,7 @@ export async function POST(req: Request) {
 
     // Auto-Pipeline: Zusammenfassung + Stage-Analyse + Sofort-Entwurf,
     // wenn ein Chatverlauf dabei war. Fehler hier brechen den Sync nicht ab.
-    let autoDraft: ReplyVariants | null = null
+    let autoDraft: (Partial<ReplyVariants> & { variants: Record<string, string> }) | null = null
     let stage: string | null = null
     if (p.messages.length) {
       try {
@@ -152,12 +152,16 @@ export async function POST(req: Request) {
           if (lastMsg?.direction === "in") {
             const { data: openDraft } = await supabase
               .from("suggestions")
-              .select("id")
+              .select("id, variants")
               .eq("contact_id", contactId)
               .in("status", ["draft", "approved"])
+              .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle()
-            if (!openDraft) {
+            if (openDraft) {
+              // Offener Entwurf vorhanden — direkt im Overlay anzeigen statt nichts
+              autoDraft = { variants: (openDraft.variants ?? {}) as Record<string, string> }
+            } else {
               autoDraft = await generateReplies(
                 ctx,
                 "Antworte passend auf die letzte Nachricht der Person.",
