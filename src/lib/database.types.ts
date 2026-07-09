@@ -524,6 +524,30 @@ export type Database = {
           },
         ]
       }
+      card_templates: {
+        Row: {
+          id: string
+          name: string
+          image_url: string
+          style_notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          image_url: string
+          style_notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          image_url?: string
+          style_notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       moment_assets: {
         Row: {
           contact_id: string | null
@@ -1009,7 +1033,7 @@ export type Database = {
       }
     }
     Enums: {
-      asset_kind: "image_prompt" | "image" | "text" | "collage"
+      asset_kind: "image_prompt" | "image" | "text" | "collage" | "card"
       booking_status:
         | "requested"
         | "accepted"

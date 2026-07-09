@@ -129,3 +129,83 @@ export async function generateImage(
   const { data: pub } = supabase.storage.from("moment-images").getPublicUrl(path)
   return { url: pub.publicUrl }
 }
+
+/**
+ * Bild-Bearbeitung über die OpenAI-Images-Edits-API: nimmt ein Referenzbild
+ * (z. B. TCG-Kartenvorlage) und einen Prompt, behält Rahmen/Layout und ersetzt
+ * Inhalt laut Prompt. Ergebnis landet wie generateImage im Storage.
+ */
+export async function editImage(
+  supabase: SupabaseClient<Database>,
+  prompt: string,
+  referenceImageUrl: string,
+  opts: { size?: ImageSize; quality?: ImageQuality; pathPrefix?: string } = {}
+): Promise<{ url: string }> {
+  const key = imageApiKey()
+  if (!key) throw new Error("Kein Bild-API-Key (OPENAI_API_KEY) gesetzt")
+  await assertBudget()
+
+  const size: ImageSize = opts.size ?? "1024x1024"
+  const quality: ImageQuality = opts.quality ?? "low"
+
+  const refRes = await fetch(referenceImageUrl)
+  if (!refRes.ok) throw new Error(`Referenzbild nicht ladbar (${refRes.status})`)
+  const refBlob = await refRes.blob()
+
+  async function callApi(p: string) {
+    const form = new FormData()
+    form.append("model", IMAGE_MODEL)
+    form.append("prompt", p)
+    form.append("size", size)
+    form.append("quality", quality)
+    form.append("n", "1")
+    form.append("image", refBlob, "reference.png")
+    return fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: form,
+    })
+  }
+
+  let res = await callApi(prompt)
+  if (!res.ok) {
+    const bodyText = await res.text()
+    if (isSafetyRejection(res.status, bodyText)) {
+      res = await callApi(sanitizeImagePrompt(prompt))
+      if (!res.ok) {
+        const t2 = await res.text()
+        if (isSafetyRejection(res.status, t2)) throw new ImageSafetyError()
+        throw new Error(`Bild-API-Fehler ${res.status}: ${t2.slice(0, 200)}`)
+      }
+    } else {
+      throw new Error(`Bild-API-Fehler ${res.status}: ${bodyText.slice(0, 200)}`)
+    }
+  }
+  const data = (await res.json()) as { data?: { b64_json?: string; url?: string }[] }
+  const b64 = data.data?.[0]?.b64_json
+  const remoteUrl = data.data?.[0]?.url
+  let bytes: Uint8Array
+  if (b64) {
+    bytes = Buffer.from(b64, "base64")
+  } else if (remoteUrl) {
+    bytes = new Uint8Array(await (await fetch(remoteUrl)).arrayBuffer())
+  } else {
+    throw new Error("Bild-API lieferte kein Bild")
+  }
+  await logUsage({
+    provider: "openai",
+    model: IMAGE_MODEL,
+    feature: "image",
+    images: 1,
+    tokensOut: imageOutputTokens(size, quality),
+  })
+
+  const path = `${opts.pathPrefix ?? "edit"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
+  const { error } = await supabase.storage
+    .from("moment-images")
+    .upload(path, bytes, { contentType: "image/png", upsert: false })
+  if (error) throw new Error(`Upload fehlgeschlagen: ${error.message}`)
+
+  const { data: pub } = supabase.storage.from("moment-images").getPublicUrl(path)
+  return { url: pub.publicUrl }
+}

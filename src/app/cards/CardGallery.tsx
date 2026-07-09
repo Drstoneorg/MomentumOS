@@ -1,0 +1,85 @@
+"use client"
+
+import { useTransition } from "react"
+import Link from "next/link"
+import { deleteCard } from "@/lib/cardActions"
+import type { Tables } from "@/lib/database.types"
+
+type CardMeta = {
+  card?: {
+    title?: string
+    type_line?: string
+    element?: string
+    rarity?: string
+    attack?: number
+    defense?: number
+    effect?: string
+    flavor?: string
+  }
+  facts_used?: string[]
+}
+
+export function CardGallery({
+  cards,
+  contacts,
+}: {
+  cards: Tables<"moment_assets">[]
+  contacts: { id: string; name: string }[]
+}) {
+  const [, start] = useTransition()
+  const nameById = new Map(contacts.map((c) => [c.id, c.name]))
+  if (!cards.length) return null
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-white">Karten-Sammlung</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((a) => {
+          const meta = (a.meta ?? {}) as CardMeta
+          const c = meta.card ?? {}
+          return (
+            <div key={a.id} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+              {a.content && (
+                <a href={a.content} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.content} alt={a.title ?? "Karte"} className="w-full object-cover" />
+                </a>
+              )}
+              <div className="space-y-1 p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-zinc-200">{c.title ?? a.title}</span>
+                  <button
+                    onClick={() => start(() => deleteCard(a.id))}
+                    className="ml-auto text-xs text-zinc-600 hover:text-rose-400"
+                    title="Karte löschen"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  {c.type_line} {c.element ? `· ${c.element}` : ""} {c.rarity ? `· ${c.rarity}` : ""}
+                </p>
+                {(c.attack != null || c.defense != null) && (
+                  <p className="text-xs text-zinc-300">⚔ {c.attack ?? "?"} / 🛡 {c.defense ?? "?"}</p>
+                )}
+                {c.effect && <p className="text-xs text-zinc-300">{c.effect}</p>}
+                {c.flavor && <p className="text-xs italic text-zinc-500">{c.flavor}</p>}
+                <p className="pt-1 text-xs text-zinc-600">
+                  {a.contact_id ? (
+                    <Link href={`/contacts/${a.contact_id}`} className="text-rose-400 hover:underline">
+                      {nameById.get(a.contact_id) ?? "Kontakt"}
+                    </Link>
+                  ) : (
+                    "ohne Kontakt"
+                  )}
+                  {" · "}
+                  {new Date(a.created_at).toLocaleDateString("de-DE")}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

@@ -26,12 +26,14 @@ const products: Product[] = [
       p.startsWith("/contacts") ||
       p.startsWith("/pipeline") ||
       p.startsWith("/queue") ||
+      p.startsWith("/cards") ||
       p.startsWith("/settings"),
     links: [
       { href: "/", label: "Dashboard" },
       { href: "/contacts", label: "Matchbox" },
       { href: "/pipeline", label: "Pipeline" },
       { href: "/queue", label: "Queue" },
+      { href: "/cards", label: "Karten" },
       { href: "/settings", label: "Einstellungen" },
     ],
   },
