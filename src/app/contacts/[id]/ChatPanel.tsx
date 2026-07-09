@@ -23,6 +23,42 @@ export function ChatPanel({
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState("")
   const [summarizing, setSummarizing] = useState(false)
+  const [autoResult, setAutoResult] = useState<{
+    variants: Record<string, string>
+    next_step?: string
+  } | null>(null)
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  // Nach Import automatisch Antwortvorschläge generieren — kein Extra-Klick.
+  async function autoReplies() {
+    setAutoLoading(true)
+    setAutoResult(null)
+    try {
+      const res = await fetch("/api/ai/replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactId,
+          situation: "Antworte passend auf die letzte Nachricht der Person.",
+          channel: "manual",
+          nowLocal: new Date().toString(),
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) setAutoResult(data)
+    } catch {
+      // optional — Import zählt, Generator bleibt als Fallback
+    } finally {
+      setAutoLoading(false)
+    }
+  }
+
+  async function copy(style: string, text: string) {
+    await navigator.clipboard.writeText(text)
+    setCopied(style)
+    setTimeout(() => setCopied(null), 1500)
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -154,6 +190,7 @@ export function ChatPanel({
                 setShowImport(false)
                 router.refresh()
                 if (!n) alert("Nichts importiert")
+                else autoReplies()
               })
             }
             disabled={pending || !importText.trim()}
@@ -161,6 +198,37 @@ export function ChatPanel({
           >
             Importieren
           </button>
+        </div>
+      )}
+
+      {autoLoading && (
+        <p className="mt-3 text-sm text-zinc-500">Generiere Antwortvorschläge zum Import…</p>
+      )}
+      {autoResult && (
+        <div className="mt-3 space-y-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+          <p className="text-xs font-semibold uppercase text-zinc-500">
+            Auto-Vorschläge zum Import
+          </p>
+          {autoResult.next_step && (
+            <p className="text-xs text-zinc-400">
+              <span className="text-zinc-200">Empfehlung:</span> {autoResult.next_step}
+            </p>
+          )}
+          {Object.entries(autoResult.variants).map(([style, t]) => (
+            <div key={style} className="flex items-start gap-2 rounded-lg border border-zinc-800 p-2">
+              <div className="flex-1">
+                <span className="text-xs font-semibold uppercase text-rose-400">{style}</span>
+                <p className="mt-0.5 text-sm text-zinc-200">{t}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => copy(style, t)}
+                className={btnGhostCls + " shrink-0"}
+              >
+                {copied === style ? "✓" : "Kopieren"}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </Card>

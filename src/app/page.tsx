@@ -2,6 +2,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { Card, StageBadge } from "@/components/ui"
 import { FollowupDone } from "@/components/FollowupDone"
+import { QuickReply } from "@/components/QuickReply"
 import type { Enums } from "@/lib/database.types"
 import { daysUntilBirthday } from "@/lib/moments"
 
@@ -79,6 +80,7 @@ export default async function Dashboard() {
                     {f.contacts?.name}
                   </Link>
                   <p className="text-zinc-400">{f.reason ?? "Nachfassen"}</p>
+                  <QuickReply contactId={f.contact_id} />
                 </div>
                 <FollowupDone id={f.id} />
               </li>
@@ -168,6 +170,7 @@ function ContactList({
           </Link>{" "}
           <StageBadge stage={c.pipeline_stage} />
           {c.next_step && <p className="text-zinc-400">{c.next_step}</p>}
+          <QuickReply contactId={c.id} />
         </li>
       ))}
       {!contacts.length && <li className="text-zinc-500">{empty}</li>}
