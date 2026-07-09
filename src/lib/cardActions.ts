@@ -55,3 +55,43 @@ export async function deleteCard(assetId: string) {
   if (error) throw new Error(error.message)
   revalidatePath("/cards")
 }
+
+/**
+ * Karte über Telegram versenden: legt einen Queue-Entwurf mit Bild + Text an.
+ * Der Worker sendet nach Freigabe das Kartenbild als Foto mit Begleittext.
+ */
+export async function queueCardTelegram(input: {
+  contactId: string
+  text: string
+  imageUrl: string | null
+}) {
+  const supabase = await db()
+  if (!input.contactId) throw new Error("Kein Kontakt")
+  const { error } = await supabase.from("suggestions").insert({
+    contact_id: input.contactId,
+    situation: "TCG-Karte",
+    variants: { karte: input.text || "Deine persönliche Karte 🃏" },
+    chosen_variant: "karte",
+    channel: "telegram",
+    status: "draft",
+    image_url: input.imageUrl,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath("/queue")
+}
+
+/** Versand einer Karte notieren (Kanal-Historie in der Galerie). */
+export async function logCardSend(input: {
+  assetId: string
+  contactId?: string | null
+  channel: string
+}) {
+  const supabase = await db()
+  const { error } = await supabase.from("asset_sends").insert({
+    asset_id: input.assetId,
+    contact_id: input.contactId ?? null,
+    channel: input.channel,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath("/cards")
+}

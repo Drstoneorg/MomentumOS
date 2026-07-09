@@ -1,9 +1,12 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { deleteCard } from "@/lib/cardActions"
+import { CardSend } from "./CardSend"
 import type { Tables } from "@/lib/database.types"
+
+type Channel = { channel: string; handle: string; is_primary?: boolean }
 
 type CardMeta = {
   card?: {
@@ -27,8 +30,26 @@ export function CardGallery({
   contacts: { id: string; name: string }[]
 }) {
   const [, start] = useTransition()
+  const [openSend, setOpenSend] = useState<string | null>(null)
+  const [channelsByContact, setChannelsByContact] = useState<Record<string, Channel[]>>({})
   const nameById = new Map(contacts.map((c) => [c.id, c.name]))
   if (!cards.length) return null
+
+  async function toggleSend(assetId: string, contactId: string | null) {
+    if (openSend === assetId) return setOpenSend(null)
+    setOpenSend(assetId)
+    if (contactId && !channelsByContact[contactId]) {
+      try {
+        const res = await fetch(`/api/cards/facts?contactId=${contactId}`)
+        const data = await res.json()
+        if (res.ok) {
+          setChannelsByContact((prev) => ({ ...prev, [contactId]: data.channels ?? [] }))
+        }
+      } catch {
+        // Kanäle optional — Teilen geht auch ohne
+      }
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -75,6 +96,23 @@ export function CardGallery({
                   {" · "}
                   {new Date(a.created_at).toLocaleDateString("de-DE")}
                 </p>
+
+                <button
+                  onClick={() => toggleSend(a.id, a.contact_id)}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+                >
+                  {openSend === a.id ? "Versenden schließen" : "📤 Versenden"}
+                </button>
+
+                {openSend === a.id && (
+                  <CardSend
+                    contactId={a.contact_id ?? ""}
+                    assetId={a.id}
+                    imageUrl={a.content || null}
+                    channels={a.contact_id ? (channelsByContact[a.contact_id] ?? []) : []}
+                    defaultText={`Hier deine persönliche Karte 🃏 ${c.title ?? a.title ?? ""}`}
+                  />
+                )}
               </div>
             </div>
           )
