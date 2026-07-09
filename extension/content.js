@@ -635,6 +635,86 @@
     }
   }, 2000)
 
+  // ---------- Instagram Activity-Tracker ----------
+  // Liest beim Browsen sichtbare Ereignisse: ungelesene DM-Threads (Inbox) und
+  // Notification-Einträge (Likes, Story-Reaktionen, Erwähnungen). Meldet sie an
+  // MatchOS → dort werden bekannte Kontakte zu fälligen Follow-ups mit ⚡-Antwort.
+  // Nur Lesen + Erinnern — gesendet wird nie automatisch.
+  function igCollectEvents() {
+    const events = []
+
+    // 1) DM-Inbox: ungelesene Threads. Heuristik: fetter Name in der linken Spalte
+    // (Instagram rendert ungelesene Threads mit font-weight >= 600) + Vorschautext.
+    if (location.pathname.startsWith("/direct")) {
+      const seenNames = new Set()
+      for (const el of document.querySelectorAll("span")) {
+        if (el.childElementCount) continue
+        const name = (el.textContent || "").trim()
+        if (name.length < 2 || name.length > 40 || /\d{1,2}\s?(min|std|h|d|w)/i.test(name)) continue
+        const fw = parseInt(getComputedStyle(el).fontWeight, 10) || 400
+        if (fw < 600) continue
+        const r = el.getBoundingClientRect()
+        if (r.width < 20 || r.left > window.innerWidth * 0.5) continue // nur Thread-Liste links
+        if (seenNames.has(name)) continue
+        seenNames.add(name)
+        // Vorschau: nächster nicht-fetter Text im selben Zeilen-Container
+        const row = el.closest('div[role="button"], a, li') || el.parentElement?.parentElement
+        let preview = ""
+        if (row) {
+          for (const s of row.querySelectorAll("span")) {
+            const t = (s.textContent || "").trim()
+            if (s !== el && t && t !== name && t.length > 2 && t.length < 150) {
+              preview = t
+              break
+            }
+          }
+        }
+        events.push({ kind: "dm", name, text: preview })
+        if (events.length >= 15) break
+      }
+    }
+
+    // 2) Notifications (Herz-Panel / /notifications): Zeilen wie
+    // "name gefällt dein Foto." / "name liked your story."
+    const notifRe =
+      /(gefällt|geliked|liked|hat auf deine story reagiert|reacted to your story|hat dich erwähnt|mentioned you)/i
+    for (const el of document.querySelectorAll("span, div")) {
+      if (el.childElementCount) continue
+      const t = (el.textContent || "").trim()
+      if (t.length < 8 || t.length > 200 || !notifRe.test(t)) continue
+      // Name = erstes Wort vor dem Verb (IG-Notifications beginnen mit dem Usernamen)
+      const name = t.split(/\s/)[0]
+      if (!name || name.length < 2 || name.length > 40) continue
+      const kind = /erwähnt|mentioned/i.test(t) ? "mention" : "like"
+      events.push({ kind, name, text: t.slice(0, 150) })
+      if (events.length >= 25) break
+    }
+
+    return events
+  }
+
+  let lastActivitySig = ""
+  async function igReportActivity() {
+    if (platform !== "instagram" || !autoScanOn || !extAlive()) return
+    const events = igCollectEvents()
+    if (!events.length) return
+    const sig = JSON.stringify(events.map((e) => e.kind + "|" + e.name))
+    if (sig === lastActivitySig) return // nichts Neues sichtbar
+    const { baseUrl, token } = await cfg()
+    if (!baseUrl || !token) return
+    try {
+      await fetch(`${baseUrl}/api/extension/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ events, platform }),
+      })
+      lastActivitySig = sig
+    } catch {
+      /* best effort — nächster Tick versucht's wieder */
+    }
+  }
+  if (platform === "instagram") setInterval(igReportActivity, 15000)
+
   // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
   try {
     chrome.runtime.onMessage.addListener((msg) => {
