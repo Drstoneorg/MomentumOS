@@ -1,5 +1,8 @@
 import { chatJSON } from "./deepseek"
 import { contextToPrompt, timeContext, type ContactContext } from "./context"
+import { stripDashes } from "@/lib/text"
+
+export { stripDashes }
 
 export type ReplyVariants = {
   variants: Record<string, string>
@@ -67,14 +70,3 @@ ${situation || "Schreibe die passende nächste Nachricht."}`
   return { cjk: null, ...parsed }
 }
 
-/**
- * Entfernt alle Binde-/Gedankenstriche aus einer Nachricht (Nutzer-Regel: nie Striche).
- * Satzzeichen-Striche werden zu Komma, Wort-Striche zu Leerzeichen verschmolzen.
- */
-export function stripDashes(text: string): string {
-  return text
-    .replace(/\s+[-–—]\s+/g, ", ") // " - " als Satzzeichen
-    .replace(/[-–—]/g, " ") // in Wörtern und Rest: Leerzeichen ("Kaffee-Date" -> "Kaffee Date")
-    .replace(/\s{2,}/g, " ")
-    .trim()
-}
