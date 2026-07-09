@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
 
-  const { contactId, idea } = await req.json()
+  const { contactId, idea, nowLocal } = await req.json()
   if (!idea?.trim()) {
     return NextResponse.json({ error: "Idee fehlt" }, { status: 400 })
   }
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (!ctx) return NextResponse.json({ error: "contact not found" }, { status: 404 })
 
   try {
-    const result = await rephraseInMyStyle(ctx, idea.trim())
+    const result = await rephraseInMyStyle(ctx, idea.trim(), nowLocal)
     return NextResponse.json(result)
   } catch (e) {
     return NextResponse.json(

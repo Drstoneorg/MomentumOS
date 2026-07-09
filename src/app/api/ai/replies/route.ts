@@ -10,12 +10,12 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
 
-  const { contactId, situation, channel } = await req.json()
+  const { contactId, situation, channel, nowLocal } = await req.json()
   const ctx = await loadContactContext(contactId)
   if (!ctx) return NextResponse.json({ error: "contact not found" }, { status: 404 })
 
   try {
-    const result = await generateReplies(ctx, situation ?? "")
+    const result = await generateReplies(ctx, situation ?? "", nowLocal)
     const { data: suggestion } = await supabase
       .from("suggestions")
       .insert({

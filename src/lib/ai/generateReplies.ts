@@ -1,5 +1,5 @@
 import { chatJSON } from "./deepseek"
-import { contextToPrompt, type ContactContext } from "./context"
+import { contextToPrompt, timeContext, type ContactContext } from "./context"
 
 export type ReplyVariants = {
   variants: Record<string, string>
@@ -19,7 +19,8 @@ const STYLES = ["locker", "charmant", "direkt", "witzig", "flirty", "höflich"]
 
 export async function generateReplies(
   ctx: ContactContext,
-  situation: string
+  situation: string,
+  nowLocal?: string
 ): Promise<ReplyVariants> {
   const lang = (ctx.contact.language ?? "de").toLowerCase()
   const isCJK = ["ja", "jp", "zh", "cn", "japanisch", "chinesisch"].some((l) =>
@@ -33,6 +34,8 @@ ${ctx.styleProfile}
 
 ## HARTE REGELN (gelten IMMER, brechen niemals — wichtiger als alles andere)
 ${ctx.styleRules}
+
+${timeContext(nowLocal)}
 
 Ziel des Gesamtgesprächs: ein echtes Treffen vereinbaren — aber nie aufdringlich. Lies soziale Signale: kurze Antworten, langsames Antworten oder Ausweichen bedeuten zurückhaltender sein. Grenzen respektieren. Kulturelle Unterschiede beachten.
 

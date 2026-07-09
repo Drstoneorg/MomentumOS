@@ -132,6 +132,28 @@ export async function loadContactContext(
   }
 }
 
+/**
+ * Zeit-Kontext für den Prompt. `nowLocal` ist die vom Browser gelieferte
+ * Ortszeit des Nutzers (Server läuft evtl. in UTC). Ohne Angabe Server-Zeit.
+ * Verhindert unpassende Begrüßungen ("guten morgen" um 23 Uhr).
+ */
+export function timeContext(nowLocal?: string): string {
+  const now = nowLocal ? new Date(nowLocal) : new Date()
+  const valid = !isNaN(now.getTime())
+  const d = valid ? now : new Date()
+  const h = d.getHours()
+  const tageszeit =
+    h < 5 ? "mitten in der Nacht" : h < 11 ? "Vormittag" : h < 14 ? "Mittag" : h < 18 ? "Nachmittag" : h < 22 ? "Abend" : "spät abends/Nacht"
+  const stamp = d.toLocaleString("de-DE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  return `Aktuelle Uhrzeit beim Nutzer: ${stamp} (${tageszeit}). Begrüßung/Bezug auf Tageszeit MUSS dazu passen — z. B. nachts oder abends niemals "guten morgen". Meist ist gar keine Tageszeit-Begrüßung nötig.`
+}
+
 export function contextToPrompt(ctx: ContactContext): string {
   const { contact, messages, memories, summary } = ctx
   const memBlock = memories

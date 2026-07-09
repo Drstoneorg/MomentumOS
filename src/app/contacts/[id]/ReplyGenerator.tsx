@@ -29,7 +29,7 @@ export function ReplyGenerator({
     const res = await fetch("/api/ai/replies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId, situation, channel }),
+      body: JSON.stringify({ contactId, situation, channel, nowLocal: new Date().toString() }),
     })
     setLoading(false)
     const data = await res.json()
@@ -61,7 +61,7 @@ export function ReplyGenerator({
     const res = await fetch("/api/ai/rephrase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId, idea }),
+      body: JSON.stringify({ contactId, idea, nowLocal: new Date().toString() }),
     })
     setIdeaLoading(false)
     const data = await res.json()
