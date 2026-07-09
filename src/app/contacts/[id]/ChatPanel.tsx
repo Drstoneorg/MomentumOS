@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { addMessage, importChat } from "@/lib/actions"
+import { addMessage, importChat, deleteMessage, clearMessages } from "@/lib/actions"
 import type { Tables } from "@/lib/database.types"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
 
@@ -52,16 +52,47 @@ export function ChatPanel({
 
   return (
     <Card title="Chatverlauf">
+      {messages.length > 0 && (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Alle ${messages.length} Nachrichten dieses Kontakts löschen? (Profil, Bio, Interessen bleiben erhalten.)`)) {
+                start(async () => {
+                  await clearMessages(contactId)
+                  router.refresh()
+                })
+              }
+            }}
+            className="text-xs text-zinc-600 hover:text-red-400"
+          >
+            Alle Nachrichten löschen
+          </button>
+        </div>
+      )}
       <div className="mb-3 flex max-h-96 flex-col gap-2 overflow-y-auto">
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
+            className={`group relative max-w-[80%] rounded-xl px-3 py-2 text-sm ${
               m.direction === "out"
                 ? "self-end bg-rose-900/50 text-rose-100"
                 : "self-start bg-zinc-800 text-zinc-200"
             }`}
           >
+            <button
+              type="button"
+              title="Nachricht löschen"
+              onClick={() =>
+                start(async () => {
+                  await deleteMessage(m.id, contactId)
+                  router.refresh()
+                })
+              }
+              className="absolute -right-2 -top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-200 hover:bg-red-600 group-hover:flex"
+            >
+              ✕
+            </button>
             {m.content}
             <div className="mt-1 text-[10px] text-zinc-500">
               {m.channel} · {new Date(m.sent_at).toLocaleString("de-DE")}

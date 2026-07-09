@@ -44,6 +44,20 @@ export async function deleteContact(id: string) {
   revalidatePath("/contacts")
 }
 
+export async function deleteMessage(id: string, contactId: string) {
+  const supabase = await db()
+  const { error } = await supabase.from("messages").delete().eq("id", id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/contacts/${contactId}`)
+}
+
+export async function clearMessages(contactId: string) {
+  const supabase = await db()
+  const { error } = await supabase.from("messages").delete().eq("contact_id", contactId)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/contacts/${contactId}`)
+}
+
 export async function addMessage(input: TablesInsert<"messages">) {
   const supabase = await db()
   const { error } = await supabase.from("messages").insert(input)
