@@ -47,6 +47,7 @@ const products: Product[] = [
       { href: "/moments", label: "Hub" },
       { href: "/moments/events", label: "Events" },
       { href: "/moments/meetups", label: "Meetups" },
+      { href: "/cards", label: "Karten" },
       { href: "/contacts", label: "Kontakte" },
     ],
   },

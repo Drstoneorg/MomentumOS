@@ -5,10 +5,11 @@ import type { Tables } from "@/lib/database.types"
  * überhaupt als Auswahl angeboten. Deterministisch — kein LLM entscheidet hier.
  *
  * ERLAUBT: Vorname, Interessen/Hobbies, positive Gedächtnis-Einträge
- * (likes, topic_works), Sprache/Kultur-Flair, abgeleiteter Match-Score als Spielwert.
+ * (likes, topic_works), Sprache/Kultur-Flair.
  *
  * GESPERRT (wird nie angeboten, egal was gewählt ist): bio, notes, photo_notes,
- * Wohnort/Entfernung, Alter, Beruf, Nachname, Chatnachrichten, memories der Arten
+ * Wohnort/Entfernung, Alter, Beruf, Nachname, Chatnachrichten, Match-Score
+ * (rein interner Wert, nie in Karten/KI/Bildern), memories der Arten
  * fact / dislikes / open_question / boundary (zu persönlich bzw. sensibel).
  */
 
@@ -16,15 +17,14 @@ export type CardFact = {
   id: string
   label: string
   value: string
-  source: "name" | "interest" | "memory" | "language" | "score"
+  source: "name" | "interest" | "memory" | "language"
 }
 
 const ALLOWED_MEMORY_KINDS = new Set(["likes", "topic_works"])
 
 export function cardSafeFacts(
   contact: Tables<"contacts">,
-  memories: Pick<Tables<"memories">, "id" | "kind" | "content">[],
-  matchScore?: number
+  memories: Pick<Tables<"memories">, "id" | "kind" | "content">[]
 ): CardFact[] {
   const facts: CardFact[] = []
 
@@ -54,15 +54,6 @@ export function cardSafeFacts(
   const lang = (contact.language ?? "").trim()
   if (lang && !lang.toLowerCase().startsWith("de")) {
     facts.push({ id: "language", label: "Sprache/Kultur-Flair", value: lang, source: "language" })
-  }
-
-  if (typeof matchScore === "number" && Number.isFinite(matchScore)) {
-    facts.push({
-      id: "score",
-      label: "Match-Score als Spielwert",
-      value: String(Math.round(matchScore)),
-      source: "score",
-    })
   }
 
   return facts

@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { cardSafeFacts } from "@/lib/ai/cardFacts"
 import { generateCardDetails } from "@/lib/ai/generateCard"
 import { editImage, generateImage, imageGenerationAvailable, ImageSafetyError } from "@/lib/ai/generateImage"
-import { datingScore, type ScoreMessage } from "@/lib/scoring"
 
 export const maxDuration = 120
 
@@ -33,20 +32,13 @@ export async function POST(req: Request) {
   if (!body.contactId) return NextResponse.json({ error: "contactId fehlt" }, { status: 400 })
 
   try {
-    const [{ data: contact }, { data: memories }, { data: messages }] = await Promise.all([
+    const [{ data: contact }, { data: memories }] = await Promise.all([
       supabase.from("contacts").select("*").eq("id", body.contactId).single(),
       supabase.from("memories").select("id, kind, content").eq("contact_id", body.contactId),
-      supabase
-        .from("messages")
-        .select("direction, sent_at, content")
-        .eq("contact_id", body.contactId)
-        .order("sent_at", { ascending: true })
-        .limit(200),
     ])
     if (!contact) return NextResponse.json({ error: "Kontakt nicht gefunden" }, { status: 404 })
 
-    const score = datingScore((messages ?? []) as ScoreMessage[], contact).score
-    const allFacts = cardSafeFacts(contact, memories ?? [], score)
+    const allFacts = cardSafeFacts(contact, memories ?? [])
     const chosen = body.factIds?.length
       ? allFacts.filter((f) => body.factIds!.includes(f.id))
       : allFacts

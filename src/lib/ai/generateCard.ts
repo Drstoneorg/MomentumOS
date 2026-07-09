@@ -24,7 +24,6 @@ export async function generateCardDetails(
   wishes?: string
 ): Promise<CardDetails> {
   const factLines = facts.map((f) => `- ${f.label}: ${f.value}`).join("\n")
-  const score = facts.find((f) => f.source === "score")
 
   const system = `Du bist Designer für ein Sammelkartenspiel (TCG). Du entwirfst EINE personalisierte Karte.
 
@@ -32,7 +31,7 @@ Regeln:
 - Nutze AUSSCHLIESSLICH die gelieferten Fakten. Erfinde keine persönlichen Details (kein Wohnort, Alter, Beruf, Aussehen, Beziehungsstatus).
 - Interessen/Hobbies werden zu Fähigkeiten, Effekten und Bildmotiven (z. B. Klettern = "Klettert auf gegnerische Karten", Sushi = "Heilt 200 LP").
 - image_prompt: illustrativ, Fantasy/Anime-Trading-Card-Art, KEINE reale oder identifizierbare Person, kein Portrait-Realismus. Motive aus den Interessen.
-- Werte: attack/defense 100-3000 in 100er-Schritten.${score ? ` Orientiere Stärke am Spielwert ${score.value} von 100 (hoch = stark, rarity entsprechend).` : ""}
+- Werte: attack/defense 100-3000 in 100er-Schritten, passend zu rarity.
 - Texte auf Deutsch, kurz und punchy. Keine Binde- oder Gedankenstriche.
 
 Antworte als JSON:
