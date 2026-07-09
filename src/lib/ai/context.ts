@@ -8,7 +8,13 @@ export type ContactContext = {
   memories: Tables<"memories">[]
   summary: string | null
   styleProfile: string
+  styleRules: string
 }
+
+// Harte Regeln, die IMMER gelten — zusätzlich zu den in den Einstellungen
+// gepflegten Regeln (settings-Key "user_style_rules").
+export const BASE_STYLE_RULES =
+  "Niemals Binde- oder Gedankenstriche verwenden (kein -, – oder —), weder als Satzzeichen noch in Wörtern — Wörter stattdessen zusammen oder getrennt schreiben. Keine Aufzählungszeichen. Klingt wie getippt, nicht wie generiert."
 
 const DEFAULT_STYLE =
   "Natürlich, direkt, leicht humorvoll, charmant. Nicht generisch, nicht übertrieben, nicht peinlich, nicht cringe. Kurze Nachrichten wie echte Chat-Nachrichten, keine Aufsätze."
@@ -19,7 +25,7 @@ export async function loadContactContext(
 ): Promise<ContactContext | null> {
   const supabase = client ?? (await createClient())
 
-  const [contactRes, messagesRes, memoriesRes, summaryRes, styleRes] =
+  const [contactRes, messagesRes, memoriesRes, summaryRes, styleRes, rulesRes] =
     await Promise.all([
       supabase.from("contacts").select("*").eq("id", contactId).single(),
       supabase
@@ -41,6 +47,11 @@ export async function loadContactContext(
         .select("value")
         .eq("key", "user_style_profile")
         .maybeSingle(),
+      supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "user_style_rules")
+        .maybeSingle(),
     ])
 
   if (contactRes.error || !contactRes.data) return null
@@ -51,12 +62,17 @@ export async function loadContactContext(
       ? styleValue
       : DEFAULT_STYLE
 
+  const rulesValue = rulesRes.data?.value
+  const userRules = typeof rulesValue === "string" ? rulesValue.trim() : ""
+  const styleRules = [BASE_STYLE_RULES, userRules].filter(Boolean).join("\n")
+
   return {
     contact: contactRes.data,
     messages: (messagesRes.data ?? []).reverse(),
     memories: memoriesRes.data ?? [],
     summary: summaryRes.data?.summary ?? null,
     styleProfile,
+    styleRules,
   }
 }
 

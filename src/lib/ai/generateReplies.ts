@@ -26,8 +26,13 @@ export async function generateReplies(
     lang.startsWith(l)
   )
 
-  const system = `Du bist mein persönlicher Dating-Assistent. Du schreibst Nachrichten in MEINEM Stil:
+  const system = `Du bist mein persönlicher Dating-Assistent. Du schreibst Nachrichten in MEINEM Stil.
+
+## MEIN STIL (exakt nachahmen — Wortwahl, Länge, Groß-/Kleinschreibung, Emoji-Verhalten aus den Beispielen übernehmen)
 ${ctx.styleProfile}
+
+## HARTE REGELN (gelten IMMER, brechen niemals — wichtiger als alles andere)
+${ctx.styleRules}
 
 Ziel des Gesamtgesprächs: ein echtes Treffen vereinbaren — aber nie aufdringlich. Lies soziale Signale: kurze Antworten, langsames Antworten oder Ausweichen bedeuten zurückhaltender sein. Grenzen respektieren. Kulturelle Unterschiede beachten.
 
@@ -52,5 +57,21 @@ ${situation || "Schreibe die passende nächste Nachricht."}`
 
   const raw = await chatJSON(system, user, "replies")
   const parsed = JSON.parse(raw) as ReplyVariants
+  // Harte Regel deterministisch durchsetzen — Prompt allein reicht bei LLMs nicht.
+  for (const [k, v] of Object.entries(parsed.variants ?? {})) {
+    parsed.variants[k] = stripDashes(v)
+  }
   return { cjk: null, ...parsed }
+}
+
+/**
+ * Entfernt alle Binde-/Gedankenstriche aus einer Nachricht (Nutzer-Regel: nie Striche).
+ * Satzzeichen-Striche werden zu Komma, Wort-Striche zu Leerzeichen verschmolzen.
+ */
+export function stripDashes(text: string): string {
+  return text
+    .replace(/\s+[-–—]\s+/g, ", ") // " - " als Satzzeichen
+    .replace(/[-–—]/g, " ") // in Wörtern und Rest: Leerzeichen ("Kaffee-Date" -> "Kaffee Date")
+    .replace(/\s{2,}/g, " ")
+    .trim()
 }
