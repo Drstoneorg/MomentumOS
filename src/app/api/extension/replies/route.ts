@@ -19,14 +19,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
 
-  const { contactId, situation, nowLocal } = await req.json()
+  const { contactId, situation, liveChat, nowLocal } = await req.json()
   const ctx = await loadContactContext(contactId, supabase)
   if (!ctx) {
     return NextResponse.json({ error: "contact not found" }, { status: 404, headers: cors })
   }
 
   try {
-    const result = await generateReplies(ctx, situation ?? "", nowLocal)
+    // Live-Chat aus dem Browser-DOM hat Vorrang vor evtl. veraltetem DB-Stand:
+    // die KI soll immer auf die tatsächlich letzte Nachricht der Person antworten.
+    const parts = [situation]
+    if (typeof liveChat === "string" && liveChat.trim()) {
+      parts.push(
+        `Aktueller Chat-Ausschnitt direkt aus dem Browser ([me]=ich, [them]=Person):\n${liveChat
+          .trim()
+          .slice(0, 1500)}\nAntworte auf die letzte [them]-Nachricht.`
+      )
+    }
+    const result = await generateReplies(ctx, parts.filter(Boolean).join("\n\n"), nowLocal)
     return NextResponse.json(result, { headers: cors })
   } catch (e) {
     return NextResponse.json(
