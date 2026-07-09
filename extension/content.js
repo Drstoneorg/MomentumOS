@@ -255,6 +255,10 @@
   // plattformübergreifend (Tinder, WhatsApp, Instagram, Telegram, TikTok, …).
   // Ergebnis: annotierte Zeilen [me]/[them], damit die KI den Verlauf sicher erkennt.
   function chatAnnotatedText() {
+    // Nur echte Chat-Ansichten haben ein Nachrichten-Eingabefeld. Profilkarten
+    // (Swipe-Ansicht) nicht — dort keinen "Chatverlauf" erfinden, sonst landen
+    // Profilinfos als Nachrichten in der DB.
+    if (!findComposer()) return ""
     const scope = document.querySelector("main") || document.body
     const box = scope.getBoundingClientRect()
     if (box.width < 120) return ""
@@ -291,6 +295,11 @@
       last = line
       lines.push(line)
     }
+    // Plausibilitäts-Check: viele Zeilen, alle aus einer Richtung = vermutlich
+    // Profil-/Infotext (z. B. Tinder-Profilpanel neben dem Chat), kein Verlauf.
+    const meCount = lines.filter((l) => l.startsWith("[me]")).length
+    if (lines.length > 12 && (meCount === 0 || meCount === lines.length)) return ""
+
     return lines.slice(-60).join("\n").slice(0, 6000)
   }
 
