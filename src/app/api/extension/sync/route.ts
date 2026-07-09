@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
 
-  const { raw, platform, externalId } = await req.json()
+  const { raw, platform, externalId, nowLocal } = await req.json()
   if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
     return NextResponse.json({ error: "Kein Text" }, { status: 400, headers: cors })
   }
@@ -160,7 +160,8 @@ export async function POST(req: Request) {
             if (!openDraft) {
               autoDraft = await generateReplies(
                 ctx,
-                "Antworte passend auf die letzte Nachricht der Person."
+                "Antworte passend auf die letzte Nachricht der Person.",
+                nowLocal
               )
               await supabase.from("suggestions").insert({
                 contact_id: contactId,

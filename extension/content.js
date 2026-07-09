@@ -351,7 +351,7 @@
       const res = await fetch(`${baseUrl}/api/extension/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ raw: scanRaw(), platform }),
+        body: JSON.stringify({ raw: scanRaw(), platform, nowLocal: new Date().toString() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
@@ -403,7 +403,7 @@
       const res = await fetch(`${baseUrl}/api/extension/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ contactId, situation: situation || undefined }),
+        body: JSON.stringify({ contactId, situation: situation || undefined, nowLocal: new Date().toString() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
@@ -424,7 +424,7 @@
       const res = await fetch(`${baseUrl}/api/extension/rephrase`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ contactId, idea }),
+        body: JSON.stringify({ contactId, idea, nowLocal: new Date().toString() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)

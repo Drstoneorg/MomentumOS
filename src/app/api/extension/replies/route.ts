@@ -19,14 +19,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
 
-  const { contactId, situation } = await req.json()
+  const { contactId, situation, nowLocal } = await req.json()
   const ctx = await loadContactContext(contactId, supabase)
   if (!ctx) {
     return NextResponse.json({ error: "contact not found" }, { status: 404, headers: cors })
   }
 
   try {
-    const result = await generateReplies(ctx, situation ?? "")
+    const result = await generateReplies(ctx, situation ?? "", nowLocal)
     return NextResponse.json(result, { headers: cors })
   } catch (e) {
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import { chatJSON } from "./deepseek"
-import { contextToPrompt, type ContactContext } from "./context"
+import { contextToPrompt, timeContext, type ContactContext } from "./context"
 import { stripDashes } from "./generateReplies"
 
 export type RephraseResult = {
@@ -12,7 +12,8 @@ export type RephraseResult = {
  */
 export async function rephraseInMyStyle(
   ctx: ContactContext,
-  idea: string
+  idea: string,
+  nowLocal?: string
 ): Promise<RephraseResult> {
   const system = `Du formulierst MEINE grobe Nachrichten-Idee in MEINEM Stil aus. Du bist Ghostwriter, kein Autor: Inhalt und Aussage bleiben exakt meine — nichts dazuerfinden, nichts weglassen, keine neuen Themen oder Fragen ergänzen.
 
@@ -21,6 +22,8 @@ ${ctx.styleProfile}
 
 ## HARTE REGELN (gelten IMMER, brechen niemals)
 ${ctx.styleRules}
+
+${timeContext(nowLocal)}
 
 Antworte als JSON:
 {
