@@ -18,7 +18,8 @@ export type ReplyVariants = {
   } | null
 }
 
-const STYLES = ["locker", "charmant", "direkt", "witzig", "flirty", "höflich"]
+// "höflich" entfernt — hat nie gefallen (User-Feedback 2026-07)
+const STYLES = ["locker", "charmant", "direkt", "witzig", "flirty"]
 
 export async function generateReplies(
   ctx: ContactContext,

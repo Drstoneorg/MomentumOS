@@ -89,6 +89,9 @@ export async function POST(req: Request) {
           card: details,
           template_id: body.templateId ?? null,
           facts_used: chosen.map((f) => `${f.label}: ${f.value}`),
+          // Für Re-Roll mit gleichen Einstellungen
+          fact_ids: chosen.map((f) => f.id),
+          wishes: body.wishes ?? null,
         },
       })
       .select("id")

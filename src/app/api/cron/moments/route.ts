@@ -60,7 +60,8 @@ export async function GET(req: Request) {
         .limit(1)
         .maybeSingle()
 
-      if (tg?.handle && !openDraft) {
+      // Entwurf auch ohne Telegram-Handle: dann channel=manual, du kopierst/sendest selbst.
+      if (!openDraft) {
         try {
           const msg = await generateMomentMessages({
             kind: "birthday",
@@ -93,18 +94,22 @@ export async function GET(req: Request) {
             }
           }
 
-          const autoSendAt = c.auto_mode
+          // Auto-Senden nur mit Telegram-Handle; sonst manueller Entwurf zum Kopieren.
+          const viaTelegram = !!tg?.handle
+          const autoSendAt = viaTelegram && c.auto_mode
             ? new Date(Date.now() + VETO_MINUTES * 60_000).toISOString()
             : null
 
           await supabase.from("suggestions").insert({
             contact_id: c.id,
-            situation: c.auto_mode
+            situation: autoSendAt
               ? `🎂 Auto-Geburtstagsgruß — sendet in ${VETO_MINUTES} Min (Veto in Queue)`
-              : "🎂 Geburtstagsgruß — in Queue freigeben",
+              : viaTelegram
+                ? "🎂 Geburtstagsgruß — in Queue freigeben"
+                : "🎂 Geburtstagsgruß — kopieren und selbst senden (kein Telegram-Handle)",
             variants: msg.variants,
             chosen_variant: Object.keys(msg.variants)[0] ?? null,
-            channel: "telegram",
+            channel: viaTelegram ? "telegram" : "manual",
             status: "draft",
             auto_send_at: autoSendAt,
             image_url: imageUrl,

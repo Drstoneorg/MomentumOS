@@ -9,10 +9,13 @@ import type { ReplyVariants } from "@/lib/ai/generateReplies"
  */
 export function QuickReply({ contactId }: { contactId: string }) {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ReplyVariants | null>(null)
+  const [result, setResult] = useState<(ReplyVariants & { suggestionId?: string }) | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  // sent: style → "ok" | Fehlertext
+  const [sent, setSent] = useState<Record<string, string>>({})
+  const [sending, setSending] = useState<string | null>(null)
 
   async function generate() {
     if (result) return setOpen(!open)
@@ -46,6 +49,26 @@ export function QuickReply({ contactId }: { contactId: string }) {
     setTimeout(() => setCopied(null), 1500)
   }
 
+  // Telegram-Versand über Queue+Worker — geht nur, wenn Kontakt Telegram-Handle hat.
+  // Dating-Apps haben keine Sende-API: dort Kopieren oder Extension-Einfügen.
+  async function sendTelegram(style: string) {
+    if (!result?.suggestionId) return
+    setSending(style)
+    try {
+      const res = await fetch("/api/queue/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ suggestionId: result.suggestionId, style }),
+      })
+      const data = await res.json()
+      setSent((p) => ({ ...p, [style]: res.ok ? "ok" : data.error ?? "Fehler" }))
+    } catch {
+      setSent((p) => ({ ...p, [style]: "Netzwerkfehler" }))
+    } finally {
+      setSending(null)
+    }
+  }
+
   return (
     <div className="inline-block w-full">
       <button
@@ -70,12 +93,25 @@ export function QuickReply({ contactId }: { contactId: string }) {
                 <span className="text-[10px] font-semibold uppercase text-rose-400">{style}</span>
                 <p className="text-xs text-zinc-200">{text}</p>
               </div>
-              <button
-                onClick={() => copy(style, text)}
-                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
-              >
-                {copied === style ? "✓" : "Kopieren"}
-              </button>
+              <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  onClick={() => copy(style, text)}
+                  className="rounded border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
+                >
+                  {copied === style ? "✓" : "Kopieren"}
+                </button>
+                <button
+                  onClick={() => sendTelegram(style)}
+                  disabled={sending === style || sent[style] === "ok"}
+                  title="Als Telegram-Nachricht freigeben — Worker sendet"
+                  className="rounded border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
+                >
+                  {sending === style ? "…" : sent[style] === "ok" ? "✓ sendet" : "📤 Telegram"}
+                </button>
+                {sent[style] && sent[style] !== "ok" && (
+                  <span className="max-w-40 text-[10px] text-amber-400">{sent[style]}</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
