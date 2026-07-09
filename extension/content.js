@@ -250,6 +250,61 @@
     return main.innerText.replace(/\n{3,}/g, "\n\n").slice(0, 6000)
   }
 
+  // Liest Chat-Nachrichten aus dem DOM und erkennt die Richtung über die horizontale
+  // Ausrichtung: eigene Nachrichten sind rechts ausgerichtet, fremde links — das gilt
+  // plattformübergreifend (Tinder, WhatsApp, Instagram, Telegram, TikTok, …).
+  // Ergebnis: annotierte Zeilen [me]/[them], damit die KI den Verlauf sicher erkennt.
+  function chatAnnotatedText() {
+    const scope = document.querySelector("main") || document.body
+    const box = scope.getBoundingClientRect()
+    if (box.width < 120) return ""
+    const midX = box.left + box.width / 2
+    const topCut = window.innerHeight * 0.15 // Kopfzeile/Navigation ignorieren
+
+    // Innerste Textknoten = einzelne Bubble-Texte (Blattelemente mit Text).
+    const leaves = [...scope.querySelectorAll("*")].filter((el) => {
+      if (el.childElementCount !== 0) return false
+      const t = (el.textContent || "").trim()
+      if (t.length < 1 || t.length > 800) return false
+      const r = el.getBoundingClientRect()
+      return r.width >= 24 && r.height >= 8 && r.top >= topCut && r.width < box.width * 0.95
+    })
+
+    const rows = leaves
+      .map((el) => {
+        const r = el.getBoundingClientRect()
+        const center = r.left + r.width / 2
+        // Deutliche Rechts-/Linkslage; Mitte (Systemtext/Datum) markieren wir neutral.
+        const off = (center - midX) / box.width
+        const dir = off > 0.08 ? "me" : off < -0.08 ? "them" : "sys"
+        return { top: Math.round(r.top), dir, text: el.textContent.trim() }
+      })
+      .sort((a, b) => a.top - b.top)
+
+    // Aufeinanderfolgende Duplikate/Systemzeilen ausdünnen.
+    const lines = []
+    let last = ""
+    for (const m of rows) {
+      if (m.dir === "sys") continue
+      const line = `[${m.dir}] ${m.text}`
+      if (line === last) continue
+      last = line
+      lines.push(line)
+    }
+    return lines.slice(-60).join("\n").slice(0, 6000)
+  }
+
+  // Baut die Sync-Nutzlast: annotierter Chatverlauf (mit Richtung) + Seitentext als Kontext.
+  function scanRaw() {
+    const chat = chatAnnotatedText()
+    const page = visibleText()
+    if (!chat) return page
+    return `--- CHATVERLAUF (Richtung erkannt: [me]=ich, [them]=Person) ---\n${chat}\n\n--- WEITERER SEITENTEXT ---\n${page}`.slice(
+      0,
+      12000
+    )
+  }
+
   // Nach Extension-Reload/-Update ist der Kontext dieser (alten) Instanz ungültig.
   // chrome.runtime.id wird dann undefined; APIs werfen "Extension context invalidated".
   function extAlive() {
@@ -287,7 +342,7 @@
       const res = await fetch(`${baseUrl}/api/extension/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ raw: visibleText(), platform }),
+        body: JSON.stringify({ raw: scanRaw(), platform }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
