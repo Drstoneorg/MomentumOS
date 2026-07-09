@@ -250,12 +250,33 @@
     return main.innerText.replace(/\n{3,}/g, "\n\n").slice(0, 6000)
   }
 
+  // Nach Extension-Reload/-Update ist der Kontext dieser (alten) Instanz ungültig.
+  // chrome.runtime.id wird dann undefined; APIs werfen "Extension context invalidated".
+  function extAlive() {
+    try {
+      return !!(chrome.runtime && chrome.runtime.id)
+    } catch {
+      return false
+    }
+  }
+
   async function cfg() {
-    return new Promise((r) => chrome.storage.sync.get(["baseUrl", "token"], r))
+    if (!extAlive()) return {}
+    return new Promise((r) => {
+      try {
+        chrome.storage.sync.get(["baseUrl", "token"], (v) => r(v || {}))
+      } catch {
+        r({})
+      }
+    })
   }
 
   async function scan() {
     const out = panel.querySelector("#mox-out")
+    if (!extAlive()) {
+      out.innerHTML = `<p class="mox-err">Extension wurde aktualisiert — Seite neu laden (F5), dann geht's wieder.</p>`
+      return
+    }
     const { baseUrl, token } = await cfg()
     if (!baseUrl || !token) {
       out.innerHTML = `<p class="mox-err">Erst URL + Token im Extension-Popup speichern.</p>`
@@ -401,7 +422,8 @@
   }
 
   // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
-  chrome.runtime.onMessage.addListener((msg) => {
+  try {
+    chrome.runtime.onMessage.addListener((msg) => {
     if (msg && msg.type === "matchos-toggle") {
       // Alt+M: Panel auf/zu
       panel.hidden = !panel.hidden
@@ -420,5 +442,8 @@
     } else {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(msg.error || "unbekannt")}</p>`
     }
-  })
+    })
+  } catch {
+    // Kontext bereits ungültig (alte Instanz nach Reload) — Listener nicht registrierbar.
+  }
 })()
