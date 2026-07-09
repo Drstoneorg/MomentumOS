@@ -17,6 +17,11 @@ export function ReplyGenerator({
   const [result, setResult] = useState<(ReplyVariants & { suggestionId?: string }) | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [rated, setRated] = useState<Record<string, 1 | -1>>({})
+  const [idea, setIdea] = useState("")
+  const [ideaLoading, setIdeaLoading] = useState(false)
+  const [ideaResult, setIdeaResult] = useState<Record<string, string> | null>(null)
+  const [ideaError, setIdeaError] = useState<string | null>(null)
 
   async function generate() {
     setLoading(true)
@@ -39,6 +44,32 @@ export function ReplyGenerator({
     await navigator.clipboard.writeText(text)
     setCopied(style)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  async function rate(style: string, text: string, rating: 1 | -1) {
+    setRated((r) => ({ ...r, [style]: rating }))
+    await fetch("/api/ai/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId, style, text, rating }),
+    })
+  }
+
+  async function rephrase() {
+    setIdeaLoading(true)
+    setIdeaError(null)
+    const res = await fetch("/api/ai/rephrase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId, idea }),
+    })
+    setIdeaLoading(false)
+    const data = await res.json()
+    if (!res.ok) {
+      setIdeaError(data.error ?? "Fehler")
+      return
+    }
+    setIdeaResult(data.variants)
   }
 
   return (
@@ -84,9 +115,25 @@ export function ReplyGenerator({
                   <span className="text-xs font-semibold uppercase text-rose-400">{style}</span>
                   <p className="mt-1 text-sm text-zinc-200">{text}</p>
                 </div>
-                <button onClick={() => copy(style, text)} className={btnGhostCls + " shrink-0"}>
-                  {copied === style ? "✓" : "Kopieren"}
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => rate(style, text, 1)}
+                    title="Übernommen — mehr davon"
+                    className={`rounded px-1.5 py-0.5 text-sm ${rated[style] === 1 ? "bg-emerald-900/60" : "opacity-50 hover:opacity-100"}`}
+                  >
+                    👍
+                  </button>
+                  <button
+                    onClick={() => rate(style, text, -1)}
+                    title="Klingt nicht nach mir"
+                    className={`rounded px-1.5 py-0.5 text-sm ${rated[style] === -1 ? "bg-rose-900/60" : "opacity-50 hover:opacity-100"}`}
+                  >
+                    👎
+                  </button>
+                  <button onClick={() => copy(style, text)} className={btnGhostCls}>
+                    {copied === style ? "✓" : "Kopieren"}
+                  </button>
+                </div>
               </div>
             ))}
 
@@ -108,6 +155,60 @@ export function ReplyGenerator({
             )}
           </div>
         )}
+        <div className="space-y-2 rounded-lg border border-zinc-800 p-3">
+          <p className="text-xs font-semibold uppercase text-zinc-500">
+            Wie ich es sagen würde
+          </p>
+          <p className="text-xs text-zinc-500">
+            Grobe Idee tippen — die KI formuliert sie NUR in deinem Stil aus,
+            erfindet nichts dazu.
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              placeholder="z. B. 'frag ob sie samstag zeit hat, kaffee, entspannt'"
+              className={inputCls}
+            />
+            <button
+              onClick={rephrase}
+              disabled={ideaLoading || !idea.trim()}
+              className={btnCls + " whitespace-nowrap"}
+            >
+              {ideaLoading ? "Formuliere…" : "In meinem Stil"}
+            </button>
+          </div>
+          {ideaError && <p className="text-sm text-red-400">{ideaError}</p>}
+          {ideaResult &&
+            Object.entries(ideaResult).map(([style, text]) => (
+              <div key={style} className="flex items-start gap-2 rounded-lg border border-zinc-800 p-3">
+                <div className="flex-1">
+                  <span className="text-xs font-semibold uppercase text-sky-400">
+                    {style.replace(/_/g, " ")}
+                  </span>
+                  <p className="mt-1 text-sm text-zinc-200">{text}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => rate(`idea:${style}`, text, 1)}
+                    className={`rounded px-1.5 py-0.5 text-sm ${rated[`idea:${style}`] === 1 ? "bg-emerald-900/60" : "opacity-50 hover:opacity-100"}`}
+                  >
+                    👍
+                  </button>
+                  <button
+                    onClick={() => rate(`idea:${style}`, text, -1)}
+                    className={`rounded px-1.5 py-0.5 text-sm ${rated[`idea:${style}`] === -1 ? "bg-rose-900/60" : "opacity-50 hover:opacity-100"}`}
+                  >
+                    👎
+                  </button>
+                  <button onClick={() => copy(`idea:${style}`, text)} className={btnGhostCls}>
+                    {copied === `idea:${style}` ? "✓" : "Kopieren"}
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+
         {language !== "de" && language !== "en" && !result && (
           <p className="text-xs text-zinc-500">
             Sprache „{language}“: Generator liefert Original + Übersetzung + Umschrift + Kultur-Hinweis.

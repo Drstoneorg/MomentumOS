@@ -614,6 +614,44 @@ export type Database = {
         }
         Relationships: []
       }
+      reply_feedback: {
+        Row: {
+          contact_id: string | null
+          content: string
+          created_at: string
+          id: string
+          rating: number
+          source: string
+          style: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          rating: number
+          source?: string
+          style?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          source?: string
+          style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reply_feedback_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           key: string

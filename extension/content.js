@@ -360,6 +360,10 @@
             .map((c) => `<button class="mox-copy mox-chip" data-c="${c}">${c}</button>`)
             .join("")}
         </div>
+        <div class="mox-idea-row">
+          <input class="mox-input" id="mox-idea" placeholder="Wie ich's sagen würde: grobe Idee tippen, KI formuliert nur aus" />
+          <button class="mox-copy mox-chip" id="mox-idea-go">In meinem Stil</button>
+        </div>
         <a class="mox-link" href="${baseUrl}/contacts/${data.contactId}" target="_blank">In MatchOS öffnen ↗</a>
         <div id="mox-replies-out"></div>`
       const situationOf = () => out.querySelector("#mox-situation").value.trim()
@@ -371,7 +375,12 @@
           replies(data.contactId, [situationOf(), `Antwort bitte: ${b.dataset.c}`].filter(Boolean).join(". "))
         )
       )
-      if (data.autoDraft) renderVariants(out.querySelector("#mox-replies-out"), data.autoDraft)
+      out.querySelector("#mox-idea-go").addEventListener("click", () => rephrase(data.contactId))
+      out.querySelector("#mox-idea").addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") rephrase(data.contactId)
+      })
+      if (data.autoDraft)
+        renderVariants(out.querySelector("#mox-replies-out"), data.autoDraft, data.contactId)
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
@@ -389,9 +398,45 @@
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
-      renderVariants(out, data)
+      renderVariants(out, data, contactId)
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
+    }
+  }
+
+  // "Wie ich's sagen würde": grobe Idee wird nur im eigenen Stil ausformuliert
+  async function rephrase(contactId) {
+    const idea = (panel.querySelector("#mox-idea")?.value || "").trim()
+    const out = panel.querySelector("#mox-replies-out")
+    if (!idea) return
+    const { baseUrl, token } = await cfg()
+    out.innerHTML = `<p class="mox-hint">Formuliere…</p>`
+    try {
+      const res = await fetch(`${baseUrl}/api/extension/rephrase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ contactId, idea }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || res.status)
+      renderVariants(out, data, contactId)
+    } catch (e) {
+      out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
+    }
+  }
+
+  // Daumen hoch/runter: System lernt, welche Vorschläge übernommen werden
+  async function sendFeedback(contactId, style, text, rating) {
+    try {
+      const { baseUrl, token } = await cfg()
+      if (!baseUrl || !token) return
+      await fetch(`${baseUrl}/api/extension/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ contactId, style, text, rating }),
+      })
+    } catch {
+      /* Feedback ist best effort */
     }
   }
 
@@ -441,13 +486,15 @@
   // bei Misserfolg zeigt der Button "✗ Feld?" und Kopieren bleibt als Fallback.
   const canInsert = true
 
-  function renderVariants(out, data) {
+  function renderVariants(out, data, contactId) {
     const rows = Object.entries(data.variants || {})
       .map(
         ([style, text]) => `
       <div class="mox-variant">
-        <div><span class="mox-style">${esc(style)}</span><p>${esc(text)}</p></div>
+        <div><span class="mox-style">${esc(style.replace(/_/g, " "))}</span><p>${esc(text)}</p></div>
         <div class="mox-variant-actions">
+          <button class="mox-copy mox-rate" data-r="1" data-s="${esc(style)}" data-t="${esc(text)}">👍</button>
+          <button class="mox-copy mox-rate" data-r="-1" data-s="${esc(style)}" data-t="${esc(text)}">👎</button>
           ${canInsert ? `<button class="mox-copy mox-insert" data-t="${esc(text)}">↳ Einfügen</button>` : ""}
           <button class="mox-copy" data-t="${esc(text)}">Kopieren</button>
         </div>
@@ -460,7 +507,14 @@
         data.next_step_reason || ""
       )}</p>
       ${rows}`
-    out.querySelectorAll(".mox-copy:not(.mox-insert)").forEach((b) =>
+    out.querySelectorAll(".mox-rate").forEach((b) =>
+      b.addEventListener("click", () => {
+        sendFeedback(contactId, b.dataset.s, b.dataset.t, Number(b.dataset.r))
+        b.textContent = "✓"
+        b.disabled = true
+      })
+    )
+    out.querySelectorAll(".mox-copy:not(.mox-insert):not(.mox-rate)").forEach((b) =>
       b.addEventListener("click", async () => {
         await navigator.clipboard.writeText(b.dataset.t)
         b.textContent = "✓"

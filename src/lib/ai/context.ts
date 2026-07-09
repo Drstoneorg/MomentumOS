@@ -25,8 +25,16 @@ export async function loadContactContext(
 ): Promise<ContactContext | null> {
   const supabase = client ?? (await createClient())
 
-  const [contactRes, messagesRes, memoriesRes, summaryRes, styleRes, rulesRes] =
-    await Promise.all([
+  const [
+    contactRes,
+    messagesRes,
+    memoriesRes,
+    summaryRes,
+    styleRes,
+    rulesRes,
+    learnedRes,
+    feedbackRes,
+  ] = await Promise.all([
       supabase.from("contacts").select("*").eq("id", contactId).single(),
       supabase
         .from("messages")
@@ -52,15 +60,63 @@ export async function loadContactContext(
         .select("value")
         .eq("key", "user_style_rules")
         .maybeSingle(),
+      supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "learned_style")
+        .maybeSingle(),
+      supabase
+        .from("reply_feedback")
+        .select("content, rating")
+        .order("created_at", { ascending: false })
+        .limit(200),
     ])
 
   if (contactRes.error || !contactRes.data) return null
 
   const styleValue = styleRes.data?.value
-  const styleProfile =
-    typeof styleValue === "string" && styleValue.trim()
-      ? styleValue
-      : DEFAULT_STYLE
+  const manualStyle =
+    typeof styleValue === "string" && styleValue.trim() ? styleValue.trim() : ""
+
+  // Gelerntes Profil aus echten Nachrichten (settings-Key "learned_style",
+  // geschrieben von /api/ai/learn-style): { profile: string, examples: string[] }
+  const learnedValue = learnedRes.data?.value as
+    | { profile?: string; examples?: string[] }
+    | null
+  const learnedProfile =
+    typeof learnedValue?.profile === "string" ? learnedValue.profile.trim() : ""
+  const learnedExamples = Array.isArray(learnedValue?.examples)
+    ? learnedValue.examples.filter((e): e is string => typeof e === "string")
+    : []
+
+  // Daumen-Feedback: übernommene Vorschläge als Positiv-Beispiele,
+  // abgelehnte als Anti-Beispiele.
+  const feedback = feedbackRes.data ?? []
+  const liked = feedback.filter((f) => f.rating === 1).slice(0, 10)
+  const disliked = feedback.filter((f) => f.rating === -1).slice(0, 8)
+
+  const parts = [manualStyle || (learnedProfile ? "" : DEFAULT_STYLE)]
+  if (learnedProfile)
+    parts.push(`Aus meinen echten Nachrichten gelernt:\n${learnedProfile}`)
+  if (learnedExamples.length)
+    parts.push(
+      `Echte Beispielnachrichten von mir (Ton, Länge, Schreibweise exakt so treffen):\n${learnedExamples
+        .map((e) => `- ${e}`)
+        .join("\n")}`
+    )
+  if (liked.length)
+    parts.push(
+      `Vorschläge, die ich übernommen habe (so will ich klingen):\n${liked
+        .map((f) => `- ${f.content}`)
+        .join("\n")}`
+    )
+  if (disliked.length)
+    parts.push(
+      `Vorschläge, die ich abgelehnt habe (so NICHT klingen):\n${disliked
+        .map((f) => `- ${f.content}`)
+        .join("\n")}`
+    )
+  const styleProfile = parts.filter(Boolean).join("\n\n")
 
   const rulesValue = rulesRes.data?.value
   const userRules = typeof rulesValue === "string" ? rulesValue.trim() : ""
