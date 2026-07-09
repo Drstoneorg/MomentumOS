@@ -32,6 +32,7 @@ export default async function MomentsHub() {
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-bold">Moments</h1>
         <div className="ml-auto flex gap-2">
+          <Link href="/cards" className="rounded-lg border border-amber-700 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-950">🃏 TCG-Karten</Link>
           <Link href="/moments/archive" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Bild-Archiv</Link>
           <Link href="/moments/events" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Events</Link>
           <Link href="/moments/meetups" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Meetups</Link>

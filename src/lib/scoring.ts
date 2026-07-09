@@ -1,26 +1,29 @@
 import type { Enums } from "@/lib/database.types"
 
 /**
- * Match-Score (0–100) für Dating-Kontakte. Misst, wie „warm" ein Chat läuft —
- * unabhängig vom Verbindungs-Score aus moments.ts (der Freundschaftspflege misst).
+ * Match-Score (0-100) fuer Dating-Kontakte. Bewusst einfach, drei Fragen:
+ * antwortet die Person, wohnt sie in Wien, ist sie bereit fuer ein Treffen.
+ * Interner Score nur fuer mich, wird NIE in KI-Prompts, Karten oder
+ * Bild-Generierung verwendet.
  *
- * Rein, testbar, ohne DB. Braucht nur Nachrichten-Metadaten + Pipeline-Stage.
+ * Rein, testbar, ohne DB.
  */
 
 export type ScoreMessage = { direction: "in" | "out"; sent_at: string }
 
-const STAGE_ORDER: Enums<"pipeline_stage">[] = [
-  "new_match",
-  "first_message_pending",
-  "chatting",
-  "interest_visible",
-  "platform_switch",
-  "on_messenger",
+// Stages, die Treffen-Bereitschaft zeigen (volle Punkte),
+// bzw. sichtbares Interesse (halbe Punkte).
+const MEETING_READY: Enums<"pipeline_stage">[] = [
   "date_idea",
   "date_proposed",
   "scheduling",
   "date_planned",
   "calendar_created",
+]
+const INTEREST: Enums<"pipeline_stage">[] = [
+  "interest_visible",
+  "platform_switch",
+  "on_messenger",
 ]
 
 export type ScoreFactor = { key: string; label: string; value: number; weight: number; note: string }
@@ -35,93 +38,68 @@ export type MatchScore = {
 const DAY = 86_400_000
 
 /**
- * Gewichtete Faktoren:
- * - Momentum (30): Fortschritt in der Pipeline Richtung Date.
- * - Erwiderung (25): antwortet die Person überhaupt (Anteil eingehender Nachrichten).
- * - Aktualität (20): wie frisch die letzte Nachricht ist.
- * - Tempo (15): antwortet sie schnell nach deinen Nachrichten.
- * - Substanz (10): Chat-Umfang (Engagement, gedeckelt).
+ * Drei Faktoren:
+ * - Antwortet (50): schreibt die Person zurueck, und wie frisch ist die letzte Antwort.
+ * - Treffen-bereit (30): Pipeline-Stage Richtung Date (Interesse = halbe Punkte).
+ * - Wien (20): wohnt in Wien (Ort enthaelt "wien" oder "vienna").
  */
 export function datingScore(
   messages: ScoreMessage[],
-  contact: { pipeline_stage: Enums<"pipeline_stage">; archived?: boolean },
+  contact: {
+    pipeline_stage: Enums<"pipeline_stage">
+    archived?: boolean
+    location?: string | null
+  },
   now = Date.now()
 ): MatchScore {
   const factors: ScoreFactor[] = []
 
-  // Momentum
-  const stageIdx = STAGE_ORDER.indexOf(contact.pipeline_stage)
-  const momentum = stageIdx < 0 ? 0 : stageIdx / (STAGE_ORDER.length - 1)
-  factors.push({
-    key: "momentum",
-    label: "Momentum",
-    value: momentum,
-    weight: 30,
-    note: `Stufe ${Math.max(stageIdx, 0) + 1}/${STAGE_ORDER.length}`,
-  })
-
-  const inbound = messages.filter((m) => m.direction === "in").length
-  const outbound = messages.filter((m) => m.direction === "out").length
-  const total = inbound + outbound
-
-  // Erwiderung: Anteil eingehender Nachrichten. ~50 % ist ideal (Balance).
-  // Score fällt, wenn du fast nur sendest (Person antwortet kaum).
-  const inboundShare = total ? inbound / total : 0
-  const reciprocity = total === 0 ? 0 : Math.min(1, inboundShare / 0.5)
-  factors.push({
-    key: "reciprocity",
-    label: "Erwiderung",
-    value: reciprocity,
-    weight: 25,
-    note: total ? `${inbound}↓ / ${outbound}↑` : "keine Nachrichten",
-  })
-
-  // Aktualität: Tage seit letzter Nachricht (egal welche Richtung).
-  const lastAt = messages.reduce<number>((max, m) => {
+  // Antwortet: gibt es eingehende Nachrichten, und wie lange ist die letzte her?
+  const inbound = messages.filter((m) => m.direction === "in")
+  const lastInAt = inbound.reduce<number>((max, m) => {
     const t = new Date(m.sent_at).getTime()
     return isNaN(t) ? max : Math.max(max, t)
   }, 0)
-  const daysSince = lastAt ? Math.floor((now - lastAt) / DAY) : null
-  // 0 Tage = 1.0, linear auf 0 bei 14 Tagen.
-  const recency = daysSince === null ? 0 : Math.max(0, 1 - daysSince / 14)
+  const daysSinceReply = lastInAt ? Math.floor((now - lastInAt) / DAY) : null
+  // Antwort heute/gestern = 1.0, linear auf 0 bei 14 Tagen Funkstille.
+  const answers =
+    daysSinceReply === null ? 0 : Math.max(0, 1 - daysSinceReply / 14)
   factors.push({
-    key: "recency",
-    label: "Aktualität",
-    value: recency,
+    key: "answers",
+    label: "Antwortet",
+    value: answers,
+    weight: 50,
+    note:
+      daysSinceReply === null
+        ? "noch keine Antwort"
+        : daysSinceReply === 0
+          ? "heute geantwortet"
+          : `letzte Antwort vor ${daysSinceReply}d`,
+  })
+
+  // Treffen-bereit: Pipeline-Stage.
+  const ready = MEETING_READY.includes(contact.pipeline_stage)
+    ? 1
+    : INTEREST.includes(contact.pipeline_stage)
+      ? 0.5
+      : 0
+  factors.push({
+    key: "meeting",
+    label: "Treffen-bereit",
+    value: ready,
+    weight: 30,
+    note: ready === 1 ? "Date-Phase" : ready === 0.5 ? "Interesse sichtbar" : "noch nicht",
+  })
+
+  // Wien: wohnt die Person in Wien?
+  const loc = (contact.location ?? "").toLowerCase()
+  const inVienna = loc.includes("wien") || loc.includes("vienna")
+  factors.push({
+    key: "vienna",
+    label: "In Wien",
+    value: inVienna ? 1 : 0,
     weight: 20,
-    note: daysSince === null ? "—" : daysSince === 0 ? "heute" : `vor ${daysSince}d`,
-  })
-
-  // Tempo: mittlere Antwortzeit der Person auf deine Nachrichten (in→nach out).
-  const sorted = [...messages]
-    .map((m) => ({ dir: m.direction, t: new Date(m.sent_at).getTime() }))
-    .filter((m) => !isNaN(m.t))
-    .sort((a, b) => a.t - b.t)
-  const gaps: number[] = []
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i - 1].dir === "out" && sorted[i].dir === "in") {
-      gaps.push(sorted[i].t - sorted[i - 1].t)
-    }
-  }
-  const avgReplyH = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length / 3_600_000 : null
-  // < 1 h = 1.0, linear auf 0 bei 48 h.
-  const tempo = avgReplyH === null ? 0 : Math.max(0, Math.min(1, 1 - (avgReplyH - 1) / 47))
-  factors.push({
-    key: "tempo",
-    label: "Antworttempo",
-    value: tempo,
-    weight: 15,
-    note: avgReplyH === null ? "—" : avgReplyH < 1 ? "< 1 h" : `~${Math.round(avgReplyH)} h`,
-  })
-
-  // Substanz: Chat-Umfang, gedeckelt bei 20 Nachrichten.
-  const volume = Math.min(1, total / 20)
-  factors.push({
-    key: "volume",
-    label: "Substanz",
-    value: volume,
-    weight: 10,
-    note: `${total} Nachrichten`,
+    note: contact.location ? contact.location : "Ort unbekannt",
   })
 
   let raw = factors.reduce((sum, f) => sum + f.value * f.weight, 0)

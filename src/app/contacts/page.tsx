@@ -41,7 +41,10 @@ export default async function ContactsPage({
       byContact.set(m.contact_id, arr)
     }
     for (const c of contacts ?? []) {
-      scores[c.id] = datingScore(byContact.get(c.id) ?? [], { pipeline_stage: c.pipeline_stage })
+      scores[c.id] = datingScore(byContact.get(c.id) ?? [], {
+        pipeline_stage: c.pipeline_stage,
+        location: c.location,
+      })
     }
   }
 

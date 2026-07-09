@@ -49,7 +49,7 @@ export default async function ContactPage({
 
   const matchScore = datingScore(
     (messagesRes.data ?? []).map((m) => ({ direction: m.direction, sent_at: m.sent_at }) as ScoreMessage),
-    { pipeline_stage: contact.pipeline_stage }
+    { pipeline_stage: contact.pipeline_stage, location: contact.location }
   )
 
   const timeline: TimelineItem[] = [
