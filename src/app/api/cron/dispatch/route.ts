@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { OFFER_TTL_SECONDS, DISPATCH_RADIUS_LIMIT } from "@/lib/bookos"
 import { sendPushToAll } from "@/lib/push"
+import { beatCron } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 60
 
@@ -26,6 +27,7 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient()
+  await beatCron(supabase, "dispatch")
   const nowIso = new Date().toISOString()
 
   // 1. Abgelaufene, noch offene Offers schließen.

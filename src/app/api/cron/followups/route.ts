@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { loadContactContext } from "@/lib/ai/context"
 import { generateReplies } from "@/lib/ai/generateReplies"
 import { sendPushToAll } from "@/lib/push"
+import { beatCron } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 60
 
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient()
+  await beatCron(supabase, "followups")
   const staleCutoff = new Date(Date.now() - STALE_DAYS * 86400_000)
 
   const { data: contacts } = await supabase

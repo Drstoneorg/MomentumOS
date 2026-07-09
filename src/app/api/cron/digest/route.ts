@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { daysUntilBirthday } from "@/lib/moments"
 import { sendPushToAll } from "@/lib/push"
+import { beatCron } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 30
 
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient()
+  await beatCron(supabase, "digest")
   const now = new Date().toISOString()
 
   const [{ data: followups }, { data: contacts }, { data: lastMsgs }] = await Promise.all([
