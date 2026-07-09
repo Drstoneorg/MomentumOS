@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { btnCls } from "@/components/ui"
+import { CardSend } from "./CardSend"
 
 type Fact = { id: string; label: string; value: string; source: string }
+type Channel = { channel: string; handle: string; is_primary?: boolean }
 type CardDetails = {
   title: string
   type_line: string
@@ -33,7 +35,9 @@ export function CardBuilder({
   const [loading, setLoading] = useState(false)
   const [factsLoading, setFactsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [result, setResult] = useState<{ details: CardDetails; imageUrl: string | null } | null>(null)
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [contactName, setContactName] = useState("")
+  const [result, setResult] = useState<{ details: CardDetails; imageUrl: string | null; assetId: string | null } | null>(null)
 
   async function loadFacts(id: string) {
     setContactId(id)
@@ -47,6 +51,8 @@ export function CardBuilder({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Fehler")
       setFacts(data.facts)
+      setChannels(data.channels ?? [])
+      setContactName(data.name ?? "")
       setSelected(new Set((data.facts as Fact[]).map((f) => f.id)))
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler beim Laden")
@@ -82,7 +88,7 @@ export function CardBuilder({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Fehler")
-      setResult({ details: data.details, imageUrl: data.imageUrl })
+      setResult({ details: data.details, imageUrl: data.imageUrl, assetId: data.assetId ?? null })
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Karten-Fehler")
@@ -167,18 +173,28 @@ export function CardBuilder({
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
       {result && (
-        <div className="flex flex-wrap gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-          {result.imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={result.imageUrl} alt={result.details.title} className="w-64 rounded-lg border border-zinc-700" />
-          )}
-          <div className="min-w-64 flex-1 space-y-1 text-sm">
-            <p className="text-base font-bold text-white">{result.details.title}</p>
-            <p className="text-zinc-400">{result.details.type_line} · {result.details.element} · {result.details.rarity}</p>
-            <p className="text-zinc-200">⚔ {result.details.attack} / 🛡 {result.details.defense}</p>
-            <p className="text-zinc-300">{result.details.effect}</p>
-            <p className="italic text-zinc-500">{result.details.flavor}</p>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+            {result.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={result.imageUrl} alt={result.details.title} className="w-64 rounded-lg border border-zinc-700" />
+            )}
+            <div className="min-w-64 flex-1 space-y-1 text-sm">
+              <p className="text-base font-bold text-white">{result.details.title}</p>
+              <p className="text-zinc-400">{result.details.type_line} · {result.details.element} · {result.details.rarity}</p>
+              <p className="text-zinc-200">⚔ {result.details.attack} / 🛡 {result.details.defense}</p>
+              <p className="text-zinc-300">{result.details.effect}</p>
+              <p className="italic text-zinc-500">{result.details.flavor}</p>
+            </div>
           </div>
+
+          <CardSend
+            contactId={contactId}
+            assetId={result.assetId}
+            imageUrl={result.imageUrl}
+            channels={channels}
+            defaultText={`${contactName ? contactName + ", hier" : "Hier"} deine ganz persönliche Karte 🃏 ${result.details.title}`}
+          />
         </div>
       )}
     </div>
