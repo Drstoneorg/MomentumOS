@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { StyleForm } from "./StyleForm"
+import { StyleRulesForm } from "./StyleRulesForm"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
@@ -11,8 +12,9 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: extToken }, { data: taste }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: extToken }, { data: taste }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
   ])
@@ -40,6 +42,15 @@ export default async function SettingsPage() {
           Beschreibt, wie der Generator für dich klingt. Beispiele eigener Nachrichten reinkopieren hilft enorm.
         </p>
         <StyleForm current={typeof style?.value === "string" ? style.value : ""} />
+      </Card>
+
+      <Card title="Harte Stil-Regeln (werden nie gebrochen)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Gelten für jeden Antwortvorschlag (App + Extension), stärker als der Schreibstil oben.
+          Fest eingebaut: keine Binde-/Gedankenstriche — wird zusätzlich automatisch aus jedem
+          Vorschlag entfernt. Hier weitere Verbote/Gebote ergänzen, eine Regel pro Zeile.
+        </p>
+        <StyleRulesForm current={typeof styleRules?.value === "string" ? styleRules.value : ""} />
       </Card>
 
       <Card title="Browser-Extension">
