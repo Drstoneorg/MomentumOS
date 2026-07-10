@@ -465,3 +465,14 @@ export async function generateJobCoverLetter(id: string, wishes?: string): Promi
   revalidatePath("/jobs")
   return letter
 }
+
+/** Mehrere Kontakte auf einmal löschen (Matchbox-Mehrfachauswahl). */
+export async function bulkDeleteContacts(ids: string[]) {
+  const supabase = await db()
+  if (!ids.length) return
+  const { error } = await supabase.from("contacts").delete().in("id", ids)
+  if (error) throw new Error(error.message)
+  revalidatePath("/contacts")
+  revalidatePath("/")
+  revalidatePath("/pipeline")
+}

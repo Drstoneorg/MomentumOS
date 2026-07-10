@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { bulkAddTags } from "@/lib/actions"
+import { bulkAddTags, bulkDeleteContacts } from "@/lib/actions"
 import { connectionScore, daysUntilBirthday, scoreColor } from "@/lib/moments"
 import type { MatchScore } from "@/lib/scoring"
 import { StageBadge, PriorityDot, inputCls, btnCls } from "@/components/ui"
@@ -107,6 +107,20 @@ export function ContactsTable({
             />
             <button onClick={applyTags} disabled={pending || !tagInput.trim()} className={btnCls + " !px-2 !py-0.5 text-xs"}>
               {pending ? "…" : "Taggen"}
+            </button>
+            <button
+              onClick={() => {
+                if (!confirm(`${sel.size} Kontakt(e) endgültig löschen? Chats, Gedächtnis und Follow-ups gehen mit.`)) return
+                start(async () => {
+                  await bulkDeleteContacts([...sel])
+                  setSel(new Set())
+                  router.refresh()
+                })
+              }}
+              disabled={pending}
+              className="rounded-lg border border-red-900 px-2 py-0.5 text-xs text-red-400 hover:bg-red-950/50"
+            >
+              {pending ? "…" : "🗑 Löschen"}
             </button>
           </div>
         )}
