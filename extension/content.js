@@ -92,8 +92,14 @@
       <div class="mox-head">JobOS <span class="mox-badge">${esc(jobPlatform)}</span></div>
       <p class="mox-hint">Stellenanzeige offen? Erfassen liest den sichtbaren Text (oder deine Markierung), extrahiert Firma/Titel/Anforderungen und rechnet den Match gegen dein CV-Profil.</p>
       <button class="mox-btn" id="mox-job-scan">💼 Job erfassen + Match-Score</button>
+      <label class="mox-hint" style="display:flex;gap:6px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="mox-job-autoscan" /> Auto-Erfassen auf Stellen-Detailseiten
+      </label>
       <div id="mox-out"></div>`
     panel.querySelector("#mox-job-scan").addEventListener("click", scanJob)
+    const autoBox = panel.querySelector("#mox-job-autoscan")
+    getAutoScan().then((on) => (autoBox.checked = on))
+    autoBox.addEventListener("change", () => setAutoScan(autoBox.checked))
   }
 
   async function scanJob() {
@@ -132,6 +138,41 @@
     } catch (e) {
       out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
     }
+  }
+
+  // Auto-Erfassung: Stellen-Detailseite erkannt + Auto-Scan an → ohne Klick erfassen.
+  const JOB_DETAIL_RE = [
+    /linkedin\.com\/jobs\/(view\/|.*currentJobId=)/,
+    /karriere\.at\/jobs\/[^/]*\d{5,}/,
+    /stepstone\.(at|de)\/stellenangebote--/,
+    /indeed\.com\/.*viewjob/,
+    /willhaben\.at\/jobs\/job\//,
+    /mediajobs\.at\/job/i,
+    /hokify\.at\/job\//,
+    /berlinstartupjobs\.com\/.+\/.+/,
+    /xing\.com\/jobs\/[a-z-]+-\d+/,
+    /jobs\.derstandard\.at\/.+\/job\//i,
+  ]
+  let lastJobHref = ""
+  let jobHrefSince = 0
+  if (jobPlatform) {
+    setInterval(() => {
+      if (!autoScanOn || !extAlive()) return
+      const href = location.href
+      if (!JOB_DETAIL_RE.some((re) => re.test(href))) return
+      if (href !== lastJobHref) {
+        lastJobHref = href
+        jobHrefSince = Date.now()
+        return
+      }
+      // Detailseite seit >2s stabil und noch nicht erfasst → automatisch erfassen
+      if (jobHrefSince && Date.now() - jobHrefSince > 2000 && href !== window.__moxLastJobScanned) {
+        window.__moxLastJobScanned = href
+        panel.hidden = false
+        renderJobIdle()
+        scanJob()
+      }
+    }, 2000)
   }
 
   function renderIdle() {

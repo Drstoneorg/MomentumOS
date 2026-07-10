@@ -35,9 +35,26 @@ export default async function Dashboard() {
     supabase.from("settings").select("key, value").like("key", "cron_heartbeat_%"),
   ])
 
+  // JobOS für „Heute dran": Bewerbungen zum Nachfassen + frisch entdeckte Top-Matches
+  const jobCutoff = new Date(Date.now() - 14 * 86400_000).toISOString()
+  const daysAgo1 = new Date(Date.now() - 86400_000).toISOString()
+  const [{ data: jobsToFollow }, { data: newTopJobs }] = await Promise.all([
+    supabase
+      .from("job_applications")
+      .select("id, company, title, applied_at")
+      .eq("stage", "applied")
+      .lt("applied_at", jobCutoff),
+    supabase
+      .from("job_applications")
+      .select("id, company, title, match_score")
+      .eq("stage", "discovered")
+      .gte("match_score", 65)
+      .gte("created_at", daysAgo1),
+  ])
+
   // Cron-Watchdog: warnen, wenn ein Cron nie oder seit >36h nicht gelaufen ist
   // (Vercel-Hobby-Limit kann Crons stillschweigend nicht ausführen).
-  const CRONS = ["followups", "moments", "dispatch", "digest"]
+  const CRONS = ["followups", "moments", "dispatch", "digest", "jobscan"]
   const beats = new Map(
     (heartbeatsRes.data ?? []).map((r) => [r.key.replace("cron_heartbeat_", ""), String(r.value)])
   )
@@ -82,7 +99,12 @@ export default async function Dashboard() {
 
   // „Heute dran": eine Abarbeitungsliste statt Suchen in Einzel-Boxen.
   const todayBirthdays = birthdays.filter((b) => b.d === 0)
-  const todayCount = (followupsRes.data?.length ?? 0) + stale.length + todayBirthdays.length
+  const todayCount =
+    (followupsRes.data?.length ?? 0) +
+    stale.length +
+    todayBirthdays.length +
+    (jobsToFollow?.length ?? 0) +
+    (newTopJobs?.length ?? 0)
 
   return (
     <div className="space-y-4">
@@ -119,6 +141,22 @@ export default async function Dashboard() {
                 <span>💤</span>
                 <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:underline">{c.name}</Link>
                 <span className="text-zinc-400">eingeschlafen — wieder anknüpfen</span>
+              </li>
+            ))}
+            {(newTopJobs ?? []).map((j) => (
+              <li key={`nj-${j.id}`} className="flex items-center gap-2">
+                <span>💼</span>
+                <Link href="/jobs" className="font-medium text-white hover:underline">{j.title} · {j.company}</Link>
+                <span className="text-emerald-400">{j.match_score}% Match — neu gefunden, bewerben?</span>
+              </li>
+            ))}
+            {(jobsToFollow ?? []).map((j) => (
+              <li key={`jf-${j.id}`} className="flex items-center gap-2">
+                <span>💼</span>
+                <Link href="/jobs" className="font-medium text-white hover:underline">{j.company}</Link>
+                <span className="text-zinc-400">
+                  Bewerbung seit {Math.round((Date.now() - new Date(j.applied_at!).getTime()) / 86400_000)}d ohne Antwort — nachfassen
+                </span>
               </li>
             ))}
           </ul>
