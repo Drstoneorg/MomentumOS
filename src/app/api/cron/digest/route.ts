@@ -25,11 +25,19 @@ export async function GET(req: Request) {
   await beatCron(supabase, "digest")
   const now = new Date().toISOString()
 
-  const [{ data: followups }, { data: contacts }, { data: lastMsgs }] = await Promise.all([
-    supabase.from("followups").select("id").eq("done", false).lte("due_at", now),
-    supabase.from("contacts").select("id, birthday, pipeline_stage").neq("pipeline_stage", "archived"),
-    supabase.from("messages").select("contact_id, sent_at").order("sent_at", { ascending: false }),
-  ])
+  const jobCutoff = new Date(Date.now() - 14 * 86400_000).toISOString()
+  const [{ data: followups }, { data: contacts }, { data: lastMsgs }, { count: jobsDue }] =
+    await Promise.all([
+      supabase.from("followups").select("id").eq("done", false).lte("due_at", now),
+      supabase.from("contacts").select("id, birthday, pipeline_stage").neq("pipeline_stage", "archived"),
+      supabase.from("messages").select("contact_id, sent_at").order("sent_at", { ascending: false }),
+      // JobOS: beworben vor >14 Tagen, keine Antwort → nachfassen
+      supabase
+        .from("job_applications")
+        .select("id", { count: "exact", head: true })
+        .eq("stage", "applied")
+        .lt("applied_at", jobCutoff),
+    ])
 
   const lastByContact = new Map<string, string>()
   for (const m of lastMsgs ?? []) {
@@ -52,6 +60,7 @@ export async function GET(req: Request) {
     due ? `${due} Follow-up${due > 1 ? "s" : ""} fällig` : null,
     stale ? `${stale} Chat${stale > 1 ? "s" : ""} eingeschlafen` : null,
     birthdays ? `${birthdays} Geburtstag${birthdays > 1 ? "e" : ""} heute 🎂` : null,
+    jobsDue ? `💼 ${jobsDue} Bewerbung${jobsDue > 1 ? "en" : ""} nachfassen` : null,
   ].filter(Boolean)
 
   if (parts.length) {
@@ -62,5 +71,5 @@ export async function GET(req: Request) {
     }).catch(() => {})
   }
 
-  return NextResponse.json({ due, stale, birthdays, pushed: parts.length > 0 })
+  return NextResponse.json({ due, stale, birthdays, jobsDue: jobsDue ?? 0, pushed: parts.length > 0 })
 }

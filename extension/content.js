@@ -20,6 +20,24 @@
   const platform =
     (PLATFORM_MAP.find(([host]) => location.hostname.includes(host)) || [, "sonstige"])[1]
 
+  // Job-Portale (JobOS): dort erfasst die Extension Stellenanzeigen statt Profile.
+  // Reihenfolge wichtig: mediajobs.at vor jobs.at (Substring-Match).
+  const JOB_MAP = [
+    ["linkedin.com", "linkedin"],
+    ["karriere.at", "karriere_at"],
+    ["stepstone.", "stepstone"],
+    ["willhaben.at", "willhaben"],
+    ["mediajobs.at", "mediajobs"],
+    ["hokify.at", "hokify"],
+    ["indeed.com", "indeed"],
+    ["berlinstartupjobs.com", "berlinstartupjobs"],
+    ["xing.com", "xing"],
+    ["arbeitsagentur.de", "arbeitsagentur"],
+    ["jobs.derstandard.at", "derstandard"],
+    ["jobs.at", "jobs_at"],
+  ]
+  const jobPlatform = (JOB_MAP.find(([h]) => location.hostname.includes(h)) || [])[1] || null
+
   // ---------- UI ----------
   const fab = document.createElement("button")
   fab.id = "matchos-fab"
@@ -68,7 +86,59 @@
       <button class="mox-copy" id="mox-roundup-reset">Reset</button></div>`
   }
 
+  // ---------- JobOS: Stellenanzeige erfassen ----------
+  function renderJobIdle() {
+    panel.innerHTML = `
+      <div class="mox-head">JobOS <span class="mox-badge">${esc(jobPlatform)}</span></div>
+      <p class="mox-hint">Stellenanzeige offen? Erfassen liest den sichtbaren Text (oder deine Markierung), extrahiert Firma/Titel/Anforderungen und rechnet den Match gegen dein CV-Profil.</p>
+      <button class="mox-btn" id="mox-job-scan">💼 Job erfassen + Match-Score</button>
+      <div id="mox-out"></div>`
+    panel.querySelector("#mox-job-scan").addEventListener("click", scanJob)
+  }
+
+  async function scanJob() {
+    const out = panel.querySelector("#mox-out")
+    if (!extAlive()) {
+      out.innerHTML = `<p class="mox-err">Extension wurde aktualisiert — Seite neu laden (F5).</p>`
+      return
+    }
+    const { baseUrl, token } = await cfg()
+    if (!baseUrl || !token) {
+      out.innerHTML = `<p class="mox-err">Erst URL + Token im Extension-Popup speichern.</p>`
+      return
+    }
+    out.innerHTML = `<p class="mox-hint">KI liest die Anzeige…</p>`
+    try {
+      const res = await fetch(`${baseUrl}/api/extension/job`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ raw: visibleText(), url: location.href, portal: jobPlatform }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || res.status)
+      if (d.duplicate) {
+        out.innerHTML = `<p class="mox-hint">Schon erfasst: ${esc(d.company)} — ${esc(d.title)}</p>
+          <a class="mox-link" href="${baseUrl}/jobs" target="_blank">JobOS öffnen ↗</a>`
+        return
+      }
+      const cls = d.score >= 70 ? "mox-taste-hit" : d.score >= 45 ? "mox-taste-neutral" : "mox-taste-no"
+      out.innerHTML = `
+        <div class="${d.score != null ? cls : "mox-taste-neutral"}">
+          <b>✓ ${esc(d.company)} — ${esc(d.title)}${d.score != null ? ` · ${d.score}%` : ""}</b>
+          ${d.verdict ? `<p class="mox-hint">${esc(d.verdict)}</p>` : ""}
+          ${d.missing && d.missing.length ? `<p class="mox-hint">Fehlt: ${d.missing.map(esc).join(", ")}</p>` : ""}
+        </div>
+        <a class="mox-link" href="${baseUrl}/jobs" target="_blank">In JobOS öffnen ↗</a>`
+    } catch (e) {
+      out.innerHTML = `<p class="mox-err">Fehler: ${esc(String(e.message || e))}</p>`
+    }
+  }
+
   function renderIdle() {
+    if (jobPlatform) {
+      renderJobIdle()
+      return
+    }
     panel.innerHTML = `
       <div class="mox-head">MatchOS <span class="mox-badge">${esc(platform)}</span></div>
       ${roundupHtml()}
