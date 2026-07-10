@@ -336,3 +336,132 @@ export async function bulkAddTags(contactIds: string[], tags: string[]) {
   revalidatePath("/contacts")
   revalidatePath("/moments")
 }
+
+// ---------- JobOS: Bewerbungs-Manager ----------
+import {
+  extractCvProfile,
+  extractJob,
+  scoreJob,
+  generateCoverLetter,
+  type CvProfile,
+} from "@/lib/ai/jobs"
+
+export async function loadCvProfile(): Promise<CvProfile | null> {
+  const supabase = await db()
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "job_cv_profile")
+    .maybeSingle()
+  return (data?.value as CvProfile | null) ?? null
+}
+
+/** CV-Profil aus Text ODER Webseiten-URL extrahieren und speichern. */
+export async function saveJobCv(input: { text?: string; url?: string }): Promise<CvProfile> {
+  const supabase = await db()
+  let raw = input.text?.trim() ?? ""
+  if (!raw && input.url) {
+    const res = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0" } })
+    if (!res.ok) throw new Error(`Webseite nicht abrufbar (${res.status})`)
+    // grobes HTML-Strippen — Rest richtet die KI
+    raw = (await res.text())
+      .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 15000)
+  }
+  if (raw.length < 100) throw new Error("Zu wenig Lebenslauf-Text gefunden.")
+  const profile = await extractCvProfile(raw)
+  await supabase
+    .from("settings")
+    .upsert({ key: "job_cv_profile", value: profile as never, updated_at: new Date().toISOString() })
+  revalidatePath("/jobs")
+  return profile
+}
+
+/** Stellenanzeige aus rohem Text erfassen: extrahieren, gegen CV scoren, speichern. */
+export async function addJob(rawText: string, sourceUrl?: string) {
+  const supabase = await db()
+  const job = await extractJob(rawText, sourceUrl)
+  const cv = await loadCvProfile()
+  const score = cv ? await scoreJob(cv, job) : null
+
+  // Dedupe: gleiche Firma + Titel bereits erfasst → nicht doppeln
+  const { data: dup } = await supabase
+    .from("job_applications")
+    .select("id")
+    .ilike("company", job.company)
+    .ilike("title", job.title)
+    .limit(1)
+    .maybeSingle()
+  if (dup) return { id: dup.id, duplicate: true, job, score }
+
+  const { data: created, error } = await supabase
+    .from("job_applications")
+    .insert({
+      company: job.company,
+      title: job.title,
+      url: sourceUrl ?? null,
+      city: job.city,
+      salary: job.salary,
+      description: `${job.summary}\n\n${rawText.slice(0, 3000)}`,
+      requirements: job.requirements,
+      contact_name: job.contact_name,
+      contact_email: job.contact_email,
+      match_score: score?.score ?? null,
+      match_reasons: score ? ({ hits: score.hits, missing: score.missing, verdict: score.verdict } as never) : null,
+    })
+    .select("id")
+    .single()
+  if (error || !created) throw new Error(error?.message ?? "Anlegen fehlgeschlagen")
+  revalidatePath("/jobs")
+  return { id: created.id, duplicate: false, job, score }
+}
+
+export async function updateJobStage(id: string, stage: string) {
+  const supabase = await db()
+  const patch: TablesUpdate<"job_applications"> = { stage, updated_at: new Date().toISOString() }
+  if (stage === "applied") patch.applied_at = new Date().toISOString()
+  const { error } = await supabase.from("job_applications").update(patch).eq("id", id)
+  if (error) throw new Error(error.message)
+  revalidatePath("/jobs")
+}
+
+export async function updateJobNotes(id: string, notes: string) {
+  const supabase = await db()
+  await supabase
+    .from("job_applications")
+    .update({ notes, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  revalidatePath("/jobs")
+}
+
+export async function deleteJob(id: string) {
+  const supabase = await db()
+  await supabase.from("job_applications").delete().eq("id", id)
+  revalidatePath("/jobs")
+}
+
+export async function generateJobCoverLetter(id: string, wishes?: string): Promise<string> {
+  const supabase = await db()
+  const cv = await loadCvProfile()
+  if (!cv) throw new Error("Erst Lebenslauf hochladen (JobOS → CV).")
+  const { data: job } = await supabase
+    .from("job_applications")
+    .select("company, title, description, requirements, city")
+    .eq("id", id)
+    .single()
+  if (!job) throw new Error("Stelle nicht gefunden")
+  const letter = await generateCoverLetter(
+    cv,
+    job,
+    job.city === "berlin" || job.city === "wien" ? "de" : "de",
+    wishes
+  )
+  await supabase
+    .from("job_applications")
+    .update({ cover_letter: letter, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  revalidatePath("/jobs")
+  return letter
+}

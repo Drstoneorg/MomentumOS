@@ -55,6 +55,14 @@ const products: Product[] = [
     ],
   },
   {
+    id: "jobs",
+    label: "JobOS",
+    color: "text-emerald-400",
+    home: "/jobs",
+    match: (p) => p.startsWith("/jobs"),
+    links: [{ href: "/jobs", label: "Bewerbungen" }],
+  },
+  {
     id: "book",
     label: "BookOS",
     color: "text-sky-400",
@@ -118,7 +126,13 @@ export function Nav() {
               >
                 {pr.label}
                 <span className="block text-[10px] font-normal text-zinc-500">
-                  {pr.id === "dating" ? "Dating-Agent" : pr.id === "moments" ? "Freunde & Anlässe" : "Treatments on demand"}
+                  {pr.id === "dating"
+                    ? "Dating-Agent"
+                    : pr.id === "moments"
+                      ? "Freunde & Anlässe"
+                      : pr.id === "jobs"
+                        ? "Bewerbungs-Manager"
+                        : "Treatments on demand"}
                 </span>
               </Link>
             ))}
