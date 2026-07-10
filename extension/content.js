@@ -186,6 +186,7 @@
       <div id="mox-taste"></div>
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
       <button class="mox-btn" id="mox-scan">Scannen & Syncen</button>
+      <button class="mox-btn mox-btn-2" id="mox-fullscan" title="Scrollt den Chat automatisch ganz nach oben und erfasst ALLE Nachrichten. Einmal pro Chat reicht — danach hält Auto-Scan den Rest aktuell.">⇪ Ganzen Verlauf scannen</button>
       <button class="mox-btn mox-btn-2" id="mox-photo">📷 Foto prüfen (KI)</button>
       <label class="mox-hint" style="display:flex;gap:6px;align-items:center;cursor:pointer">
         <input type="checkbox" id="mox-autoscan" /> Auto-Scan bei Chatwechsel
@@ -193,6 +194,7 @@
       <div id="mox-photo-out"></div>
       <div id="mox-out"></div>`
     panel.querySelector("#mox-scan").addEventListener("click", scan)
+    panel.querySelector("#mox-fullscan").addEventListener("click", fullScan)
     panel.querySelector("#mox-photo").addEventListener("click", checkPhotos)
     const autoBox = panel.querySelector("#mox-autoscan")
     getAutoScan().then((on) => (autoBox.checked = on))
@@ -441,6 +443,87 @@
     )
   }
 
+  // ---------- Voll-Verlauf-Scan (scrollt hoch, sammelt alles) ----------
+
+  // Scroll-Container des Chatverlaufs: scrollbares Element in der Chat-Spalte
+  // oberhalb des Eingabefelds.
+  function chatScroller() {
+    const composer = findComposer()
+    if (!composer) return null
+    const c = composer.getBoundingClientRect()
+    let best = null
+    for (const el of document.querySelectorAll("*")) {
+      if (!(el instanceof HTMLElement)) continue
+      if (el.scrollHeight - el.clientHeight < 150) continue
+      const r = el.getBoundingClientRect()
+      if (r.height < 200 || r.width < 200) continue
+      const overlap = Math.min(r.right, c.right) - Math.max(r.left, c.left)
+      if (overlap < c.width * 0.6) continue // muss in der Chat-Spalte liegen
+      if (r.top > c.top) continue // muss über dem Eingabefeld beginnen
+      if (!best || el.scrollHeight > best.scrollHeight) best = el
+    }
+    return best
+  }
+
+  // Zwei Zeilen-Listen zusammenführen: längste Überlappung (Ende von acc =
+  // Anfang von batch) erkennen statt naiv zu deduplizieren — bewusst, damit
+  // legitime Wiederholungen ("Haha" zweimal) erhalten bleiben.
+  function mergeLines(acc, batch) {
+    if (!acc.length) return batch.slice()
+    const max = Math.min(acc.length, batch.length)
+    for (let k = max; k > 0; k--) {
+      let ok = true
+      for (let i = 0; i < k; i++) {
+        if (acc[acc.length - k + i] !== batch[i]) {
+          ok = false
+          break
+        }
+      }
+      if (ok) return acc.concat(batch.slice(k))
+    }
+    return acc.concat(batch)
+  }
+
+  async function fullScan() {
+    const out = panel.querySelector("#mox-out")
+    const sc = chatScroller()
+    if (!sc) {
+      out.innerHTML = `<p class="mox-err">Kein scrollbarer Chatverlauf gefunden — Chat öffnen und erneut versuchen.</p>`
+      return
+    }
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+    out.innerHTML = `<p class="mox-hint">Lade ganzen Verlauf — scrollt automatisch hoch, bitte kurz nicht eingreifen…</p>`
+    // 1) ganz nach oben, bis die Plattform nichts Älteres mehr nachlädt
+    let lastH = -1
+    for (let i = 0; i < 40 && sc.scrollHeight !== lastH; i++) {
+      lastH = sc.scrollHeight
+      sc.scrollTop = 0
+      await sleep(700)
+    }
+    // 2) von oben nach unten in Schritten sammeln, Überlappungen zusammenführen
+    let lines = []
+    sc.scrollTop = 0
+    await sleep(350)
+    for (let guard = 0; guard < 300; guard++) {
+      lines = mergeLines(lines, chatAnnotatedText().split("\n").filter(Boolean))
+      if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4) break
+      sc.scrollTop = sc.scrollTop + Math.max(120, sc.clientHeight * 0.7)
+      await sleep(350)
+    }
+    sc.scrollTop = sc.scrollHeight // zurück ans Chat-Ende
+    await sleep(200)
+    if (!lines.length) {
+      out.innerHTML = `<p class="mox-err">⚠ Verlauf leer erkannt — Plattform-Layout evtl. geändert.</p>`
+      return
+    }
+    const chat = lines.slice(-400).join("\n").slice(-15000)
+    const raw = `--- CHATVERLAUF (Richtung erkannt: [me]=ich, [them]=Person) ---\n${chat}\n\n--- WEITERER SEITENTEXT ---\n${visibleText()}`.slice(
+      0,
+      18000
+    )
+    await scan(raw)
+  }
+
   // Nach Extension-Reload/-Update ist der Kontext dieser (alten) Instanz ungültig.
   // chrome.runtime.id wird dann undefined; APIs werfen "Extension context invalidated".
   function extAlive() {
@@ -462,7 +545,9 @@
     })
   }
 
-  async function scan() {
+  // rawOverride: fertiger Scan-Text (Voll-Verlauf). Als Klick-Handler kommt
+  // stattdessen ein Event-Objekt an — dann normal scannen.
+  async function scan(rawOverride) {
     const out = panel.querySelector("#mox-out")
     if (!extAlive()) {
       out.innerHTML = `<p class="mox-err">Extension wurde aktualisiert — Seite neu laden (F5), dann geht's wieder.</p>`
@@ -485,7 +570,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          raw: scanRaw(),
+          raw: typeof rawOverride === "string" ? rawOverride : scanRaw(),
           platform,
           nowLocal: new Date().toString(),
           // Live-Chat-Ende mitgeben: der Auto-Entwurf soll auf die tatsächlich

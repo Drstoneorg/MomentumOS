@@ -89,7 +89,7 @@ export async function POST(req: Request) {
         .select("direction, content, sent_at")
         .eq("contact_id", contactId)
         .order("sent_at", { ascending: false })
-        .limit(300)
+        .limit(500)
       const knownAt = new Map<string, string>()
       for (const m of recent ?? []) {
         const k = `${m.direction}|${normMsg(m.content)}`
