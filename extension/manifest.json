@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MatchOS Companion",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Liest Dating-Profile und Chats mit, legt Kontakte in MatchOS an und liefert Antwortentwürfe. Sendet nie selbst.",
   "permissions": ["storage", "activeTab", "contextMenus"],
   "background": { "service_worker": "background.js" },

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { authExtension } from "@/lib/extensionAuth"
-import { extractJob, scoreJob, type CvProfile } from "@/lib/ai/jobs"
+import { extractJob, scoreJob, generateCoverLetter, type CvProfile } from "@/lib/ai/jobs"
+
+// Ab diesem Match-Score wird das Anschreiben direkt mitgeneriert (liegt dann fertig in JobOS).
+const AUTO_LETTER_SCORE = 65
 
 export const maxDuration = 60
 
@@ -53,6 +56,20 @@ export async function POST(req: Request) {
       )
     }
 
+    // Guter Match → Anschreiben sofort mitgenerieren (ein Klick weniger später)
+    let coverLetter: string | null = null
+    if (cv && score && score.score >= AUTO_LETTER_SCORE) {
+      try {
+        coverLetter = await generateCoverLetter(
+          cv,
+          { company: job.company, title: job.title, description: job.summary, requirements: job.requirements },
+          "de"
+        )
+      } catch {
+        // Anschreiben optional — Erfassung zählt
+      }
+    }
+
     const { error } = await supabase.from("job_applications").insert({
       company: job.company,
       title: job.title,
@@ -68,6 +85,7 @@ export async function POST(req: Request) {
       match_reasons: score
         ? ({ hits: score.hits, missing: score.missing, verdict: score.verdict } as never)
         : null,
+      cover_letter: coverLetter,
     })
     if (error) throw new Error(error.message)
 

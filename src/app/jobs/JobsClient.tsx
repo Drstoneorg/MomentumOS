@@ -8,6 +8,7 @@ import {
   updateJobNotes,
   deleteJob,
   generateJobCoverLetter,
+  saveSetting,
 } from "@/lib/actions"
 import type { CvProfile } from "@/lib/ai/jobs"
 import type { Tables } from "@/lib/database.types"
@@ -54,7 +55,15 @@ const PORTALS: Record<"wien" | "berlin", { name: string; url: string }[]> = {
   ],
 }
 
-export function JobsClient({ jobs, cv }: { jobs: Job[]; cv: CvProfile | null }) {
+export function JobsClient({
+  jobs,
+  cv,
+  autoTerms,
+}: {
+  jobs: Job[]
+  cv: CvProfile | null
+  autoTerms: string[]
+}) {
   const [city, setCity] = useState<(typeof CITIES)[number]["id"]>("alle")
   const [pending, start] = useTransition()
 
@@ -71,6 +80,10 @@ export function JobsClient({ jobs, cv }: { jobs: Job[]; cv: CvProfile | null }) 
 
   // Suchbegriff für Portal-Links
   const [term, setTerm] = useState("")
+
+  // Auto-Suche (täglicher Cron)
+  const [autoInput, setAutoInput] = useState(autoTerms.join(", "))
+  const [autoMsg, setAutoMsg] = useState("")
 
   const filtered = useMemo(
     () => (city === "alle" ? jobs : jobs.filter((j) => j.city === city)),
@@ -185,6 +198,42 @@ export function JobsClient({ jobs, cv }: { jobs: Job[]; cv: CvProfile | null }) 
           </div>
           <p className="text-xs text-zinc-500">
             Noch schneller: Extension auf LinkedIn & Co. — Alt+M auf der Anzeige drückt „Job erfassen".
+          </p>
+        </div>
+      </Card>
+
+      {/* Auto-Suche (Cron) */}
+      <Card title="🤖 Auto-Suche — findet täglich neue Stellen von selbst">
+        <div className="space-y-2">
+          <div className="flex items-end gap-2">
+            <label className="flex-1 text-sm text-zinc-400">
+              Suchbegriffe (max. 3, Komma-getrennt)
+              <input
+                className={inputCls}
+                placeholder="z. B. Marketing Video, Social Media Manager"
+                value={autoInput}
+                onChange={(e) => setAutoInput(e.target.value)}
+              />
+            </label>
+            <button
+              onClick={() =>
+                start(async () => {
+                  const terms = autoInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 3)
+                  await saveSetting("job_auto_search", JSON.stringify({ terms }))
+                  setAutoMsg(terms.length ? `✓ Auto-Suche aktiv: ${terms.join(", ")}` : "Auto-Suche aus (keine Begriffe)")
+                })
+              }
+              disabled={pending}
+              className={btnCls}
+            >
+              {pending ? "…" : "Speichern"}
+            </button>
+          </div>
+          {autoMsg && <p className="text-sm text-zinc-400">{autoMsg}</p>}
+          <p className="text-xs text-zinc-500">
+            Läuft täglich 6:30: durchsucht karriere.at, mediajobs.at, jobs.at (Wien) + Berlin Startup Jobs,
+            erfasst neue Treffer mit Match-Score, generiert bei ≥65% das Anschreiben gleich mit und schickt dir eine Push.
+            LinkedIn/StepStone/Indeed blocken Server — dort erfasst die Extension beim Browsen automatisch.
           </p>
         </div>
       </Card>
@@ -339,7 +388,32 @@ function JobRow({ job }: { job: Job }) {
         <p className="mt-0.5 text-xs text-amber-400/80">Fehlt: {reasons.missing.join(", ")}</p>
       )}
 
+      {job.next_action && (
+        <div className="mt-2 rounded-lg border border-amber-800 bg-amber-950/30 p-2 text-xs text-amber-200">
+          <p className="whitespace-pre-wrap">{job.next_action}</p>
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(job.next_action!.replace(/^Nachfassen — Entwurf:\n/, ""))
+              setMsg("✓ Entwurf kopiert")
+              setTimeout(() => setMsg(""), 1500)
+            }}
+            className="mt-1 text-amber-300 hover:underline"
+          >
+            Kopieren
+          </button>
+        </div>
+      )}
+
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        {job.stage === "discovered" && (
+          <button
+            onClick={() => start(() => updateJobStage(job.id, "applied"))}
+            disabled={pending}
+            className="rounded-lg bg-emerald-900/60 px-2 py-1 text-emerald-200 hover:bg-emerald-800/60"
+          >
+            📤 Beworben
+          </button>
+        )}
         <button onClick={() => setShowLetter((v) => !v)} className="text-rose-400 hover:underline">
           {letter ? "Anschreiben anzeigen" : "✍️ Anschreiben generieren"}
         </button>
