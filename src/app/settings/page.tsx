@@ -13,13 +13,30 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: fbRows }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "learned_style").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
+    supabase.from("reply_feedback").select("style, rating, content, created_at").order("created_at", { ascending: false }).limit(500),
   ])
+
+  // Daumen-Auswertung: pro Stil hoch/runter + zuletzt bewertete Beispiele
+  const fb = fbRows ?? []
+  const fbByStyle = new Map<string, { up: number; down: number }>()
+  for (const f of fb) {
+    const key = f.style ?? "ohne Stil"
+    const s = fbByStyle.get(key) ?? { up: 0, down: 0 }
+    if (f.rating === 1) s.up++
+    else if (f.rating === -1) s.down++
+    fbByStyle.set(key, s)
+  }
+  const fbRanked = [...fbByStyle.entries()].sort(
+    (a, b) => b[1].up - b[1].down - (a[1].up - a[1].down)
+  )
+  const fbLiked = fb.filter((f) => f.rating === 1).slice(0, 5)
+  const fbDisliked = fb.filter((f) => f.rating === -1).slice(0, 5)
   const tasteVal = (taste?.value ?? {}) as { include?: string[]; avoid?: string[]; autoLikeHint?: boolean }
 
   let usage: UsageSummary | null = null
@@ -61,6 +78,66 @@ export default async function SettingsPage() {
               : null
           }
         />
+      </Card>
+
+      <Card title="Daumen-Auswertung (👍/👎 an Vorschlägen)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Jeder Daumen fließt in künftige Vorschläge ein: 👍 werden als „so will ich
+          klingen“-Beispiele mitgegeben (letzte 10), 👎 als Anti-Beispiele (letzte 8),
+          und die Stil-Tendenz unten steuert, in welche Richtung alle Varianten kippen.
+        </p>
+        {fb.length ? (
+          <div className="space-y-3 text-sm">
+            <table className="w-full text-xs">
+              <thead className="text-left text-zinc-500">
+                <tr>
+                  <th className="py-1">Stil</th>
+                  <th className="py-1 text-right">👍</th>
+                  <th className="py-1 text-right">👎</th>
+                  <th className="py-1 text-right">Tendenz</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fbRanked.map(([s, v]) => (
+                  <tr key={s} className="border-t border-zinc-800/60">
+                    <td className="py-1 text-zinc-200">{s}</td>
+                    <td className="py-1 text-right text-emerald-400">{v.up}</td>
+                    <td className="py-1 text-right text-rose-400">{v.down}</td>
+                    <td className={`py-1 text-right tabular-nums ${v.up - v.down > 0 ? "text-emerald-400" : v.up - v.down < 0 ? "text-rose-400" : "text-zinc-500"}`}>
+                      {v.up - v.down > 0 ? "+" : ""}{v.up - v.down}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {fbLiked.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase text-zinc-500">Zuletzt übernommen 👍</p>
+                <ul className="mt-1 space-y-1 text-xs text-zinc-400">
+                  {fbLiked.map((f, i) => (
+                    <li key={i} className="truncate">„{f.content}“ <span className="text-zinc-600">({f.style ?? "—"})</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {fbDisliked.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase text-zinc-500">Zuletzt abgelehnt 👎</p>
+                <ul className="mt-1 space-y-1 text-xs text-zinc-500">
+                  {fbDisliked.map((f, i) => (
+                    <li key={i} className="truncate">„{f.content}“ <span className="text-zinc-600">({f.style ?? "—"})</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="text-xs text-zinc-600">{fb.length} Bewertungen insgesamt (letzte 500 gezählt).</p>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            Noch keine Daumen vergeben. In der Extension und im Antwortgenerator neben
+            jedem Vorschlag 👍/👎 drücken — je mehr, desto treffsicherer wird alles.
+          </p>
+        )}
       </Card>
 
       <Card title="Harte Stil-Regeln (werden nie gebrochen)">

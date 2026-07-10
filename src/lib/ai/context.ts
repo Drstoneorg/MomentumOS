@@ -67,7 +67,7 @@ export async function loadContactContext(
         .maybeSingle(),
       supabase
         .from("reply_feedback")
-        .select("content, rating")
+        .select("content, rating, style")
         .order("created_at", { ascending: false })
         .limit(200),
     ])
@@ -115,6 +115,24 @@ export async function loadContactContext(
       `Vorschläge, die ich abgelehnt habe (so NICHT klingen):\n${disliked
         .map((f) => `- ${f.content}`)
         .join("\n")}`
+    )
+  // Stil-Tendenz aus den Daumen: welche Töne kommen an, welche nicht.
+  const styleCount = new Map<string, { up: number; down: number }>()
+  for (const f of feedback) {
+    if (!f.style) continue
+    const s = styleCount.get(f.style) ?? { up: 0, down: 0 }
+    if (f.rating === 1) s.up++
+    else if (f.rating === -1) s.down++
+    styleCount.set(f.style, s)
+  }
+  const ranked = [...styleCount.entries()]
+    .filter(([, v]) => v.up + v.down >= 2)
+    .sort((a, b) => b[1].up - b[1].down - (a[1].up - a[1].down))
+  if (ranked.length)
+    parts.push(
+      `Stil-Tendenz laut meinem Daumen-Feedback: ${ranked
+        .map(([s, v]) => `${s} (+${v.up}/-${v.down})`)
+        .join(", ")}. Die vorderen Stile treffen meinen Geschmack am besten — orientiere ALLE Varianten leicht in diese Richtung, liefere aber weiterhin jeden Stil.`
     )
   const styleProfile = parts.filter(Boolean).join("\n\n")
 
