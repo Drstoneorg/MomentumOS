@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
 
-  const { raw, platform, externalId, nowLocal } = await req.json()
+  const { raw, platform, externalId, nowLocal, chatTail } = await req.json()
   if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
     return NextResponse.json({ error: "Kein Text" }, { status: 400, headers: cors })
   }
@@ -86,31 +86,69 @@ export async function POST(req: Request) {
     if (p.messages.length) {
       const { data: recent } = await supabase
         .from("messages")
-        .select("direction, content")
+        .select("direction, content, sent_at")
         .eq("contact_id", contactId)
         .order("sent_at", { ascending: false })
         .limit(300)
-      const seen = new Set((recent ?? []).map((m) => `${m.direction}|${normMsg(m.content)}`))
-      const fresh = p.messages.filter((m) => {
+      const knownAt = new Map<string, string>()
+      for (const m of recent ?? []) {
+        const k = `${m.direction}|${normMsg(m.content)}`
+        if (!knownAt.has(k)) knownAt.set(k, m.sent_at)
+      }
+      // Batch in Scan-Reihenfolge annotieren: bekannt (mit sent_at) oder frisch.
+      const seen = new Set(knownAt.keys())
+      const batch: { m: (typeof p.messages)[number]; known: string | null }[] = []
+      for (const m of p.messages) {
         const key = `${m.direction}|${normMsg(m.content)}`
-        if (seen.has(key)) return false
-        seen.add(key) // Batch-interne Duplikate ebenfalls raus
-        return true
+        const known = knownAt.get(key) ?? null
+        if (!known && seen.has(key)) continue // batch-internes Duplikat
+        seen.add(key)
+        batch.push({ m, known })
+      }
+      // Zeitstempel: frische Nachrichten, die im Scan VOR einer bereits bekannten
+      // stehen, sind Backfill (User hat hochgescrollt, ältere Nachrichten wurden
+      // sichtbar). Die dürfen NICHT "jetzt" bekommen — sonst landen sie als
+      // neueste in der Chronologie und die KI antwortet auf alte Nachrichten.
+      // Anker = sent_at der nächsten bekannten Nachricht rechts davon.
+      const nextKnownAt: (string | null)[] = new Array(batch.length)
+      let nk: string | null = null
+      for (let i = batch.length - 1; i >= 0; i--) {
+        nextKnownAt[i] = nk
+        if (batch[i].known) nk = batch[i].known
+      }
+      const groups = new Map<string | null, (typeof p.messages)[number][]>()
+      batch.forEach((e, i) => {
+        if (e.known) return
+        const anchor = nextKnownAt[i]
+        if (!groups.has(anchor)) groups.set(anchor, [])
+        groups.get(anchor)!.push(e.m)
       })
-      freshInbound = fresh.some((m) => m.direction === "in")
-      if (fresh.length) {
-        const base = Date.now() - fresh.length * 1000
-        await supabase.from("messages").insert(
-          fresh.map((m, i) => ({
+      const rows: {
+        contact_id: string
+        direction: "in" | "out"
+        channel: string
+        content: string
+        source: "import"
+        sent_at: string
+      }[] = []
+      for (const [anchor, list] of groups) {
+        const baseT =
+          (anchor ? new Date(anchor).getTime() : Date.now()) - list.length * 1000
+        list.forEach((m, i) =>
+          rows.push({
             contact_id: contactId,
             direction: m.direction,
             channel: "dating_app",
             content: m.content,
             source: "import" as const,
-            sent_at: new Date(base + i * 1000).toISOString(),
-          }))
+            sent_at: new Date(baseT + i * 1000).toISOString(),
+          })
         )
       }
+      // Nur echte NEUE Nachrichten (ohne Anker = am Chat-Ende) zählen als frisch —
+      // Backfill beim Hochscrollen soll keinen neuen Entwurf auslösen.
+      freshInbound = (groups.get(null) ?? []).some((m) => m.direction === "in")
+      if (rows.length) await supabase.from("messages").insert(rows)
     }
     if (p.memories.length && !existing) {
       await supabase.from("memories").insert(
@@ -120,6 +158,14 @@ export async function POST(req: Request) {
 
     // Auto-Pipeline: Zusammenfassung + Stage-Analyse + Sofort-Entwurf,
     // wenn ein Chatverlauf dabei war. Fehler hier brechen den Sync nicht ab.
+    // Live-Chat aus dem Browser-DOM hat Vorrang vor evtl. veraltetem DB-Stand —
+    // gleicher Mechanismus wie in /api/extension/replies.
+    const draftSituation = (base: string) =>
+      typeof chatTail === "string" && chatTail.trim()
+        ? `${base}\n\nAktueller Chat-Ausschnitt direkt aus dem Browser ([me]=ich, [them]=Person):\n${chatTail
+            .trim()
+            .slice(0, 2000)}\nAntworte auf die letzte [them]-Nachricht.`
+        : base
     let autoDraft: (Partial<ReplyVariants> & { variants: Record<string, string> }) | null = null
     let stage: string | null = null
     if (p.messages.length) {
@@ -158,9 +204,16 @@ export async function POST(req: Request) {
             })
           }
 
-          // Sofort-Entwurf, wenn die Person zuletzt geschrieben hat
+          // Sofort-Entwurf, wenn die Person zuletzt geschrieben hat.
+          // Browser-DOM ist verlässlicher als DB-Chronologie (Scroll-Backfill).
+          const tailLines =
+            typeof chatTail === "string" ? chatTail.trim().split("\n").filter(Boolean) : []
+          const lastTail = tailLines[tailLines.length - 1] ?? ""
           const lastMsg = ctx.messages[ctx.messages.length - 1]
-          if (lastMsg?.direction === "in") {
+          const theirTurn = lastTail
+            ? lastTail.startsWith("[them]")
+            : lastMsg?.direction === "in"
+          if (theirTurn) {
             const { data: openDraft } = await supabase
               .from("suggestions")
               .select("id, variants")
@@ -177,7 +230,7 @@ export async function POST(req: Request) {
               // und den offenen Entwurf aktualisieren (kein Duplikat in der Queue).
               autoDraft = await generateReplies(
                 ctx,
-                "Antworte passend auf die letzte Nachricht der Person.",
+                draftSituation("Antworte passend auf die letzte Nachricht der Person."),
                 nowLocal
               )
               await supabase
@@ -191,7 +244,7 @@ export async function POST(req: Request) {
             } else {
               autoDraft = await generateReplies(
                 ctx,
-                "Antworte passend auf die letzte Nachricht der Person.",
+                draftSituation("Antworte passend auf die letzte Nachricht der Person."),
                 nowLocal
               )
               await supabase.from("suggestions").insert({

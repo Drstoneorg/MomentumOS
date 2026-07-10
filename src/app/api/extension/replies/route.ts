@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       parts.push(
         `Aktueller Chat-Ausschnitt direkt aus dem Browser ([me]=ich, [them]=Person):\n${liveChat
           .trim()
-          .slice(0, 1500)}\nAntworte auf die letzte [them]-Nachricht.`
+          .slice(0, 2000)}\nAntworte auf die letzte [them]-Nachricht.`
       )
     }
     const result = await generateReplies(ctx, parts.filter(Boolean).join("\n\n"), nowLocal)
