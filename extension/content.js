@@ -484,7 +484,14 @@
       const res = await fetch(`${baseUrl}/api/extension/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ raw: scanRaw(), platform, nowLocal: new Date().toString() }),
+        body: JSON.stringify({
+          raw: scanRaw(),
+          platform,
+          nowLocal: new Date().toString(),
+          // Live-Chat-Ende mitgeben: der Auto-Entwurf soll auf die tatsächlich
+          // letzte Nachricht antworten, nicht auf evtl. veralteten DB-Stand.
+          chatTail: chatAnnotatedText().split("\n").filter(Boolean).slice(-14).join("\n") || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
@@ -542,7 +549,7 @@
     out.innerHTML = `<p class="mox-hint">Generiere…</p>`
     // Live-Chat-Ende mitschicken: garantiert, dass die allerletzte Nachricht der
     // Person berücksichtigt wird, auch wenn der DB-Sync sie (noch) nicht hat.
-    const liveChat = chatAnnotatedText().split("\n").filter(Boolean).slice(-8).join("\n")
+    const liveChat = chatAnnotatedText().split("\n").filter(Boolean).slice(-14).join("\n")
     try {
       const res = await fetch(`${baseUrl}/api/extension/replies`, {
         method: "POST",

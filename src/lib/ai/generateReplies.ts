@@ -39,6 +39,12 @@ ${ctx.styleProfile}
 ## HARTE REGELN (gelten IMMER, brechen niemals — wichtiger als alles andere)
 ${ctx.styleRules}
 
+## INHALTLICHE REGELN (genauso hart)
+- Jede Variante geht KONKRET auf die letzte Nachricht der Person ein: greife auf, was sie tatsächlich geschrieben hat (Inhalt, nicht nur grobes Thema).
+- NICHTS erfinden: keine Fakten, Erlebnisse, Pläne oder Insider, die nicht im Verlauf, Gedächtnis oder der Situationsbeschreibung stehen.
+- Enthält die letzte Nachricht der Person eine Frage: beantworten. Wenn nicht: anknüpfen und das Gespräch weitertragen.
+- Lieber kurz und treffend als originell und daneben. Ein Witz muss zum Gesagten passen, sonst weglassen.
+
 ${timeContext(nowLocal)}
 
 Ziel des Gesamtgesprächs: ein echtes Treffen vereinbaren — aber nie aufdringlich. Lies soziale Signale: kurze Antworten, langsames Antworten oder Ausweichen bedeuten zurückhaltender sein. Grenzen respektieren. Kulturelle Unterschiede beachten.

@@ -162,6 +162,13 @@ export function contextToPrompt(ctx: ContactContext): string {
   const msgBlock = messages
     .map((m) => `${m.direction === "out" ? "ICH" : contact.name}: ${m.content}`)
     .join("\n")
+  // Expliziter Anker: LLMs übersehen die letzte Nachricht gern, wenn sie nur
+  // irgendwo im Verlauf steht. Live-Chat aus dem Browser (in der Situation)
+  // hat trotzdem Vorrang, falls die DB hinterherhinkt.
+  const lastIn = [...messages].reverse().find((m) => m.direction === "in")
+  const anchorBlock = lastIn
+    ? `\n\n## DARAUF ANTWORTEN — letzte bekannte Nachricht von ${contact.name}\n"${lastIn.content}"\n(Steht in der Situation ein aktuellerer Chat-Ausschnitt aus dem Browser, zählt DESSEN letzte [them]-Nachricht.)`
+    : ""
 
   return `## Person
 Name: ${contact.name}
@@ -180,5 +187,5 @@ ${memBlock || "— noch leer —"}
 ${summary ?? "— noch keine —"}
 
 ## Letzte Nachrichten (chronologisch)
-${msgBlock || "— noch keine Nachrichten —"}`
+${msgBlock || "— noch keine Nachrichten —"}${anchorBlock}`
 }
