@@ -15,10 +15,10 @@ export default async function Dashboard() {
   const now = new Date().toISOString()
 
   const [contactsRes, followupsRes, datesRes, draftsRes, heartbeatsRes] = await Promise.all([
-    supabase.from("contacts").select("*").neq("pipeline_stage", "archived"),
+    supabase.from("contacts").select("*").eq("realm", "match").neq("pipeline_stage", "archived"),
     supabase
       .from("followups")
-      .select("*, contacts(name)")
+      .select("*, contacts(name, realm)")
       .eq("done", false)
       .lte("due_at", now)
       .order("due_at"),
@@ -66,6 +66,8 @@ export default async function Dashboard() {
   }).filter((x): x is { name: string; info: string } => x !== null)
 
   const contacts = contactsRes.data ?? []
+  // MomentOS-Erinnerungen (Geburtstag/Kontaktpause bei Freunden) leben im MomentOS-Hub.
+  const followups = (followupsRes.data ?? []).filter((f) => f.contacts?.realm !== "moment")
   const newMatches = contacts.filter((c) =>
     ["new_match", "first_message_pending"].includes(c.pipeline_stage)
   )
@@ -100,7 +102,7 @@ export default async function Dashboard() {
   // „Heute dran": eine Abarbeitungsliste statt Suchen in Einzel-Boxen.
   const todayBirthdays = birthdays.filter((b) => b.d === 0)
   const todayCount =
-    (followupsRes.data?.length ?? 0) +
+    followups.length +
     stale.length +
     todayBirthdays.length +
     (jobsToFollow?.length ?? 0) +
@@ -129,7 +131,7 @@ export default async function Dashboard() {
                 <span className="text-zinc-400">hat heute Geburtstag — Gruß in der <Link href="/queue" className="text-rose-400 hover:underline">Queue</Link> prüfen</span>
               </li>
             ))}
-            {(followupsRes.data ?? []).map((f) => (
+            {followups.map((f) => (
               <li key={`f-${f.id}`} className="flex items-center gap-2">
                 <span>⏰</span>
                 <Link href={`/contacts/${f.contact_id}`} className="font-medium text-white hover:underline">{f.contacts?.name}</Link>
@@ -164,9 +166,9 @@ export default async function Dashboard() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card title={`Fällige Follow-ups (${followupsRes.data?.length ?? 0})`}>
+        <Card title={`Fällige Follow-ups (${followups.length})`}>
           <ul className="space-y-2 text-sm">
-            {(followupsRes.data ?? []).map((f) => (
+            {followups.map((f) => (
               <li key={f.id} className="flex items-center gap-2">
                 <div className="flex-1">
                   <Link href={`/contacts/${f.contact_id}`} className="font-medium text-white hover:underline">
@@ -178,7 +180,7 @@ export default async function Dashboard() {
                 <FollowupDone id={f.id} />
               </li>
             ))}
-            {!followupsRes.data?.length && <li className="text-zinc-500">Nichts fällig. 👌</li>}
+            {!followups.length && <li className="text-zinc-500">Nichts fällig. 👌</li>}
           </ul>
         </Card>
 
@@ -226,7 +228,7 @@ export default async function Dashboard() {
                 <span className={d === 0 ? "text-rose-400" : "text-zinc-400"}>{d === 0 ? "heute 🎂" : `in ${d}d`}</span>
               </li>
             ))}
-            {!birthdays.length && <li className="text-zinc-500">Keine in 14 Tagen. <Link href="/moments" className="text-rose-400 hover:underline">Moments →</Link></li>}
+            {!birthdays.length && <li className="text-zinc-500">Keine in 14 Tagen. <Link href="/moments" className="text-rose-400 hover:underline">MomentOS →</Link></li>}
           </ul>
         </Card>
       </div>

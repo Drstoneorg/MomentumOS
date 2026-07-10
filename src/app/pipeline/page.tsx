@@ -10,6 +10,7 @@ export default async function PipelinePage() {
   const { data: contacts } = await supabase
     .from("contacts")
     .select("*")
+    .eq("realm", "match")
     .order("updated_at", { ascending: false })
 
   return (

@@ -1,6 +1,6 @@
 import { chatJSON } from "./deepseek"
 import { contextToPrompt, timeContext, type ContactContext } from "./context"
-import { stripDashes } from "./generateReplies"
+import { enforceStyle } from "./generateReplies"
 
 export type RephraseResult = {
   variants: Record<string, string>
@@ -43,7 +43,7 @@ ${idea}`
   const raw = await chatJSON(system, user, "rephrase")
   const parsed = JSON.parse(raw) as RephraseResult
   for (const [k, v] of Object.entries(parsed.variants ?? {})) {
-    parsed.variants[k] = stripDashes(String(v))
+    parsed.variants[k] = enforceStyle(String(v))
   }
   return parsed
 }

@@ -14,10 +14,10 @@ export type ContactContext = {
 // Harte Regeln, die IMMER gelten — zusätzlich zu den in den Einstellungen
 // gepflegten Regeln (settings-Key "user_style_rules").
 export const BASE_STYLE_RULES =
-  "Niemals Binde- oder Gedankenstriche verwenden (kein -, – oder —), weder als Satzzeichen noch in Wörtern — Wörter stattdessen zusammen oder getrennt schreiben. Keine Aufzählungszeichen. Klingt wie getippt, nicht wie generiert."
+  "Niemals Binde- oder Gedankenstriche verwenden (kein -, – oder —), weder als Satzzeichen noch in Wörtern — Wörter stattdessen zusammen oder getrennt schreiben. Keine Aufzählungszeichen. Kein Punkt am Satzende: ein Satz endet ohne Zeichen, mit Fragezeichen oder mit einem passenden Emoji, Emoticon oder Kaomoji. Keine Ausrufezeichen. \"^^\" höchstens selten einsetzen, nie als Standard-Abschluss. Klingt wie getippt, nicht wie generiert."
 
 const DEFAULT_STYLE =
-  "Natürlich, direkt, leicht humorvoll, charmant. Nicht generisch, nicht übertrieben, nicht peinlich, nicht cringe. Kurze Nachrichten wie echte Chat-Nachrichten, keine Aufsätze."
+  "Natürlich, direkt, trocken humorvoll, charmant. Nicht generisch, nicht übertrieben, nicht peinlich, nicht cringe. Kurze Nachrichten wie echte Chat-Nachrichten, keine Aufsätze. Sätze enden nie mit Punkt, sondern mit nichts, einer Frage oder einem passenden Emoji/Emoticon/Kaomoji."
 
 export async function loadContactContext(
   contactId: string,

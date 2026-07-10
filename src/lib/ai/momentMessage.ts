@@ -1,4 +1,6 @@
 import { chatJSON } from "./deepseek"
+import { BASE_STYLE_RULES } from "./context"
+import { enforceStyle } from "@/lib/text"
 
 export type MomentKind = "birthday" | "checkin" | "invite" | "meetup" | "recap"
 
@@ -32,6 +34,8 @@ export async function generateMomentMessages(
   const system = `Du schreibst persönliche Nachrichten in MEINEM Stil:
 ${input.styleProfile}
 
+HARTE REGELN (brechen niemals): ${BASE_STYLE_RULES}
+
 Aufgabe: ${KIND_BRIEF[input.kind]}
 Sprache der Nachricht: ${input.language}. Beziehung zur Person: ${input.relationship || "unbekannt"}.
 Nie generisch, nie kitschig, nie wie eine Grußkarten-Floskel. Echte Chat-Nachrichten.
@@ -47,5 +51,9 @@ Kontext: ${input.context || "—"}`
 
   const raw = await chatJSON(system, user, "moment_message")
   const parsed = JSON.parse(raw) as MomentMessages
-  return { variants: parsed.variants ?? {}, note: parsed.note ?? "" }
+  const variants: Record<string, string> = {}
+  for (const [k, v] of Object.entries(parsed.variants ?? {})) {
+    variants[k] = enforceStyle(String(v))
+  }
+  return { variants, note: parsed.note ?? "" }
 }

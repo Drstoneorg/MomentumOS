@@ -136,7 +136,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
   }
 
   return (
-    <Card title="Moments-Generator">
+    <Card title="MomentOS-Generator">
       <div className="mb-3 flex gap-2">
         <button onClick={() => setTab("text")} className={tab === "text" ? btnCls : btnGhostCls}>Nachricht</button>
         <button onClick={() => setTab("image")} className={tab === "image" ? btnCls : btnGhostCls}>Bild-Prompt</button>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { updateContact, deleteContact } from "@/lib/actions"
+import { updateContact, deleteContact, setContactRealm } from "@/lib/actions"
 import { PIPELINE_STAGES, STAGE_LABELS, type Tables } from "@/lib/database.types"
 import { inputCls, btnGhostCls, PriorityDot } from "@/components/ui"
 import { InlineField } from "@/components/InlineField"
@@ -50,10 +50,20 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
     })
   }
 
+  const isMoment = contact.realm === "moment"
+
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <PriorityDot priority={contact.priority} />
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            isMoment ? "border-amber-700 text-amber-300" : "border-rose-700 text-rose-300"
+          }`}
+          title={isMoment ? "MomentOS-Kontakt (Freunde & echte Bekannte)" : "MatchOS-Kontakt (Match/Anbahnung)"}
+        >
+          {isMoment ? "MomentOS" : "Match"}
+        </span>
         <h1 className="text-xl font-bold">
           <InlineField
             value={contact.name}
@@ -89,6 +99,7 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {!isMoment && (
           <select
             value={contact.pipeline_stage}
             onChange={(e) =>
@@ -105,6 +116,7 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
               <option key={s} value={s}>{STAGE_LABELS[s]}</option>
             ))}
           </select>
+          )}
           <select
             value={contact.priority}
             onChange={(e) =>
@@ -121,6 +133,7 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
             <option value="normal">Prio: normal</option>
             <option value="high">Prio: hoch</option>
           </select>
+          {!isMoment && (
           <button
             onClick={() =>
               start(async () => {
@@ -144,8 +157,28 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
           >
             {contact.auto_mode ? "⚡ Autopilot AN" : "Autopilot"}
           </button>
+          )}
+          {!isMoment && (
           <button onClick={runAnalysis} disabled={analyzing} className={btnGhostCls}>
             {analyzing ? "Analysiere…" : "KI-Analyse"}
+          </button>
+          )}
+          <button
+            onClick={() =>
+              start(async () => {
+                await setContactRealm(contact.id, isMoment ? "match" : "moment")
+                router.refresh()
+              })
+            }
+            disabled={pending}
+            className={btnGhostCls}
+            title={
+              isMoment
+                ? "Kontakt zurück in die Matchbox (MatchOS) verschieben"
+                : "Aus einem Match ist ein echter Kontakt geworden — zu MomentOS verschieben"
+            }
+          >
+            {isMoment ? "→ Matchbox" : "→ MomentOS"}
           </button>
           <button onClick={() => setEdit(!edit)} className={btnGhostCls}>
             {edit ? "Schließen" : "Bearbeiten"}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { createPortal } from "react-dom"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { createContact, addChannel } from "@/lib/actions"
 import { updateFriendMeta } from "@/lib/momentsActions"
 import { CHANNEL_IDS } from "@/lib/channels"
@@ -34,7 +34,11 @@ const empty: Fields = {
 
 export function QuickAddContact() {
   const router = useRouter()
+  const pathname = usePathname()
+  // Kontext-Default: im MomentOS-Bereich landen neue Kontakte bei MomentOS
+  const inMoments = ["/moments", "/cards", "/capture"].some((p) => pathname.startsWith(p))
   const [open, setOpen] = useState(false)
+  const [realm, setRealm] = useState<"match" | "moment">("match")
   const [f, setF] = useState<Fields>(empty)
   const [raw, setRaw] = useState("")
   const [parsing, setParsing] = useState(false)
@@ -77,6 +81,7 @@ export function QuickAddContact() {
       try {
         const id = await createContact({
           name: f.name.trim(),
+          realm,
           platform: f.platform,
           age: f.age ? Number(f.age) : null,
           location: f.location || null,
@@ -113,7 +118,10 @@ export function QuickAddContact() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setRealm(inMoments ? "moment" : "match")
+          setOpen(true)
+        }}
         title="Kontakt schnell anlegen"
         className="rounded-lg border border-zinc-700 px-2.5 py-1 text-sm text-zinc-300 hover:bg-zinc-800"
       >
@@ -126,6 +134,25 @@ export function QuickAddContact() {
             className="w-full max-w-lg space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-6"
           >
             <h2 className="text-lg font-semibold">Kontakt schnell anlegen</h2>
+
+            <div className="flex gap-2">
+              {(["match", "moment"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRealm(r)}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
+                    realm === r
+                      ? r === "match"
+                        ? "border-rose-600 bg-rose-950/40 text-rose-200"
+                        : "border-amber-600 bg-amber-950/40 text-amber-200"
+                      : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                  }`}
+                >
+                  {r === "match" ? "💘 Match (MatchOS)" : "🤝 Kontakt (MomentOS)"}
+                </button>
+              ))}
+            </div>
 
             <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
               <textarea

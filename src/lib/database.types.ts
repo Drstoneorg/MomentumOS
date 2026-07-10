@@ -304,6 +304,7 @@ export type Database = {
           pipeline_stage: Database["public"]["Enums"]["pipeline_stage"]
           platform: string
           priority: Database["public"]["Enums"]["priority_level"]
+          realm: string
           relationship_tags: string[]
           updated_at: string
         }
@@ -330,6 +331,7 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
+          realm?: string
           relationship_tags?: string[]
           updated_at?: string
         }
@@ -356,6 +358,7 @@ export type Database = {
           pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
+          realm?: string
           relationship_tags?: string[]
           updated_at?: string
         }

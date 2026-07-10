@@ -37,6 +37,19 @@ export async function updateContact(
   revalidatePath("/pipeline")
 }
 
+/** Kontakt zwischen MatchOS (match) und MomentOS (moment) verschieben. */
+export async function setContactRealm(id: string, realm: "match" | "moment") {
+  const supabase = await db()
+  const { error } = await supabase.from("contacts").update({ realm }).eq("id", id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/contacts/${id}`)
+  revalidatePath("/contacts")
+  revalidatePath("/pipeline")
+  revalidatePath("/moments")
+  revalidatePath("/moments/people")
+  revalidatePath("/")
+}
+
 export async function deleteContact(id: string) {
   const supabase = await db()
   const { error } = await supabase.from("contacts").delete().eq("id", id)
@@ -293,6 +306,7 @@ export async function bulkImportContacts(rows: ImportRow[]): Promise<ImportResul
       .insert({
         name,
         platform: "freund",
+        realm: "moment",
         location: row.location || null,
         birthday: row.birthday || null,
         relationship_tags: row.tags ?? [],
