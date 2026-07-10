@@ -19,6 +19,7 @@ export default async function ContactsPage({
   let query = supabase
     .from("contacts")
     .select("*")
+    .eq("realm", "match")
     .order("updated_at", { ascending: false })
   if (stage) query = query.eq("pipeline_stage", stage as never)
   if (platform) query = query.eq("platform", platform)

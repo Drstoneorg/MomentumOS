@@ -26,32 +26,29 @@ const products: Product[] = [
       p.startsWith("/contacts") ||
       p.startsWith("/pipeline") ||
       p.startsWith("/queue") ||
-      p.startsWith("/cards") ||
-      p.startsWith("/capture") ||
       p.startsWith("/settings"),
     links: [
       { href: "/", label: "Dashboard" },
       { href: "/contacts", label: "Matchbox" },
       { href: "/pipeline", label: "Pipeline" },
       { href: "/queue", label: "Queue" },
-      { href: "/cards", label: "Karten" },
-      { href: "/capture", label: "📸 Erfassen" },
       { href: "/settings", label: "Einstellungen" },
     ],
   },
   {
     id: "moments",
-    label: "Moments",
+    label: "MomentOS",
     color: "text-amber-400",
     home: "/moments",
-    match: (p) => p.startsWith("/moments"),
+    match: (p) =>
+      p.startsWith("/moments") || p.startsWith("/cards") || p.startsWith("/capture"),
     links: [
       { href: "/moments", label: "Hub" },
+      { href: "/cards", label: "🃏 Karten" },
+      { href: "/capture", label: "📸 Erfassen" },
+      { href: "/moments/people", label: "Kontakte" },
       { href: "/moments/events", label: "Events" },
       { href: "/moments/meetups", label: "Meetups" },
-      { href: "/cards", label: "Karten" },
-      { href: "/contacts", label: "Kontakte" },
-      { href: "/capture", label: "📸 Erfassen" },
     ],
   },
   {
@@ -129,7 +126,7 @@ export function Nav() {
                   {pr.id === "dating"
                     ? "Dating-Agent"
                     : pr.id === "moments"
-                      ? "Freunde & Anlässe"
+                      ? "Freunde, Karten & Anlässe"
                       : pr.id === "jobs"
                         ? "Bewerbungs-Manager"
                         : "Treatments on demand"}

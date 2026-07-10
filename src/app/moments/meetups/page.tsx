@@ -10,7 +10,7 @@ export default async function MeetupsPage() {
   const supabase = await createClient()
   const [meetupsRes, contactsRes] = await Promise.all([
     supabase.from("meetups").select("*, meetup_participants(contacts(name))").order("created_at", { ascending: false }),
-    supabase.from("contacts").select("id, name").order("name"),
+    supabase.from("contacts").select("id, name").eq("realm", "moment").order("name"),
   ])
 
   return (

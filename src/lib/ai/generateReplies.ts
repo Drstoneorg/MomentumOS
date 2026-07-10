@@ -1,8 +1,8 @@
 import { chatJSON } from "./deepseek"
 import { contextToPrompt, timeContext, type ContactContext } from "./context"
-import { stripDashes } from "@/lib/text"
+import { enforceStyle, stripDashes } from "@/lib/text"
 
-export { stripDashes }
+export { stripDashes, enforceStyle }
 
 export type ReplyVariants = {
   variants: Record<string, string>
@@ -70,9 +70,9 @@ ${situation || "Schreibe die passende nächste Nachricht."}`
 
   const raw = await chatJSON(system, user, "replies")
   const parsed = JSON.parse(raw) as ReplyVariants
-  // Harte Regel deterministisch durchsetzen — Prompt allein reicht bei LLMs nicht.
+  // Harte Regeln deterministisch durchsetzen — Prompt allein reicht bei LLMs nicht.
   for (const [k, v] of Object.entries(parsed.variants ?? {})) {
-    parsed.variants[k] = stripDashes(v)
+    parsed.variants[k] = enforceStyle(v)
   }
   return { cjk: null, ...parsed }
 }

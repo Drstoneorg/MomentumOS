@@ -105,6 +105,8 @@ export async function POST(req: Request) {
           notes: notes || null,
           relationship_tags: tags,
           pipeline_stage: p.kind === "dating" ? "new_match" : "chatting",
+          // Dating-Erfassungen in die Matchbox, alles andere (Freunde, Business …) zu MomentOS
+          realm: p.kind === "dating" ? "match" : "moment",
         })
         .select("id")
         .single()

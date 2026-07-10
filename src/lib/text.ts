@@ -19,3 +19,17 @@ export function stripDashes(text: string): string {
     .replace(/\s{2,}/g, " ")
     .trim()
 }
+
+/**
+ * Entfernt einzelne Punkte am Zeilen-/Nachrichtenende (Nutzer-Regel: kein "."
+ * am Satzende — stattdessen nichts, Fragezeichen oder Emoji/Kaomoji).
+ * "..." bleibt erhalten, Punkte mitten im Satz werden nicht angefasst.
+ */
+export function stripTrailingPeriods(text: string): string {
+  return text.replace(/([^.\s])\.(?=\s*(?:\n|$))/g, "$1")
+}
+
+/** Alle deterministischen Stil-Regeln auf eine generierte Nachricht anwenden. */
+export function enforceStyle(text: string): string {
+  return stripTrailingPeriods(stripDashes(text))
+}

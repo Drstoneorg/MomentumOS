@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { btnCls } from "@/components/ui"
 import { CardSend } from "./CardSend"
+import { ContactPicker, type PickContact } from "./ContactPicker"
 
 type Fact = { id: string; label: string; value: string; source: string }
 type Channel = { channel: string; handle: string; is_primary?: boolean }
@@ -22,7 +23,7 @@ export function CardBuilder({
   contacts,
   templates,
 }: {
-  contacts: { id: string; name: string }[]
+  contacts: PickContact[]
   templates: { id: string; name: string }[]
 }) {
   const router = useRouter()
@@ -102,16 +103,7 @@ export function CardBuilder({
       <h2 className="font-semibold text-white">Karte erstellen</h2>
 
       <div className="flex flex-wrap gap-2">
-        <select
-          value={contactId}
-          onChange={(e) => loadFacts(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-200"
-        >
-          <option value="">Kontakt wählen…</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <ContactPicker contacts={contacts} value={contactId} onSelect={loadFacts} />
         <select
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}

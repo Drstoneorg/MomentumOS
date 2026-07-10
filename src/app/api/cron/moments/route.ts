@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const supabase = createAdminClient()
   await beatCron(supabase, "moments")
   const [{ data: contacts }, { data: styleRow }] = await Promise.all([
-    supabase.from("contacts").select("*").neq("pipeline_stage", "archived"),
+    supabase.from("contacts").select("*").eq("realm", "moment").neq("pipeline_stage", "archived"),
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
   ])
   const styleProfile =
@@ -157,7 +157,7 @@ export async function GET(req: Request) {
 
   if (results.length) {
     await sendPushToAll({
-      title: "MatchOS Moments",
+      title: "MomentOS",
       body: results
         .map((r) => r.action)
         .slice(0, 3)

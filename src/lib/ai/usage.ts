@@ -70,7 +70,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   summarize: "Zusammenfassungen",
   analyze_stage: "Pipeline-Analyse",
   extract_profile: "Profil-Extraktion",
-  moment_message: "Moments-Texte",
+  moment_message: "MomentOS-Texte",
   image_prompt: "Bild-Prompts",
   image: "Bild-Generierung",
   vision: "Foto-Check",
