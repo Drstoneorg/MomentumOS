@@ -78,6 +78,17 @@ export function styleSignals(c: StyleFields): string[] {
 }
 
 /**
+ * Intent-Vorschlag für NEUE Match-Kontakte: Stil passt (alt/goth/aesthetic) = Date-Spur.
+ * Profildaten vorhanden, aber kein Stil-Signal = Kandidatin für den Event-Funnel.
+ * Ohne Daten kein Urteil (bleibt date, manuell umstellbar).
+ */
+export function suggestIntent(c: StyleFields): "date" | "event_lead" {
+  const hasData = (c.interests?.length ?? 0) > 0 || !!c.bio || !!c.photo_notes || !!c.notes
+  if (!hasData) return "date"
+  return styleSignals(c).length ? "date" : "event_lead"
+}
+
+/**
  * Vier Faktoren:
  * - Antwortet (40): schreibt die Person zurueck, und wie frisch ist die letzte Antwort.
  * - Treffen-bereit (25): Pipeline-Stage Richtung Date (Interesse = halbe Punkte).

@@ -6,6 +6,7 @@ import {
   type CapturedContact,
 } from "@/lib/ai/extractContactData"
 import { CHANNELS } from "@/lib/channels"
+import { suggestIntent } from "@/lib/scoring"
 
 export const maxDuration = 60
 
@@ -107,6 +108,11 @@ export async function POST(req: Request) {
           pipeline_stage: p.kind === "dating" ? "new_match" : "chatting",
           // Dating-Erfassungen in die Matchbox, alles andere (Freunde, Business …) zu MomentOS
           realm: p.kind === "dating" ? "match" : "moment",
+          // Auto-Triage: kein Alt/Goth/Aesthetic-Signal = Event-Lead-Vorschlag
+          intent:
+            p.kind === "dating"
+              ? suggestIntent({ bio: p.bio, interests: p.interests, notes: notes || null })
+              : "date",
         })
         .select("id")
         .single()
