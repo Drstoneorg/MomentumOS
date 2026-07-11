@@ -22,6 +22,9 @@ type ActivityEvent = { kind: "dm" | "like" | "mention" | "other"; name: string; 
  */
 export async function POST(req: Request) {
   const supabase = await authExtension(req)
+  if (supabase === "rate_limited") {
+    return NextResponse.json({ error: "Rate-Limit erreicht — in einer Stunde wieder" }, { status: 429, headers: cors })
+  }
   if (!supabase) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
