@@ -11,8 +11,9 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   const [eventRes, invitesRes, contactsRes] = await Promise.all([
     supabase.from("events").select("*").eq("id", id).single(),
-    supabase.from("event_invites").select("*, contacts(name, relationship_tags, language, contact_channels(channel, handle))").eq("event_id", id),
-    supabase.from("contacts").select("id, name, relationship_tags").eq("realm", "moment").order("name"),
+    supabase.from("event_invites").select("*, contacts(name, realm, relationship_tags, language, contact_channels(channel, handle))").eq("event_id", id),
+    // Beide Realms: Freunde UND Matches (Event-Leads) einladbar, Freunde zuerst
+    supabase.from("contacts").select("id, name, realm, relationship_tags").order("realm", { ascending: false }).order("name"),
   ])
 
   const event = eventRes.data

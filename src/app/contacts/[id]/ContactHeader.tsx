@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { updateContact, deleteContact, setContactRealm } from "@/lib/actions"
-import { PIPELINE_STAGES, STAGE_LABELS, type Tables } from "@/lib/database.types"
+import { updateContact, deleteContact, setContactRealm, setContactIntent } from "@/lib/actions"
+import { PIPELINE_STAGES, STAGE_LABELS, INTENT_LABELS, type Tables } from "@/lib/database.types"
 import { inputCls, btnGhostCls, PriorityDot } from "@/components/ui"
 import { InlineField } from "@/components/InlineField"
 
@@ -99,6 +99,23 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {!isMoment && (
+          <select
+            value={contact.intent}
+            onChange={(e) =>
+              start(async () => {
+                await setContactIntent(contact.id, e.target.value as "date" | "event_lead" | "both")
+                router.refresh()
+              })
+            }
+            className={inputCls + " w-auto"}
+            title="Spur: echtes Kennenlernen (Date), Gast für meine Events (Event-Lead) oder beides"
+          >
+            {Object.entries(INTENT_LABELS).map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+          )}
           {!isMoment && (
           <select
             value={contact.pipeline_stage}

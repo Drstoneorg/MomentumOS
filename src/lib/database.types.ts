@@ -291,6 +291,7 @@ export type Database = {
           date_idea: string | null
           external_id: string | null
           id: string
+          intent: string
           interests: string[] | null
           language: string | null
           last_contact_at: string | null
@@ -318,6 +319,7 @@ export type Database = {
           date_idea?: string | null
           external_id?: string | null
           id?: string
+          intent?: string
           interests?: string[] | null
           language?: string | null
           last_contact_at?: string | null
@@ -345,6 +347,7 @@ export type Database = {
           date_idea?: string | null
           external_id?: string | null
           id?: string
+          intent?: string
           interests?: string[] | null
           language?: string | null
           last_contact_at?: string | null
@@ -444,6 +447,7 @@ export type Database = {
           event_id: string
           id: string
           invite_text: string | null
+          promo_code: string | null
           status: Database["public"]["Enums"]["event_invite_status"]
         }
         Insert: {
@@ -452,6 +456,7 @@ export type Database = {
           event_id: string
           id?: string
           invite_text?: string | null
+          promo_code?: string | null
           status?: Database["public"]["Enums"]["event_invite_status"]
         }
         Update: {
@@ -460,6 +465,7 @@ export type Database = {
           event_id?: string
           id?: string
           invite_text?: string | null
+          promo_code?: string | null
           status?: Database["public"]["Enums"]["event_invite_status"]
         }
         Relationships: [
@@ -2117,7 +2123,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       date_status: "proposed" | "confirmed"
-      event_invite_status: "invited" | "yes" | "no" | "no_reply"
+      event_invite_status: "invited" | "yes" | "no" | "no_reply" | "ticket" | "attended"
       meetup_status:
         | "idea"
         | "proposed"
@@ -2296,7 +2302,7 @@ export const Constants = {
         "cancelled",
       ],
       date_status: ["proposed", "confirmed"],
-      event_invite_status: ["invited", "yes", "no", "no_reply"],
+      event_invite_status: ["invited", "yes", "no", "no_reply", "ticket", "attended"],
       meetup_status: ["idea", "proposed", "confirmed", "happened", "cancelled"],
       memory_kind: [
         "likes",
@@ -2374,6 +2380,15 @@ export const RSVP_LABELS: Record<Enums<"event_invite_status">, string> = {
   yes: "Zugesagt",
   no: "Abgesagt",
   no_reply: "Keine Antwort",
+  ticket: "🎟 Ticket gekauft",
+  attended: "✔ War da",
+}
+
+// Kontakt-Intent: wozu pflege ich diesen Kontakt (nur MatchOS-Realm relevant)
+export const INTENT_LABELS: Record<string, string> = {
+  date: "💘 Date",
+  event_lead: "🎟 Event-Lead",
+  both: "💘🎟 Beides",
 }
 
 export const BOOKING_STATUS_LABELS: Record<Enums<"booking_status">, string> = {

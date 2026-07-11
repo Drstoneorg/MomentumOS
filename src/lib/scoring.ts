@@ -37,11 +37,52 @@ export type MatchScore = {
 
 const DAY = 86_400_000
 
+// Stil-Signale fuer die Date-Spur: alternative / aesthetic / goth.
+// Kurze Woerter mit Wortgrenze, sonst matcht "alt" jedes "verhalten".
+const STYLE_PATTERNS: [RegExp, string][] = [
+  [/goth/i, "goth"],
+  [/\balt\b/i, "alt"],
+  [/alternativ/i, "alternativ"],
+  [/aesthetic|ästhet/i, "aesthetic"],
+  [/\bemo\b/i, "emo"],
+  [/\bpunk/i, "punk"],
+  [/grunge/i, "grunge"],
+  [/\bdark\b/i, "dark"],
+  [/tattoo|tätowier/i, "tattoo"],
+  [/piercing/i, "piercing"],
+  [/\bmetal\b/i, "metal"],
+  [/witch/i, "witchy"],
+  [/cyber/i, "cyber"],
+  [/\brave\b|raver/i, "rave"],
+  [/techno/i, "techno"],
+]
+
+export type StyleFields = {
+  interests?: string[] | null
+  bio?: string | null
+  notes?: string | null
+  photo_notes?: string | null
+  relationship_tags?: string[] | null
+}
+
+/** Welche Alt/Goth/Aesthetic-Signale stecken in Profilfeldern? */
+export function styleSignals(c: StyleFields): string[] {
+  const haystack = [
+    ...(c.interests ?? []),
+    ...(c.relationship_tags ?? []),
+    c.bio ?? "",
+    c.notes ?? "",
+    c.photo_notes ?? "",
+  ].join(" · ")
+  return STYLE_PATTERNS.filter(([re]) => re.test(haystack)).map(([, label]) => label)
+}
+
 /**
- * Drei Faktoren:
- * - Antwortet (50): schreibt die Person zurueck, und wie frisch ist die letzte Antwort.
- * - Treffen-bereit (30): Pipeline-Stage Richtung Date (Interesse = halbe Punkte).
- * - Wien (20): wohnt in Wien (Ort enthaelt "wien" oder "vienna").
+ * Vier Faktoren:
+ * - Antwortet (40): schreibt die Person zurueck, und wie frisch ist die letzte Antwort.
+ * - Treffen-bereit (25): Pipeline-Stage Richtung Date (Interesse = halbe Punkte).
+ * - Stil (20): alternative / aesthetic / goth-Signale in Interessen, Bio, Notizen.
+ * - Wien (15): wohnt in Wien (Ort enthaelt "wien" oder "vienna").
  */
 export function datingScore(
   messages: ScoreMessage[],
@@ -49,7 +90,7 @@ export function datingScore(
     pipeline_stage: Enums<"pipeline_stage">
     archived?: boolean
     location?: string | null
-  },
+  } & StyleFields,
   now = Date.now()
 ): MatchScore {
   const factors: ScoreFactor[] = []
@@ -68,7 +109,7 @@ export function datingScore(
     key: "answers",
     label: "Antwortet",
     value: answers,
-    weight: 50,
+    weight: 40,
     note:
       daysSinceReply === null
         ? "noch keine Antwort"
@@ -87,8 +128,18 @@ export function datingScore(
     key: "meeting",
     label: "Treffen-bereit",
     value: ready,
-    weight: 30,
+    weight: 25,
     note: ready === 1 ? "Date-Phase" : ready === 0.5 ? "Interesse sichtbar" : "noch nicht",
+  })
+
+  // Stil: alternative / aesthetic / goth-Signale (mein Beuteschema fuer die Date-Spur).
+  const signals = styleSignals(contact)
+  factors.push({
+    key: "style",
+    label: "Stil passt",
+    value: signals.length ? 1 : 0,
+    weight: 20,
+    note: signals.length ? signals.slice(0, 4).join(", ") : "kein Alt/Goth/Aesthetic-Signal",
   })
 
   // Wien: wohnt die Person in Wien?
@@ -98,7 +149,7 @@ export function datingScore(
     key: "vienna",
     label: "In Wien",
     value: inVienna ? 1 : 0,
-    weight: 20,
+    weight: 15,
     note: contact.location ? contact.location : "Ort unbekannt",
   })
 

@@ -164,6 +164,12 @@ export function ContactsTable({
                       <PriorityDot priority={c.priority} />
                       {c.name}
                       {c.age ? <span className="text-zinc-500">{c.age}</span> : null}
+                      {c.intent === "event_lead" && (
+                        <span title="Event-Lead: Gast-Funnel statt Date-Spur" className="text-xs">🎟</span>
+                      )}
+                      {c.intent === "both" && (
+                        <span title="Date-Spur UND Event-Gast" className="text-xs">💘🎟</span>
+                      )}
                     </Link>
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{c.platform}</td>

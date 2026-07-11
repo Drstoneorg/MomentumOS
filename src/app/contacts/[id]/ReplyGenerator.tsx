@@ -4,12 +4,16 @@ import { useState } from "react"
 import type { ReplyVariants } from "@/lib/ai/generateReplies"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
 
+type NextEvent = { title: string; starts_at: string | null; location: string | null }
+
 export function ReplyGenerator({
   contactId,
   language,
+  nextEvent,
 }: {
   contactId: string
   language: string
+  nextEvent?: NextEvent | null
 }) {
   const [situation, setSituation] = useState("")
   const [channel, setChannel] = useState("manual")
@@ -72,9 +76,36 @@ export function ReplyGenerator({
     setIdeaResult(data.variants)
   }
 
+  // Situations-Presets: ein Klick statt tippen. Event-Invite immer transparent
+  // als Veranstalter — kein verdecktes Marketing.
+  const eventPreset = nextEvent
+    ? `Lade transparent als Veranstalter zu meinem Event ein: „${nextEvent.title}“${
+        nextEvent.starts_at
+          ? ` am ${new Date(nextEvent.starts_at).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}`
+          : ""
+      }${nextEvent.location ? ` (${nextEvent.location})` : ""}. Locker und ohne Druck: ich organisiere das, wir könnten uns dort entspannt persönlich treffen. Muss zum bisherigen Gespräch passen.`
+    : null
+
   return (
     <Card title="Antwortgenerator">
       <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {eventPreset && (
+            <button
+              onClick={() => setSituation(eventPreset)}
+              className="rounded-full border border-violet-800 bg-violet-950/40 px-2.5 py-1 text-xs text-violet-200 hover:bg-violet-900/40"
+              title="Situationsfeld mit transparenter Event-Einladung füllen"
+            >
+              🎟 Event-Einladung{nextEvent?.title ? `: ${nextEvent.title}` : ""}
+            </button>
+          )}
+          <button
+            onClick={() => setSituation("Schlag ein entspanntes erstes Treffen vor, passend zum bisherigen Gespräch und ohne Druck.")}
+            className="rounded-full border border-rose-800 bg-rose-950/40 px-2.5 py-1 text-xs text-rose-200 hover:bg-rose-900/40"
+          >
+            💘 Date vorschlagen
+          </button>
+        </div>
         <div className="flex gap-2">
           <input
             value={situation}

@@ -45,6 +45,11 @@ export default async function ContactsPage({
       scores[c.id] = datingScore(byContact.get(c.id) ?? [], {
         pipeline_stage: c.pipeline_stage,
         location: c.location,
+        interests: c.interests,
+        bio: c.bio,
+        notes: c.notes,
+        photo_notes: c.photo_notes,
+        relationship_tags: c.relationship_tags,
       })
     }
   }
