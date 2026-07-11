@@ -1,0 +1,38 @@
+# Tägliches DB-Backup: holt den Voll-Export von /api/backup und legt ihn
+# als Workflow-Artifact ab (90 Tage Aufbewahrung, nichts landet in der Git-History).
+# Wiederherstellen: siehe BACKUP.md. Roter Lauf = GitHub-Mail = Frühwarnung.
+# Braucht Secret BACKUP_SECRET (gleicher Wert wie in Vercel).
+name: DB Backup
+
+on:
+  schedule:
+    - cron: "43 4 * * *" # täglich ~04:43 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export holen
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o backup.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.BACKUP_SECRET }}" \
+            "https://matchos-ten.vercel.app/api/backup")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then cat backup.json; exit 1; fi
+          python3 - <<'EOF'
+          import json
+          d = json.load(open("backup.json"))
+          rows = sum(len(v) for v in d["tables"].values())
+          print(f"Tabellen: {d['table_count']}, Zeilen: {rows}")
+          assert rows > 0, "Backup leer — etwas stimmt nicht"
+          EOF
+          gzip -9 backup.json
+
+      - name: Als Artifact sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchos-backup-${{ github.run_number }}
+          path: backup.json.gz
+          retention-days: 90
