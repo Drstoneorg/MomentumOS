@@ -95,6 +95,13 @@ export async function removeInvite(id: string, eventId: string) {
   revalidatePath(`/moments/events/${eventId}`)
 }
 
+/** Individueller Promo-Code pro Einladung — Attribution im Ticketshop. */
+export async function setInvitePromoCode(id: string, eventId: string, code: string | null) {
+  const supabase = await db()
+  await supabase.from("event_invites").update({ promo_code: code }).eq("id", id)
+  revalidatePath(`/moments/events/${eventId}`)
+}
+
 // ---------- Meetups ----------
 export async function createMeetup(
   input: TablesInsert<"meetups">,

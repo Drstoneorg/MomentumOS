@@ -14,7 +14,7 @@ export default async function Dashboard() {
   const supabase = await createClient()
   const now = new Date().toISOString()
 
-  const [contactsRes, followupsRes, datesRes, draftsRes, heartbeatsRes] = await Promise.all([
+  const [contactsRes, followupsRes, datesRes, draftsRes, heartbeatsRes, nextEventRes] = await Promise.all([
     supabase.from("contacts").select("*").eq("realm", "match").neq("pipeline_stage", "archived"),
     supabase
       .from("followups")
@@ -33,7 +33,23 @@ export default async function Dashboard() {
       .eq("status", "draft")
       .eq("channel", "telegram"),
     supabase.from("settings").select("key, value").like("key", "cron_heartbeat_%"),
+    supabase
+      .from("events")
+      .select("id, title, starts_at, event_invites(status)")
+      .gte("starts_at", now)
+      .order("starts_at")
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  // Ticket-Funnel fürs nächste Event
+  const nextEvent = nextEventRes.data
+  const evInvites = nextEvent?.event_invites ?? []
+  const evFunnel = {
+    invited: evInvites.length,
+    yes: evInvites.filter((i) => i.status === "yes" || i.status === "ticket" || i.status === "attended").length,
+    ticket: evInvites.filter((i) => i.status === "ticket" || i.status === "attended").length,
+  }
 
   // JobOS für „Heute dran": Bewerbungen zum Nachfassen + frisch entdeckte Top-Matches
   const jobCutoff = new Date(Date.now() - 14 * 86400_000).toISOString()
@@ -219,6 +235,24 @@ export default async function Dashboard() {
         <Card title={`Hohe Priorität (${highPriority.length})`}>
           <ContactList contacts={highPriority} empty="Keine Kontakte mit hoher Priorität." />
         </Card>
+
+        {nextEvent && (
+          <Card title="🎟 Nächstes Event">
+            <Link href={`/moments/events/${nextEvent.id}`} className="text-sm font-medium text-white hover:underline">
+              {nextEvent.title}
+            </Link>
+            <p className="mt-1 text-xs text-zinc-400">
+              {nextEvent.starts_at
+                ? new Date(nextEvent.starts_at).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })
+                : "Datum offen"}
+            </p>
+            <p className="mt-2 text-xs text-zinc-400">
+              Funnel: <span className="text-zinc-200">{evFunnel.invited}</span> eingeladen
+              {" → "}<span className="text-emerald-300">{evFunnel.yes}</span> zugesagt
+              {" → "}<span className="text-violet-300">{evFunnel.ticket}</span> Ticket
+            </p>
+          </Card>
+        )}
 
         <Card title={`Geburtstage (${birthdays.length})`}>
           <ul className="space-y-2 text-sm">

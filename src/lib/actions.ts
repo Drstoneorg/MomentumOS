@@ -50,6 +50,15 @@ export async function setContactRealm(id: string, realm: "match" | "moment") {
   revalidatePath("/")
 }
 
+export async function setContactIntent(id: string, intent: "date" | "event_lead" | "both") {
+  const supabase = await db()
+  const { error } = await supabase.from("contacts").update({ intent }).eq("id", id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/contacts/${id}`)
+  revalidatePath("/contacts")
+  revalidatePath("/pipeline")
+}
+
 export async function deleteContact(id: string) {
   const supabase = await db()
   const { error } = await supabase.from("contacts").delete().eq("id", id)

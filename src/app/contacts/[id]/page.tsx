@@ -25,7 +25,7 @@ export default async function ContactPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes, followupsRes, meetupsRes, invitesRes] =
+  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes, followupsRes, meetupsRes, invitesRes, nextEventRes] =
     await Promise.all([
       supabase.from("contacts").select("*").eq("id", id).single(),
       supabase.from("messages").select("*").eq("contact_id", id).order("sent_at"),
@@ -42,6 +42,13 @@ export default async function ContactPage({
       supabase.from("followups").select("*").eq("contact_id", id),
       supabase.from("meetup_participants").select("rsvp, meetups(title, status, created_at)").eq("contact_id", id),
       supabase.from("event_invites").select("status, created_at, events(title, starts_at)").eq("contact_id", id),
+      supabase
+        .from("events")
+        .select("title, starts_at, location")
+        .gte("starts_at", new Date().toISOString())
+        .order("starts_at")
+        .limit(1)
+        .maybeSingle(),
     ])
 
   const contact = contactRes.data
@@ -49,7 +56,15 @@ export default async function ContactPage({
 
   const matchScore = datingScore(
     (messagesRes.data ?? []).map((m) => ({ direction: m.direction, sent_at: m.sent_at }) as ScoreMessage),
-    { pipeline_stage: contact.pipeline_stage, location: contact.location }
+    {
+      pipeline_stage: contact.pipeline_stage,
+      location: contact.location,
+      interests: contact.interests,
+      bio: contact.bio,
+      notes: contact.notes,
+      photo_notes: contact.photo_notes,
+      relationship_tags: contact.relationship_tags,
+    }
   )
 
   const timeline: TimelineItem[] = [
@@ -98,7 +113,7 @@ export default async function ContactPage({
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <ChatPanel contactId={id} messages={messagesRes.data ?? []} />
-          <ReplyGenerator contactId={id} language={contact.language ?? "de"} />
+          <ReplyGenerator contactId={id} language={contact.language ?? "de"} nextEvent={nextEventRes.data ?? null} />
           <MomentGenerator contactId={id} />
           <Timeline items={timeline} />
         </div>
