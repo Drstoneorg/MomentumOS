@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type { Enums, Json, TablesInsert, TablesUpdate } from "@/lib/database.types"
+import { removeStorageObjectByUrl } from "@/lib/storage"
 
 async function db() {
   const supabase = await createClient()
@@ -203,7 +204,9 @@ export async function addAsset(input: TablesInsert<"moment_assets">) {
 
 export async function deleteAsset(id: string) {
   const supabase = await db()
+  const { data: row } = await supabase.from("moment_assets").select("content").eq("id", id).maybeSingle()
   await supabase.from("moment_assets").delete().eq("id", id)
+  await removeStorageObjectByUrl(row?.content)
   revalidatePath("/moments")
 }
 

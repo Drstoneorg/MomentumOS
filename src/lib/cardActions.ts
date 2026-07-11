@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { removeStorageObjectByUrl } from "@/lib/storage"
 
 async function db() {
   const supabase = await createClient()
@@ -44,15 +45,19 @@ export async function uploadCardTemplate(formData: FormData) {
 
 export async function deleteCardTemplate(id: string) {
   const supabase = await db()
+  const { data: row } = await supabase.from("card_templates").select("image_url").eq("id", id).maybeSingle()
   const { error } = await supabase.from("card_templates").delete().eq("id", id)
   if (error) throw new Error(error.message)
+  await removeStorageObjectByUrl(row?.image_url)
   revalidatePath("/cards")
 }
 
 export async function deleteCard(assetId: string) {
   const supabase = await db()
+  const { data: row } = await supabase.from("moment_assets").select("content").eq("id", assetId).maybeSingle()
   const { error } = await supabase.from("moment_assets").delete().eq("id", assetId)
   if (error) throw new Error(error.message)
+  await removeStorageObjectByUrl(row?.content)
   revalidatePath("/cards")
 }
 
