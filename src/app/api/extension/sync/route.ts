@@ -5,6 +5,8 @@ import { loadContactContext } from "@/lib/ai/context"
 import { summarizeConversation } from "@/lib/ai/summarize"
 import { analyzeStage } from "@/lib/ai/analyzeStage"
 import { generateReplies, type ReplyVariants } from "@/lib/ai/generateReplies"
+import { suggestIntent } from "@/lib/scoring"
+import { splitChatBlock, parseChatLines, type ParsedChatMessage } from "@/lib/chatParse"
 
 export const maxDuration = 60
 
@@ -24,6 +26,9 @@ export async function OPTIONS() {
  */
 export async function POST(req: Request) {
   const supabase = await authExtension(req)
+  if (supabase === "rate_limited") {
+    return NextResponse.json({ error: "Rate-Limit erreicht — in einer Stunde wieder" }, { status: 429, headers: cors })
+  }
   if (!supabase) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: cors })
   }
@@ -34,7 +39,19 @@ export async function POST(req: Request) {
   }
 
   try {
-    const p = await extractProfile(raw, platform ?? "")
+    // Chat deterministisch parsen ([me]/[them]-Präfixe sind eindeutig, Regex flippt
+    // nie die Richtung) — das LLM bekommt nur noch den Profilteil. Ohne erkennbares
+    // Präfix-Format Fallback aufs LLM wie bisher.
+    const refDate = nowLocal ? new Date(nowLocal) : new Date()
+    const reference = isNaN(refDate.getTime()) ? new Date() : refDate
+    const { profile: profilePart, chat } = splitChatBlock(raw)
+    const parsedChat = chat ? parseChatLines(chat, reference) : []
+    const p = await extractProfile(
+      parsedChat.length ? profilePart || "Kein Profiltext sichtbar" : raw,
+      platform ?? ""
+    )
+    type MsgIn = { direction: "in" | "out"; content: string; at?: string | null }
+    const msgs: MsgIn[] = parsedChat.length ? (parsedChat as ParsedChatMessage[]) : p.messages
     const extId = externalId || p.name.toLowerCase().replace(/\s+/g, "-")
 
     const { data: existing } = await supabase
@@ -69,7 +86,9 @@ export async function POST(req: Request) {
           interests: p.interests,
           notes: p.notes,
           external_id: extId,
-          pipeline_stage: p.messages.length ? "chatting" : "new_match",
+          pipeline_stage: msgs.length ? "chatting" : "new_match",
+          // Auto-Triage: kein Alt/Goth/Aesthetic-Signal im Profil = Event-Lead-Vorschlag
+          intent: suggestIntent({ bio: p.bio, interests: p.interests, notes: p.notes }),
         })
         .select("id")
         .single()
@@ -83,7 +102,7 @@ export async function POST(req: Request) {
     const normMsg = (s: string) =>
       s.toLowerCase().replace(/\s+/g, " ").replace(/[.!?…]+$/g, "").trim()
     let freshInbound = false // kam in DIESEM Sync eine neue Nachricht der Person rein?
-    if (p.messages.length) {
+    if (msgs.length) {
       const { data: recent } = await supabase
         .from("messages")
         .select("direction, content, sent_at")
@@ -97,8 +116,8 @@ export async function POST(req: Request) {
       }
       // Batch in Scan-Reihenfolge annotieren: bekannt (mit sent_at) oder frisch.
       const seen = new Set(knownAt.keys())
-      const batch: { m: (typeof p.messages)[number]; known: string | null }[] = []
-      for (const m of p.messages) {
+      const batch: { m: MsgIn; known: string | null }[] = []
+      for (const m of msgs) {
         const key = `${m.direction}|${normMsg(m.content)}`
         const known = knownAt.get(key) ?? null
         if (!known && seen.has(key)) continue // batch-internes Duplikat
@@ -116,7 +135,7 @@ export async function POST(req: Request) {
         nextKnownAt[i] = nk
         if (batch[i].known) nk = batch[i].known
       }
-      const groups = new Map<string | null, (typeof p.messages)[number][]>()
+      const groups = new Map<string | null, MsgIn[]>()
       batch.forEach((e, i) => {
         if (e.known) return
         const anchor = nextKnownAt[i]
@@ -141,7 +160,8 @@ export async function POST(req: Request) {
             channel: "dating_app",
             content: m.content,
             source: "import" as const,
-            sent_at: new Date(baseT + i * 1000).toISOString(),
+            // Echter DOM-Zeitstempel schlägt die Anker-Heuristik
+            sent_at: m.at ?? new Date(baseT + i * 1000).toISOString(),
           })
         )
       }
@@ -168,7 +188,7 @@ export async function POST(req: Request) {
         : base
     let autoDraft: (Partial<ReplyVariants> & { variants: Record<string, string> }) | null = null
     let stage: string | null = null
-    if (p.messages.length) {
+    if (msgs.length) {
       try {
         const ctx = await loadContactContext(contactId, supabase)
         if (ctx) {
@@ -267,7 +287,7 @@ export async function POST(req: Request) {
         contactId,
         name: p.name,
         isNew: !existing,
-        messageCount: p.messages.length,
+        messageCount: msgs.length,
         stage,
         autoDraft,
       },
