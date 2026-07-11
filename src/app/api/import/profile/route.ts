@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { extractProfile } from "@/lib/ai/extractProfile"
+import { suggestIntent } from "@/lib/scoring"
+import { splitChatBlock, parseChatLines } from "@/lib/chatParse"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -15,7 +17,15 @@ export async function POST(req: Request) {
   }
 
   try {
-    const p = await extractProfile(raw, platform ?? "")
+    // Chatblock deterministisch parsen, LLM nur fürs Profil (siehe chatParse.ts)
+    const { profile: profilePart, chat } = splitChatBlock(raw)
+    const parsedChat = chat ? parseChatLines(chat) : []
+    const p = await extractProfile(
+      parsedChat.length ? profilePart || "Kein Profiltext sichtbar" : raw,
+      platform ?? ""
+    )
+    const msgs: { direction: "in" | "out"; content: string; at?: string | null }[] =
+      parsedChat.length ? parsedChat : p.messages
 
     const { data: contact, error } = await supabase
       .from("contacts")
@@ -28,22 +38,25 @@ export async function POST(req: Request) {
         bio: p.bio,
         interests: p.interests,
         notes: p.notes,
-        pipeline_stage: p.messages.length ? "chatting" : "new_match",
+        pipeline_stage: msgs.length ? "chatting" : "new_match",
+        // Auto-Triage: kein Alt/Goth/Aesthetic-Signal im Profil = Event-Lead-Vorschlag
+        intent: suggestIntent({ bio: p.bio, interests: p.interests, notes: p.notes }),
       })
       .select("id")
       .single()
     if (error || !contact) throw new Error(error?.message ?? "Insert fehlgeschlagen")
 
-    if (p.messages.length) {
-      const base = Date.now() - p.messages.length * 1000
+    if (msgs.length) {
+      const base = Date.now() - msgs.length * 1000
       await supabase.from("messages").insert(
-        p.messages.map((m, i) => ({
+        msgs.map((m, i) => ({
           contact_id: contact.id,
           direction: m.direction,
           channel: "dating_app",
           content: m.content,
           source: "import" as const,
-          sent_at: new Date(base + i * 1000).toISOString(),
+          // Echter Zeitstempel aus dem Text schlägt die Sekunden-Heuristik
+          sent_at: m.at ?? new Date(base + i * 1000).toISOString(),
         }))
       )
     }
