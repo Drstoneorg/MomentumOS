@@ -45,7 +45,13 @@ function collectCodes(value: unknown, out: Set<string>, depth = 0) {
 }
 
 export async function POST(req: Request) {
-  const supabase = createAdminClient()
+  // Extern erreichbare Route: nie mit 500 + Stacktrace antworten.
+  let supabase: ReturnType<typeof createAdminClient>
+  try {
+    supabase = createAdminClient()
+  } catch {
+    return NextResponse.json({ error: "Webhook nicht konfiguriert" }, { status: 503 })
+  }
   const { data: secretRow } = await supabase
     .from("settings")
     .select("value")
