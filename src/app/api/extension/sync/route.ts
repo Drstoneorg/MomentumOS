@@ -7,6 +7,7 @@ import { analyzeStage } from "@/lib/ai/analyzeStage"
 import { generateReplies, type ReplyVariants } from "@/lib/ai/generateReplies"
 import { suggestIntent } from "@/lib/scoring"
 import { splitChatBlock, parseChatLines, type ParsedChatMessage } from "@/lib/chatParse"
+import { matchSentSuggestions, markSuggestionReplied } from "@/lib/outcomes"
 
 export const maxDuration = 60
 
@@ -169,6 +170,24 @@ export async function POST(req: Request) {
       // Backfill beim Hochscrollen soll keinen neuen Entwurf auslösen.
       freshInbound = (groups.get(null) ?? []).some((m) => m.direction === "in")
       if (rows.length) await supabase.from("messages").insert(rows)
+
+      // Outcome-Loop: neue ausgehende Nachrichten gegen offene Vorschläge matchen
+      // (Vorschlag wurde offenbar gesendet), neue eingehende als Antwort auf den
+      // letzten gesendeten Vorschlag werten. Fehler hier brechen den Sync nicht.
+      try {
+        const sentOut = rows
+          .filter((r) => r.direction === "out")
+          .map((r) => ({ content: r.content, at: r.sent_at }))
+        await matchSentSuggestions(supabase, contactId, sentOut)
+        const newestIn = rows
+          .filter((r) => r.direction === "in")
+          .map((r) => r.sent_at)
+          .sort()
+          .pop()
+        if (newestIn) await markSuggestionReplied(supabase, contactId, newestIn)
+      } catch {
+        // Messung optional — Sync-Ergebnis zählt
+      }
     }
     if (p.memories.length && !existing) {
       await supabase.from("memories").insert(

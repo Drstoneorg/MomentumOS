@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, Tables } from "@/lib/database.types"
+import { outcomeStats, outcomeHints } from "@/lib/outcomes"
 
 export type ContactContext = {
   contact: Tables<"contacts">
@@ -134,6 +135,14 @@ export async function loadContactContext(
         .map(([s, v]) => `${s} (+${v.up}/-${v.down})`)
         .join(", ")}. Die vorderen Stile treffen meinen Geschmack am besten — orientiere ALLE Varianten leicht in diese Richtung, liefere aber weiterhin jeden Stil.`
     )
+  // Outcome-Loop: gemessene Antwortquoten (welcher Stil bekommt echte Antworten)
+  // wiegen schwerer als Geschmack — echte Ergebnisse statt Daumen.
+  try {
+    const hints = outcomeHints(await outcomeStats(supabase))
+    if (hints) parts.push(hints)
+  } catch {
+    // Messung optional
+  }
   const styleProfile = parts.filter(Boolean).join("\n\n")
 
   const rulesValue = rulesRes.data?.value

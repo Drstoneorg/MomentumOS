@@ -8,6 +8,7 @@ import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
 import { AiBudgetForm } from "./AiBudgetForm"
 import { monthlyUsage, type UsageSummary } from "@/lib/ai/usage"
+import { outcomeStats, type OutcomeStats } from "@/lib/outcomes"
 
 export const dynamic = "force-dynamic"
 
@@ -44,6 +45,13 @@ export default async function SettingsPage() {
     usage = await monthlyUsage(supabase)
   } catch {
     // kein SERVICE_ROLE_KEY lokal — Karte zeigt Hinweis
+  }
+
+  let outcomes: OutcomeStats | null = null
+  try {
+    outcomes = await outcomeStats(supabase)
+  } catch {
+    // Messung optional
   }
 
   const hasDeepseek = !!process.env.DEEPSEEK_API_KEY
@@ -136,6 +144,57 @@ export default async function SettingsPage() {
           <p className="text-sm text-zinc-500">
             Noch keine Daumen vergeben. In der Extension und im Antwortgenerator neben
             jedem Vorschlag 👍/👎 drücken — je mehr, desto treffsicherer wird alles.
+          </p>
+        )}
+      </Card>
+
+      <Card title="📈 Antwortquoten (gemessen, nicht Geschmack)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Beim Browser-Sync erkennt MatchOS automatisch, welcher Vorschlag wirklich
+          gesendet wurde und ob eine Antwort kam. Ab 10 gemessenen Sendungen fließen
+          die Quoten in jeden neuen Vorschlag ein — die KI lernt aus Ergebnissen.
+        </p>
+        {outcomes && outcomes.totalSent > 0 ? (
+          <div className="space-y-3 text-sm">
+            <table className="w-full text-xs">
+              <thead className="text-left text-zinc-500">
+                <tr>
+                  <th className="py-1">Stil</th>
+                  <th className="py-1 text-right">Gesendet</th>
+                  <th className="py-1 text-right">Antworten</th>
+                  <th className="py-1 text-right">Quote</th>
+                </tr>
+              </thead>
+              <tbody>
+                {outcomes.byStyle.map((s) => (
+                  <tr key={s.style} className="border-t border-zinc-800/60">
+                    <td className="py-1 text-zinc-200">{s.style}</td>
+                    <td className="py-1 text-right text-zinc-400">{s.sent}</td>
+                    <td className="py-1 text-right text-emerald-400">{s.replied}</td>
+                    <td className="py-1 text-right tabular-nums text-zinc-200">
+                      {Math.round(s.rate * 100)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {outcomes.byDaypart.length > 0 && (
+              <p className="text-xs text-zinc-500">
+                Nach Sendezeit:{" "}
+                {outcomes.byDaypart
+                  .map((p) => `${p.part} ${Math.round(p.rate * 100)}% (${p.replied}/${p.sent})`)
+                  .join(" · ")}
+              </p>
+            )}
+            <p className="text-xs text-zinc-600">
+              {outcomes.totalSent} gesendete Vorschläge gemessen (letzte 500).
+              {outcomes.totalSent < 10 ? " Ab 10 fließt es in die KI ein." : " Fließt aktiv in Vorschläge ein. ✓"}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            Noch keine Messungen. Passiert automatisch: Vorschlag in der App/Extension
+            übernehmen, senden, Chat später wieder syncen — mehr ist nicht nötig.
           </p>
         )}
       </Card>
