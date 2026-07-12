@@ -9,6 +9,7 @@ import { daysUntilBirthday } from "@/lib/moments"
 export const dynamic = "force-dynamic"
 
 const STALE_DAYS = 3
+const GHOST_DAYS = 5
 
 export default async function Dashboard() {
   const supabase = await createClient()
@@ -99,21 +100,41 @@ export default async function Dashboard() {
   // Eingeschlafen: letzte Nachricht älter als STALE_DAYS
   const { data: lastMsgs } = await supabase
     .from("messages")
-    .select("contact_id, sent_at")
+    .select("contact_id, sent_at, direction")
     .order("sent_at", { ascending: false })
-  const lastByContact = new Map<string, string>()
+  const lastByContact = new Map<string, { at: string; direction: string }>()
   for (const m of lastMsgs ?? []) {
-    if (!lastByContact.has(m.contact_id)) lastByContact.set(m.contact_id, m.sent_at)
+    if (!lastByContact.has(m.contact_id))
+      lastByContact.set(m.contact_id, { at: m.sent_at, direction: m.direction })
   }
   const staleCutoff = Date.now() - STALE_DAYS * 86400_000
+  const activeStages = ["chatting", "interest_visible", "on_messenger"]
+  // Eingeschlafen = SIE schrieb zuletzt, ich habe liegen lassen.
   const stale = contacts.filter((c) => {
     const last = lastByContact.get(c.id)
     return (
       last &&
-      new Date(last).getTime() < staleCutoff &&
-      ["chatting", "interest_visible", "on_messenger"].includes(c.pipeline_stage)
+      last.direction === "in" &&
+      new Date(last.at).getTime() < staleCutoff &&
+      activeStages.includes(c.pipeline_stage)
     )
   })
+  // Ghosting-Radar = ICH schrieb zuletzt, seit GHOST_DAYS keine Antwort.
+  const ghostCutoff = Date.now() - GHOST_DAYS * 86400_000
+  const ghosted = contacts
+    .map((c) => {
+      const last = lastByContact.get(c.id)
+      if (
+        !last ||
+        last.direction !== "out" ||
+        new Date(last.at).getTime() >= ghostCutoff ||
+        !activeStages.includes(c.pipeline_stage)
+      )
+        return null
+      return { c, days: Math.round((Date.now() - new Date(last.at).getTime()) / 86400_000) }
+    })
+    .filter((x): x is { c: (typeof contacts)[number]; days: number } => x !== null)
+    .sort((a, b) => b.days - a.days)
 
   // „Heute dran": eine Abarbeitungsliste statt Suchen in Einzel-Boxen.
   const todayBirthdays = birthdays.filter((b) => b.d === 0)
@@ -226,6 +247,24 @@ export default async function Dashboard() {
 
         <Card title={`Eingeschlafen (${stale.length})`}>
           <ContactList contacts={stale} empty={`Kein Gespräch älter als ${STALE_DAYS} Tage.`} />
+        </Card>
+
+        <Card title={`👻 Ghosting-Radar (${ghosted.length})`}>
+          <ul className="space-y-2 text-sm">
+            {ghosted.map(({ c, days }) => (
+              <li key={c.id}>
+                <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:underline">
+                  {c.name}
+                </Link>{" "}
+                <span className="text-amber-400">{days}d keine Antwort</span>
+                <p className="text-xs text-zinc-500">Reaktivierungs-Entwurf kommt automatisch in die Queue</p>
+                <QuickReply contactId={c.id} />
+              </li>
+            ))}
+            {!ghosted.length && (
+              <li className="text-zinc-500">Niemand ghostet dich gerade. 👌</li>
+            )}
+          </ul>
         </Card>
 
         <Card title={`Date-Kandidaten (${dateCandidates.length})`}>

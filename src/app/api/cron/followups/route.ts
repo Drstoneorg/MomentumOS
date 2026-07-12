@@ -64,13 +64,21 @@ export async function GET(req: Request) {
     try {
       const ctx = await loadContactContext(c.id, supabase)
       if (!ctx) continue
+      // Ghosting (ich schrieb zuletzt, keine Antwort) braucht einen anderen Ton
+      // als Einschlafen: nachhaken wirkt bedürftig — neuer Aufhänger statt Echo.
+      const daysSilent = Math.round((Date.now() - new Date(lastMsg.sent_at).getTime()) / 86400_000)
+      const ghosted = lastMsg.direction === "out"
       const reply = await generateReplies(
         ctx,
-        `Das Gespräch ist seit über ${STALE_DAYS} Tagen eingeschlafen. Schreibe eine leichte, nicht aufdringliche Nachricht, die natürlich wieder anknüpft.`
+        ghosted
+          ? `Die Person hat auf meine letzte Nachricht seit ${daysSilent} Tagen nicht geantwortet. NICHT nachhaken, die alte Nachricht NICHT erwähnen — stattdessen ein komplett neuer, leichter Aufhänger (ein Interesse aus dem Gedächtnis, etwas Alltägliches, eine spielerische Beobachtung). Null Vorwurf, null Druck, sehr kurz.`
+          : `Das Gespräch ist seit über ${STALE_DAYS} Tagen eingeschlafen. Schreibe eine leichte, nicht aufdringliche Nachricht, die natürlich wieder anknüpft.`
       )
       await supabase.from("suggestions").insert({
         contact_id: c.id,
-        situation: `Auto-Follow-up (eingeschlafen seit ${STALE_DAYS}+ Tagen)`,
+        situation: ghosted
+          ? `Auto-Reaktivierung (${daysSilent}d keine Antwort auf meine Nachricht)`
+          : `Auto-Follow-up (eingeschlafen seit ${STALE_DAYS}+ Tagen)`,
         variants: reply.variants,
         channel: "manual",
         status: "draft",
