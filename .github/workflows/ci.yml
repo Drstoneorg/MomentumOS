@@ -1,0 +1,31 @@
+# CI: Typecheck + Produktions-Build bei jedem Push/PR auf main.
+# Fängt kaputte Commits, bevor Vercel sie deployt. Dummy-Env reicht,
+# weil alle Seiten dynamisch rendern und Keys erst zur Laufzeit gelesen werden.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: dummy-service-key
+      DEEPSEEK_API_KEY: dummy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
