@@ -8,6 +8,7 @@ import { beatCron } from "@/lib/cronHeartbeat"
 export const maxDuration = 60
 
 const STALE_DAYS = 3
+const AUTO_ARCHIVE_DAYS = 90
 
 /**
  * Autonome Follow-up-Engine. Scannt eingeschlafene Gespräche, generiert je einen
@@ -92,6 +93,41 @@ export async function GET(req: Request) {
     }
   }
 
+  // Auto-Archiv: Match-Kontakte ohne jede Aktivität seit 90+ Tagen sind keine
+  // Pipeline mehr, sondern Rauschen — Scoring und Dashboard sollen nicht lügen.
+  // Dashboard warnt ab 60 Tagen vor, hier fällt nur der Vorhang. Umkehrbar
+  // (Stage manuell zurückstellen), niemals löschen.
+  let autoArchived = 0
+  try {
+    const { data: allMatches } = await supabase
+      .from("contacts")
+      .select("id, created_at")
+      .eq("realm", "match")
+      .neq("pipeline_stage", "archived")
+    const { data: allLast } = await supabase
+      .from("messages")
+      .select("contact_id, sent_at")
+      .order("sent_at", { ascending: false })
+    const lastBy = new Map<string, string>()
+    for (const m of allLast ?? []) {
+      if (!lastBy.has(m.contact_id)) lastBy.set(m.contact_id, m.sent_at)
+    }
+    const cutoff = Date.now() - AUTO_ARCHIVE_DAYS * 86400_000
+    const dead = (allMatches ?? []).filter((c) => {
+      const lastActivity = lastBy.get(c.id) ?? c.created_at
+      return new Date(lastActivity).getTime() < cutoff
+    })
+    if (dead.length) {
+      await supabase
+        .from("contacts")
+        .update({ pipeline_stage: "archived" })
+        .in("id", dead.map((c) => c.id))
+      autoArchived = dead.length
+    }
+  } catch {
+    // Aufräumen optional
+  }
+
   const drafts = results.filter((r) => r.status === "draft_created").length
   if (drafts) {
     await sendPushToAll({
@@ -101,5 +137,5 @@ export async function GET(req: Request) {
     }).catch(() => {})
   }
 
-  return NextResponse.json({ scanned: contacts?.length ?? 0, results })
+  return NextResponse.json({ scanned: contacts?.length ?? 0, autoArchived, results })
 }

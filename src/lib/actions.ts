@@ -37,6 +37,20 @@ export async function updateContact(
   revalidatePath("/pipeline")
 }
 
+/** Mehrere Kontakte auf einmal archivieren (Auto-Archiv-Vorwarnung im Dashboard). */
+export async function archiveContacts(ids: string[]) {
+  if (!ids.length) return
+  const supabase = await db()
+  const { error } = await supabase
+    .from("contacts")
+    .update({ pipeline_stage: "archived" })
+    .in("id", ids)
+  if (error) throw new Error(error.message)
+  revalidatePath("/")
+  revalidatePath("/contacts")
+  revalidatePath("/pipeline")
+}
+
 /** Kontakt zwischen MatchOS (match) und MomentOS (moment) verschieben. */
 export async function setContactRealm(id: string, realm: "match" | "moment") {
   const supabase = await db()

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, StageBadge } from "@/components/ui"
 import { FollowupDone } from "@/components/FollowupDone"
 import { QuickReply } from "@/components/QuickReply"
+import { ArchiveCandidates } from "@/components/ArchiveCandidates"
 import type { Enums } from "@/lib/database.types"
 import { daysUntilBirthday } from "@/lib/moments"
 
@@ -134,6 +135,15 @@ export default async function Dashboard() {
       return { c, days: Math.round((Date.now() - new Date(last.at).getTime()) / 86400_000) }
     })
     .filter((x): x is { c: (typeof contacts)[number]; days: number } => x !== null)
+    .sort((a, b) => b.days - a.days)
+  // Auto-Archiv-Vorwarnung: 60-90 Tage gar keine Aktivität (Cron archiviert ab 90)
+  const archiveWarn = contacts
+    .map((c) => {
+      const last = lastByContact.get(c.id)?.at ?? c.created_at
+      const days = Math.round((Date.now() - new Date(last).getTime()) / 86400_000)
+      return days >= 60 && days < 90 ? { id: c.id, name: c.name, days } : null
+    })
+    .filter((x): x is { id: string; name: string; days: number } => x !== null)
     .sort((a, b) => b.days - a.days)
 
   // „Heute dran": eine Abarbeitungsliste statt Suchen in Einzel-Boxen.
@@ -290,6 +300,12 @@ export default async function Dashboard() {
               {" → "}<span className="text-emerald-300">{evFunnel.yes}</span> zugesagt
               {" → "}<span className="text-violet-300">{evFunnel.ticket}</span> Ticket
             </p>
+          </Card>
+        )}
+
+        {archiveWarn.length > 0 && (
+          <Card title={`🪦 Bald im Auto-Archiv (${archiveWarn.length})`}>
+            <ArchiveCandidates candidates={archiveWarn} />
           </Card>
         )}
 
