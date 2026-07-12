@@ -382,6 +382,7 @@ import {
   generateCoverLetter,
   type CvProfile,
 } from "@/lib/ai/jobs"
+import { findDuplicateJob } from "@/lib/jobDedupe"
 
 export async function loadCvProfile(): Promise<CvProfile | null> {
   const supabase = await db()
@@ -423,15 +424,9 @@ export async function addJob(rawText: string, sourceUrl?: string) {
   const cv = await loadCvProfile()
   const score = cv ? await scoreJob(cv, job) : null
 
-  // Dedupe: gleiche Firma + Titel bereits erfasst → nicht doppeln
-  const { data: dup } = await supabase
-    .from("job_applications")
-    .select("id")
-    .ilike("company", job.company)
-    .ilike("title", job.title)
-    .limit(1)
-    .maybeSingle()
-  if (dup) return { id: dup.id, duplicate: true, job, score }
+  // Dedupe: normalisierte URL oder Firma+Titel-Fingerprint (Portal-übergreifend)
+  const dupId = await findDuplicateJob(supabase, { company: job.company, title: job.title, url: sourceUrl })
+  if (dupId) return { id: dupId, duplicate: true, job, score }
 
   const { data: created, error } = await supabase
     .from("job_applications")

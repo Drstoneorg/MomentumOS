@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { authExtension } from "@/lib/extensionAuth"
 import { extractJob, scoreJob, generateCoverLetter, type CvProfile } from "@/lib/ai/jobs"
+import { findDuplicateJob } from "@/lib/jobDedupe"
 
 // Ab diesem Match-Score wird das Anschreiben direkt mitgeneriert (liegt dann fertig in JobOS).
 const AUTO_LETTER_SCORE = 65
@@ -45,13 +46,8 @@ export async function POST(req: Request) {
     const cv = (cvRow?.value as CvProfile | null) ?? null
     const score = cv ? await scoreJob(cv, job) : null
 
-    const { data: dup } = await supabase
-      .from("job_applications")
-      .select("id")
-      .ilike("company", job.company)
-      .ilike("title", job.title)
-      .limit(1)
-      .maybeSingle()
+    // Dedupe: normalisierte URL oder Firma+Titel-Fingerprint (Portal-übergreifend)
+    const dup = await findDuplicateJob(supabase, { company: job.company, title: job.title, url })
     if (dup) {
       return NextResponse.json(
         { duplicate: true, company: job.company, title: job.title, score: score?.score ?? null },

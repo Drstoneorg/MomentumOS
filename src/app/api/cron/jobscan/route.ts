@@ -4,6 +4,7 @@ import { chatJSON } from "@/lib/ai/deepseek"
 import { extractJob, scoreJob, generateCoverLetter, type CvProfile } from "@/lib/ai/jobs"
 import { sendPushToAll } from "@/lib/push"
 import { beatCron } from "@/lib/cronHeartbeat"
+import { normalizeJobUrl, jobKey } from "@/lib/jobDedupe"
 
 export const maxDuration = 60
 
@@ -80,10 +81,10 @@ export async function GET(req: Request) {
   }
   const cv = (cvRow?.value as CvProfile | null) ?? null
 
-  const knownUrls = new Set((existing ?? []).map((j) => j.url).filter(Boolean))
-  const knownKeys = new Set(
-    (existing ?? []).map((j) => `${j.company.toLowerCase()}|${j.title.toLowerCase()}`)
+  const knownUrls = new Set(
+    (existing ?? []).map((j) => normalizeJobUrl(j.url)).filter(Boolean)
   )
+  const knownKeys = new Set((existing ?? []).map((j) => jobKey(j.company, j.title)))
 
   // 1) Suchseiten abrufen, KI wählt echte Stellen-Treffer aus den Links.
   const candidates: { title: string; url: string; portal: string; city: string }[] = []
@@ -120,7 +121,7 @@ Antworte NUR als JSON: {"hits":[Indexzahlen]} — maximal 5.`,
   const createdList: string[] = []
   for (const c of candidates) {
     if (created >= MAX_DETAIL_FETCHES) break
-    if (knownUrls.has(c.url)) continue
+    if (knownUrls.has(normalizeJobUrl(c.url))) continue
     try {
       const res = await fetch(c.url, {
         headers: { "User-Agent": "Mozilla/5.0 (Macintosh) MatchOS-JobScan" },
@@ -130,7 +131,7 @@ Antworte NUR als JSON: {"hits":[Indexzahlen]} — maximal 5.`,
       const raw = stripHtml(await res.text()).slice(0, 10000)
       if (raw.length < 200) continue
       const job = await extractJob(raw, c.url)
-      const key = `${job.company.toLowerCase()}|${job.title.toLowerCase()}`
+      const key = jobKey(job.company, job.title)
       if (knownKeys.has(key)) continue
       knownKeys.add(key)
       const score = cv ? await scoreJob(cv, job) : null
