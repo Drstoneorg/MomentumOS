@@ -1077,6 +1077,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          replied_at: string | null
           sent_at: string | null
           situation: string | null
           status: Database["public"]["Enums"]["suggestion_status"]
@@ -1090,6 +1091,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          replied_at?: string | null
           sent_at?: string | null
           situation?: string | null
           status?: Database["public"]["Enums"]["suggestion_status"]
@@ -1103,6 +1105,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          replied_at?: string | null
           sent_at?: string | null
           situation?: string | null
           status?: Database["public"]["Enums"]["suggestion_status"]
