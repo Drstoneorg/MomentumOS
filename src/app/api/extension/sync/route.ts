@@ -8,6 +8,7 @@ import { generateReplies, type ReplyVariants } from "@/lib/ai/generateReplies"
 import { suggestIntent } from "@/lib/scoring"
 import { splitChatBlock, parseChatLines, type ParsedChatMessage } from "@/lib/chatParse"
 import { matchSentSuggestions, markSuggestionReplied } from "@/lib/outcomes"
+import { createOpenerDraft } from "@/lib/ai/openerDraft"
 
 export const maxDuration = 60
 
@@ -299,6 +300,11 @@ export async function POST(req: Request) {
       } catch {
         // Analyse optional — Sync-Ergebnis zählt
       }
+    } else {
+      // Neues Match ohne Chatverlauf: Opener-Varianten direkt als Entwurf
+      // bereitlegen — erste Nachricht ist der Funnel-Engpass.
+      const opener = await createOpenerDraft(supabase, contactId, nowLocal)
+      if (opener) autoDraft = opener
     }
 
     return NextResponse.json(

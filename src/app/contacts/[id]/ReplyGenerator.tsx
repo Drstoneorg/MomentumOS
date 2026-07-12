@@ -105,6 +105,17 @@ export function ReplyGenerator({
           >
             💘 Date vorschlagen
           </button>
+          <button
+            onClick={() =>
+              setSituation(
+                "Erste Nachricht (Opener): knüpfe konkret an ihr Profil an (Bio, Interessen, Foto-Notizen), kein generisches Hi, kein Aussehens-Kompliment. Leichte Frage oder spielerischer Bezug, 1 bis 2 Sätze."
+              )
+            }
+            className="rounded-full border border-sky-800 bg-sky-950/40 px-2.5 py-1 text-xs text-sky-200 hover:bg-sky-900/40"
+            title="Opener für die allererste Nachricht generieren"
+          >
+            ✨ Opener
+          </button>
         </div>
         <div className="flex gap-2">
           <input

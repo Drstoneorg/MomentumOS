@@ -7,6 +7,7 @@ import {
 } from "@/lib/ai/extractContactData"
 import { CHANNELS } from "@/lib/channels"
 import { suggestIntent } from "@/lib/scoring"
+import { createOpenerDraft } from "@/lib/ai/openerDraft"
 
 export const maxDuration = 60
 
@@ -137,6 +138,9 @@ export async function POST(req: Request) {
         }))
       )
     }
+
+    // Neues Dating-Match: Opener-Entwurf direkt bereitlegen (Best-Effort)
+    if (isNew && p.kind === "dating") await createOpenerDraft(supabase, contactId)
 
     return NextResponse.json({
       contactId,

@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server"
 import { extractProfile } from "@/lib/ai/extractProfile"
 import { suggestIntent } from "@/lib/scoring"
 import { splitChatBlock, parseChatLines } from "@/lib/chatParse"
+import { createOpenerDraft } from "@/lib/ai/openerDraft"
+
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -65,6 +68,9 @@ export async function POST(req: Request) {
         p.memories.map((m) => ({ contact_id: contact.id, ...m }))
       )
     }
+
+    // Profil ohne Chat importiert: Opener-Entwurf direkt bereitlegen
+    if (!msgs.length) await createOpenerDraft(supabase, contact.id)
 
     return NextResponse.json({ contactId: contact.id, extracted: p })
   } catch (e) {
