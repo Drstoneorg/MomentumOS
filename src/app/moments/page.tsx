@@ -2,6 +2,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { FollowupDone } from "@/components/FollowupDone"
+import { BatchBirthdayButton } from "@/components/BatchBirthdayButton"
 import { daysUntilBirthday, connectionScore, scoreColor } from "@/lib/moments"
 
 export const dynamic = "force-dynamic"
@@ -82,6 +83,9 @@ export default async function MomentsHub() {
             ))}
             {!birthdays.length && <li className="text-zinc-500">Keine in den nächsten 30 Tagen.</li>}
           </ul>
+          <div className="mt-3">
+            <BatchBirthdayButton count={birthdays.filter(({ d }) => d != null && d >= 1 && d <= 7).length} />
+          </div>
         </Card>
 
         <Card title={`Vernachlässigte Kontakte (${neglected.length})`}>
