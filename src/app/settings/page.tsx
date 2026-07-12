@@ -5,6 +5,7 @@ import { StyleRulesForm } from "./StyleRulesForm"
 import { StyleLearnCard } from "./StyleLearnCard"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TelegramBotForm } from "./TelegramBotForm"
+import { TicketWebhookForm } from "./TicketWebhookForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
 import { AiBudgetForm } from "./AiBudgetForm"
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: tgToken }, { data: tgChat }, { data: fbRows }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: tgToken }, { data: tgChat }, { data: twSecret }, { data: twLast }, { data: fbRows }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "learned_style").maybeSingle(),
@@ -23,6 +24,8 @@ export default async function SettingsPage() {
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "telegram_bot_token").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "telegram_chat_id").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "ticket_webhook_secret").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "ticket_webhook_last").maybeSingle(),
     supabase.from("reply_feedback").select("style, rating, content, created_at").order("created_at", { ascending: false }).limit(500),
   ])
 
@@ -243,6 +246,26 @@ export default async function SettingsPage() {
         <TelegramBotForm
           currentToken={typeof tgToken?.value === "string" ? tgToken.value : ""}
           currentChatId={typeof tgChat?.value === "string" ? tgChat.value : ""}
+        />
+      </Card>
+
+      <Card title="🎟 Ticketshop-Webhook">
+        <p className="mb-2 text-sm text-zinc-400">
+          Verbindet den Ticketshop mit dem Event-Funnel: Kauf mit Promo-Code
+          setzt die Einladung automatisch auf „Ticket gekauft".
+        </p>
+        <TicketWebhookForm
+          currentSecret={typeof twSecret?.value === "string" ? twSecret.value : ""}
+          lastInfo={(() => {
+            try {
+              const v = typeof twLast?.value === "string" ? JSON.parse(twLast.value) : twLast?.value
+              return v && typeof v === "object" && "at" in v
+                ? (v as { at: string; codesFound: number; matched: number })
+                : null
+            } catch {
+              return null
+            }
+          })()}
         />
       </Card>
 
