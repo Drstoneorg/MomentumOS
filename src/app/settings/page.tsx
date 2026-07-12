@@ -4,6 +4,7 @@ import { StyleForm } from "./StyleForm"
 import { StyleRulesForm } from "./StyleRulesForm"
 import { StyleLearnCard } from "./StyleLearnCard"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
+import { TelegramBotForm } from "./TelegramBotForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
 import { AiBudgetForm } from "./AiBudgetForm"
@@ -14,12 +15,14 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: fbRows }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: tgToken }, { data: tgChat }, { data: fbRows }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "learned_style").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "extension_token").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "taste_profile").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "telegram_bot_token").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "telegram_chat_id").maybeSingle(),
     supabase.from("reply_feedback").select("style, rating, content, created_at").order("created_at", { ascending: false }).limit(500),
   ])
 
@@ -229,6 +232,17 @@ export default async function SettingsPage() {
             avoid: Array.isArray(tasteVal.avoid) ? tasteVal.avoid : [],
             autoLikeHint: tasteVal.autoLikeHint !== false,
           }}
+        />
+      </Card>
+
+      <Card title="Telegram-Bot (Digest an dich)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Wochen-Digest und Warnungen kommen als Telegram-Nachricht an DICH —
+          hat mit dem Senden an Matches nichts zu tun. Ohne Eintrag als Web-Push.
+        </p>
+        <TelegramBotForm
+          currentToken={typeof tgToken?.value === "string" ? tgToken.value : ""}
+          currentChatId={typeof tgChat?.value === "string" ? tgChat.value : ""}
         />
       </Card>
 
