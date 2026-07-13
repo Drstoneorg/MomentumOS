@@ -10,11 +10,16 @@ import { beatCron } from "@/lib/cronHeartbeat"
 export const maxDuration = 120
 
 const VETO_MINUTES = Number(process.env.AUTOPILOT_VETO_MINUTES ?? 10)
+// Vorlauf: Gruß + Bild schon N Tage vor dem Geburtstag als Entwurf erzeugen,
+// damit Zeit zum Anpassen bleibt (Karte drucken, Bild neu würfeln, Text ändern).
+const BDAY_LEAD_DAYS = 3
 
 /**
  * Täglicher Moments-Scan:
- * - Geburtstag heute + Telegram-Kanal → Auto-Gruß (Text + Bild wenn OPENAI_API_KEY),
- *   als Telegram-Suggestion mit Veto-Fenster in die Queue. Worker sendet nach Frist.
+ * - Geburtstag in BDAY_LEAD_DAYS Tagen → Gruß (Text + Bild wenn OPENAI_API_KEY)
+ *   vorab als Entwurf in die Queue, ohne Auto-Versand.
+ * - Geburtstag heute: Entwurf aus dem Vorlauf wird (bei Telegram + auto_mode)
+ *   mit Veto-Fenster scharfgeschaltet; ohne Vorlauf-Entwurf frisch erzeugt.
  * - Geburtstage in 1..3 Tagen → Reminder (Follow-up)
  * - vernachlässigte wichtige Kontakte → Check-in-Reminder
  * Kein ungeprüfter Versand: Telegram-Gruß hat Veto, alles andere nur Reminder.
@@ -43,8 +48,8 @@ export async function GET(req: Request) {
   for (const c of contacts ?? []) {
     const bday = daysUntilBirthday(c.birthday)
 
-    // --- Geburtstag heute: Auto-Gruß über Telegram ---
-    if (bday === 0) {
+    // --- Geburtstag heute ODER in BDAY_LEAD_DAYS Tagen: Gruß erzeugen ---
+    if (bday === 0 || bday === BDAY_LEAD_DAYS) {
       const { data: tg } = await supabase
         .from("contact_channels")
         .select("handle")
@@ -53,14 +58,31 @@ export async function GET(req: Request) {
         .limit(1)
         .maybeSingle()
 
+      // Fenster: am Geburtstag selbst zählt auch der Vorlauf-Entwurf von vor
+      // BDAY_LEAD_DAYS Tagen als vorhanden (kein Doppel-Gruß), am Vorlauf-Tag
+      // nur frische Entwürfe der letzten 20h.
+      const windowH = bday === 0 ? (BDAY_LEAD_DAYS + 1) * 24 : 20
       const { data: openDraft } = await supabase
         .from("suggestions")
-        .select("id")
+        .select("id, channel, auto_send_at")
         .eq("contact_id", c.id)
         .in("status", ["draft", "approved"])
-        .gte("created_at", new Date(Date.now() - 20 * 3600_000).toISOString())
+        .gte("created_at", new Date(Date.now() - windowH * 3600_000).toISOString())
         .limit(1)
         .maybeSingle()
+
+      // Geburtstag heute + Vorlauf-Entwurf liegt bereit: bei Telegram + auto_mode
+      // jetzt mit Veto-Fenster scharfschalten, sonst bleibt er manuell in der Queue.
+      if (bday === 0 && openDraft && !openDraft.auto_send_at && openDraft.channel === "telegram" && c.auto_mode) {
+        await supabase
+          .from("suggestions")
+          .update({
+            auto_send_at: new Date(Date.now() + VETO_MINUTES * 60_000).toISOString(),
+            situation: `🎂 Auto-Geburtstagsgruß (aus Vorlauf) — sendet in ${VETO_MINUTES} Min (Veto in Queue)`,
+          })
+          .eq("id", openDraft.id)
+        results.push({ contactId: c.id, action: "bday_lead_armed" })
+      }
 
       // Entwurf auch ohne Telegram-Handle: dann channel=manual, du kopierst/sendest selbst.
       if (!openDraft) {
@@ -96,19 +118,22 @@ export async function GET(req: Request) {
             }
           }
 
-          // Auto-Senden nur mit Telegram-Handle; sonst manueller Entwurf zum Kopieren.
+          // Auto-Senden nur am Geburtstag selbst und nur mit Telegram-Handle;
+          // Vorlauf-Entwürfe warten in der Queue (Scharfschalten macht der Tag-0-Lauf).
           const viaTelegram = !!tg?.handle
-          const autoSendAt = viaTelegram && c.auto_mode
+          const autoSendAt = bday === 0 && viaTelegram && c.auto_mode
             ? new Date(Date.now() + VETO_MINUTES * 60_000).toISOString()
             : null
 
           await supabase.from("suggestions").insert({
             contact_id: c.id,
-            situation: autoSendAt
-              ? `🎂 Auto-Geburtstagsgruß — sendet in ${VETO_MINUTES} Min (Veto in Queue)`
-              : viaTelegram
-                ? "🎂 Geburtstagsgruß — in Queue freigeben"
-                : "🎂 Geburtstagsgruß — kopieren und selbst senden (kein Telegram-Handle)",
+            situation: bday === BDAY_LEAD_DAYS
+              ? `🎂 Geburtstag in ${BDAY_LEAD_DAYS} Tagen — Gruß vorbereitet, anpassen oder liegen lassen`
+              : autoSendAt
+                ? `🎂 Auto-Geburtstagsgruß — sendet in ${VETO_MINUTES} Min (Veto in Queue)`
+                : viaTelegram
+                  ? "🎂 Geburtstagsgruß — in Queue freigeben"
+                  : "🎂 Geburtstagsgruß — kopieren und selbst senden (kein Telegram-Handle)",
             variants: msg.variants,
             chosen_variant: Object.keys(msg.variants)[0] ?? null,
             channel: viaTelegram ? "telegram" : "manual",
