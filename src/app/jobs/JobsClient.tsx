@@ -123,8 +123,12 @@ export function JobsClient({
     setCvMsg("KI liest den Lebenslauf…")
     start(async () => {
       try {
-        const p = await saveJobCv({ text: cvText.trim() || undefined, url: cvUrl.trim() || undefined })
-        setCvMsg(`✓ Profil gespeichert: ${p.headline || p.name} · ${p.skills.length} Skills`)
+        const r = await saveJobCv({ text: cvText.trim() || undefined, url: cvUrl.trim() || undefined })
+        if (!r.profile) {
+          setCvMsg(`Fehler: ${r.error ?? "unbekannt"}`)
+          return
+        }
+        setCvMsg(`✓ Profil gespeichert: ${r.profile.headline || r.profile.name} · ${r.profile.skills.length} Skills`)
         setCvOpen(false)
       } catch (e) {
         setCvMsg(`Fehler: ${e instanceof Error ? e.message : "unbekannt"}`)
