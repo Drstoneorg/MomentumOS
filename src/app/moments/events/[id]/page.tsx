@@ -46,6 +46,15 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {event.capacity ? ` · Kapazität ${event.capacity}` : ""}
         </p>
         {event.description && <p className="mt-2 text-sm text-zinc-300">{event.description}</p>}
+        <div className="mt-3">
+          <a
+            href={`/api/events/${id}/guestlist`}
+            className="inline-block rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+            download
+          >
+            📋 Gästeliste als CSV (Türliste mit Promo-Codes)
+          </a>
+        </div>
       </Card>
 
       {platformFunnel.length > 1 && (
