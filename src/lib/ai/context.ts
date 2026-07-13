@@ -205,7 +205,11 @@ Interessen: ${(contact.interests ?? []).join(", ") || "unbekannt"}
 Bio: ${contact.bio ?? "—"}
 Notizen: ${contact.notes ?? "—"}
 Pipeline-Stage: ${contact.pipeline_stage}
-Geplante Date-Idee: ${contact.date_idea ?? "—"}
+Geplante Date-Idee: ${contact.date_idea ?? "—"}${
+    contact.tone_offset
+      ? `\n\n## Ton-Anpassung NUR für diesen Kontakt (überstimmt den Standard-Stil)\n${contact.tone_offset}`
+      : ""
+  }
 
 ## Gedächtnis
 ${memBlock || "— noch leer —"}
