@@ -380,7 +380,9 @@ import {
   extractJob,
   scoreJob,
   generateCoverLetter,
+  generateInterviewPrep,
   type CvProfile,
+  type InterviewPrep,
 } from "@/lib/ai/jobs"
 import { findDuplicateJob } from "@/lib/jobDedupe"
 
@@ -496,6 +498,36 @@ export async function generateJobCoverLetter(id: string, wishes?: string): Promi
     .eq("id", id)
   revalidatePath("/jobs")
   return letter
+}
+
+/** Interview-Vorbereitung aus Inserat + CV generieren und an der Bewerbung speichern. */
+export async function generateJobInterviewPrep(id: string): Promise<InterviewPrep> {
+  const supabase = await db()
+  const cv = await loadCvProfile()
+  if (!cv) throw new Error("Erst Lebenslauf hochladen (JobOS → CV).")
+  const { data: job } = await supabase
+    .from("job_applications")
+    .select("company, title, description, requirements, city, salary")
+    .eq("id", id)
+    .single()
+  if (!job) throw new Error("Stelle nicht gefunden")
+  const prep = await generateInterviewPrep(cv, {
+    company: job.company,
+    title: job.title,
+    city: job.city as never,
+    salary: job.salary,
+    requirements: job.requirements,
+    summary: "",
+    contact_name: null,
+    contact_email: null,
+    description: job.description,
+  })
+  await supabase
+    .from("job_applications")
+    .update({ interview_prep: prep as never, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  revalidatePath("/jobs")
+  return prep
 }
 
 /** Mehrere Kontakte auf einmal löschen (Matchbox-Mehrfachauswahl). */
