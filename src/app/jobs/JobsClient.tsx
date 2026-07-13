@@ -8,9 +8,10 @@ import {
   updateJobNotes,
   deleteJob,
   generateJobCoverLetter,
+  generateJobInterviewPrep,
   saveSetting,
 } from "@/lib/actions"
-import type { CvProfile } from "@/lib/ai/jobs"
+import type { CvProfile, InterviewPrep } from "@/lib/ai/jobs"
 import type { Tables } from "@/lib/database.types"
 import { Card, inputCls, btnCls } from "@/components/ui"
 
@@ -313,6 +314,24 @@ function JobRow({ job }: { job: Job }) {
   const [wishes, setWishes] = useState("")
   const [notes, setNotes] = useState(job.notes ?? "")
   const [msg, setMsg] = useState("")
+  const [showPrep, setShowPrep] = useState(false)
+  const [prep, setPrep] = useState<InterviewPrep | null>(
+    (job.interview_prep as InterviewPrep | null) ?? null
+  )
+
+  function genPrep() {
+    setMsg("Interview-Prep wird generiert…")
+    start(async () => {
+      try {
+        const p = await generateJobInterviewPrep(job.id)
+        setPrep(p)
+        setShowPrep(true)
+        setMsg("")
+      } catch (e) {
+        setMsg(e instanceof Error ? e.message : "Fehler")
+      }
+    })
+  }
   const reasons = job.match_reasons as { hits?: string[]; missing?: string[]; verdict?: string } | null
 
   function genLetter() {
@@ -417,8 +436,67 @@ function JobRow({ job }: { job: Job }) {
         <button onClick={() => setShowLetter((v) => !v)} className="text-rose-400 hover:underline">
           {letter ? "Anschreiben anzeigen" : "✍️ Anschreiben generieren"}
         </button>
+        <button
+          onClick={() => (prep ? setShowPrep((v) => !v) : genPrep())}
+          disabled={pending}
+          className="text-violet-400 hover:underline"
+        >
+          {prep ? "🎤 Interview-Prep anzeigen" : "🎤 Interview-Prep generieren"}
+        </button>
         {msg && <span className="text-zinc-400">{msg}</span>}
       </div>
+
+      {showPrep && prep && (
+        <div className="mt-2 space-y-3 rounded-xl border border-violet-900/60 bg-violet-950/20 p-3 text-sm">
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase text-violet-300">Wahrscheinliche Fragen</p>
+            <ul className="space-y-2">
+              {prep.questions.map((q, i) => (
+                <li key={i}>
+                  <p className="font-medium text-white">{q.q}</p>
+                  <p className="text-xs text-zinc-400">{q.answer_hint}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {prep.gaps.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase text-amber-300">Lücken + Antwortlinie</p>
+              <ul className="space-y-1">
+                {prep.gaps.map((g, i) => (
+                  <li key={i} className="text-xs">
+                    <span className="text-amber-200">{g.gap}</span>
+                    <span className="text-zinc-400"> → {g.spin}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {prep.talking_points.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase text-emerald-300">Aktiv platzieren</p>
+              <ul className="list-inside list-disc text-xs text-zinc-300">
+                {prep.talking_points.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {prep.reverse_questions.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase text-sky-300">Eigene Rückfragen</p>
+              <ul className="list-inside list-disc text-xs text-zinc-300">
+                {prep.reverse_questions.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <button onClick={genPrep} disabled={pending} className="text-xs text-zinc-500 hover:text-white">
+            {pending ? "…" : "Neu generieren"}
+          </button>
+        </div>
+      )}
 
       {showLetter && (
         <div className="mt-2 space-y-2">

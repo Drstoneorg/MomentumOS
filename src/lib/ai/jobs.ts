@@ -92,6 +92,31 @@ Streng aber fair: score >70 nur bei klarer Passung der Kernanforderungen.`,
   }
 }
 
+export type InterviewPrep = {
+  questions: { q: string; answer_hint: string }[] // wahrscheinliche Fragen + Antwort-Gerüst aus dem CV
+  reverse_questions: string[] // gute eigene Rückfragen
+  talking_points: string[] // Stärken, die ich aktiv platzieren sollte
+  gaps: { gap: string; spin: string }[] // fehlende Anforderungen + ehrliche Verkaufslinie
+}
+
+export async function generateInterviewPrep(cv: CvProfile, job: ExtractedJob & { description?: string | null }): Promise<InterviewPrep> {
+  const out = await chatJSON(
+    `Du bereitest einen Bewerber konkret auf ein Vorstellungsgespräch vor. Sprache: Deutsch.
+Antworte NUR als JSON:
+{"questions":[{"q":"wahrscheinliche Frage","answer_hint":"Antwort-Gerüst mit konkreten Punkten aus dem CV"}],"reverse_questions":["..."],"talking_points":["..."],"gaps":[{"gap":"fehlende Anforderung","spin":"ehrliche, souveräne Antwortlinie dazu"}]}
+Regeln: 6-8 questions, davon mindestens 2 fachlich zur konkreten Stelle. answer_hint nutzt NUR echte Fakten aus dem CV, nichts erfinden. 4-5 reverse_questions, spezifisch für Firma/Rolle statt generisch. 3-5 talking_points. gaps: ehrlich benennen, was laut Anforderungen fehlt, mit brauchbarer Antwortlinie (Lernbereitschaft konkret belegen statt Floskel).`,
+    `BEWERBER:\n${JSON.stringify(cv)}\n\nSTELLE:\n${JSON.stringify(job)}`,
+    "job_interview_prep"
+  )
+  const p = JSON.parse(out) as Partial<InterviewPrep>
+  return {
+    questions: Array.isArray(p.questions) ? p.questions.slice(0, 10) : [],
+    reverse_questions: Array.isArray(p.reverse_questions) ? p.reverse_questions.slice(0, 6) : [],
+    talking_points: Array.isArray(p.talking_points) ? p.talking_points.slice(0, 6) : [],
+    gaps: Array.isArray(p.gaps) ? p.gaps.slice(0, 6) : [],
+  }
+}
+
 export async function generateCoverLetter(
   cv: CvProfile,
   job: { company: string; title: string; description: string | null; requirements: string[] },
