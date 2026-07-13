@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/weekly",
       "schedule": "0 17 * * 0"
+    },
+    {
+      "path": "/api/cron/trading",
+      "schedule": "45 7 * * 1-5"
     }
   ]
 }

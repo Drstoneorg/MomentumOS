@@ -15,5 +15,5 @@ export async function beatCron(
     .upsert({ key: `cron_heartbeat_${name}`, value: new Date().toISOString() }, { onConflict: "key" })
 }
 
-export const CRON_NAMES = ["followups", "moments", "dispatch", "digest", "jobscan"] as const
+export const CRON_NAMES = ["followups", "moments", "dispatch", "digest", "jobscan", "trading"] as const
 export const CRON_MAX_AGE_HOURS = 36
