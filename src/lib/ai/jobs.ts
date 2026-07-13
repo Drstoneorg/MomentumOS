@@ -34,6 +34,44 @@ Regeln: nichts erfinden; Fakten wörtlich übernehmen; headline = prägnante Sel
   }
 }
 
+export type CvDocument = {
+  name: string
+  title: string // Berufsbezeichnung unter dem Namen
+  summary: string // 3-4 Sätze Kurzprofil
+  skill_groups: { title: string; skills: string[] }[]
+  experience: { role: string; company: string; period: string; bullets: string[] }[]
+  education: string[]
+  languages: string[]
+  extras: string[]
+}
+
+/** Aus dem extrahierten Rohprofil einen polierten, druckfertigen Lebenslauf texten. */
+export async function generateCvDocument(cv: CvProfile, wishes?: string): Promise<CvDocument> {
+  const out = await chatJSON(
+    `Du bist Profi-Lektor für Lebensläufe. Aus einem rohen Bewerberprofil machst du einen modernen deutschen Lebenslauf (Kurzprofil-Stil, kein Brief).
+Antworte NUR als JSON:
+{"name":"","title":"prägnante Berufsbezeichnung","summary":"3-4 Sätze Kurzprofil in der Ich-Form ohne 'ich bin'-Floskeln","skill_groups":[{"title":"Gruppenname","skills":["..."]}],"experience":[{"role":"","company":"","period":"","bullets":["Ergebnis-Bullet mit starkem Verb"]}],"education":["..."],"languages":["..."],"extras":["..."]}
+Regeln:
+- NICHTS erfinden: nur Fakten aus dem Profil, Zahlen wörtlich übernehmen. Fehlt etwas, weglassen.
+- Skills in 3-4 sinnvolle Gruppen ordnen (z.B. Marketing / Tools & Daten / Kreativ).
+- experience: Reihenfolge beibehalten, pro Station 2-4 Bullets, jedes Bullet beginnt mit Aktionsverb, Ergebnisse vor Aufgaben.
+- Sprache: knapp, selbstbewusst, keine Buzzword-Ketten, keine Ausrufezeichen.${wishes ? `\n- Wünsche des Bewerbers: ${wishes}` : ""}`,
+    JSON.stringify(cv),
+    "job_cv_document"
+  )
+  const p = JSON.parse(out) as Partial<CvDocument>
+  return {
+    name: p.name ?? cv.name,
+    title: p.title ?? cv.headline,
+    summary: p.summary ?? "",
+    skill_groups: Array.isArray(p.skill_groups) ? p.skill_groups.slice(0, 5) : [],
+    experience: Array.isArray(p.experience) ? p.experience.slice(0, 15) : [],
+    education: Array.isArray(p.education) ? p.education : cv.education,
+    languages: Array.isArray(p.languages) ? p.languages : cv.languages,
+    extras: Array.isArray(p.extras) ? p.extras : cv.extras,
+  }
+}
+
 export type ExtractedJob = {
   company: string
   title: string

@@ -57,7 +57,10 @@ const products: Product[] = [
     color: "text-emerald-400",
     home: "/jobs",
     match: (p) => p.startsWith("/jobs"),
-    links: [{ href: "/jobs", label: "Bewerbungen" }],
+    links: [
+      { href: "/jobs", label: "Bewerbungen" },
+      { href: "/jobs/cv", label: "CV-Profil" },
+    ],
   },
   {
     id: "book",
