@@ -385,6 +385,7 @@ import {
   type InterviewPrep,
 } from "@/lib/ai/jobs"
 import { findDuplicateJob } from "@/lib/jobDedupe"
+import { stripHtml, bundleUrlsFromHtml, extractReadableStrings } from "@/lib/spaText"
 
 export async function loadCvProfile(): Promise<CvProfile | null> {
   const supabase = await db()
@@ -396,27 +397,52 @@ export async function loadCvProfile(): Promise<CvProfile | null> {
   return (data?.value as CvProfile | null) ?? null
 }
 
-/** CV-Profil aus Text ODER Webseiten-URL extrahieren und speichern. */
-export async function saveJobCv(input: { text?: string; url?: string }): Promise<CvProfile> {
-  const supabase = await db()
-  let raw = input.text?.trim() ?? ""
-  if (!raw && input.url) {
-    const res = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0" } })
-    if (!res.ok) throw new Error(`Webseite nicht abrufbar (${res.status})`)
-    // grobes HTML-Strippen — Rest richtet die KI
-    raw = (await res.text())
-      .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .slice(0, 15000)
+/** CV-Profil aus Text ODER Webseiten-URL extrahieren und speichern.
+ *  Fehler kommen als { error } zurück statt als throw — Next maskiert
+ *  geworfene Server-Action-Fehler in Production zu einem nutzlosen Digest. */
+export async function saveJobCv(input: {
+  text?: string
+  url?: string
+}): Promise<{ profile: CvProfile | null; error?: string }> {
+  try {
+    const supabase = await db()
+    let raw = input.text?.trim() ?? ""
+    if (!raw && input.url) {
+      const res = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0" } })
+      if (!res.ok) return { profile: null, error: `Webseite nicht abrufbar (${res.status})` }
+      const html = await res.text()
+      // grobes HTML-Strippen — Rest richtet die KI
+      raw = stripHtml(html)
+      if (raw.length < 100) {
+        // SPA-Hülle (z.B. Lovable/Vite): sichtbare Texte stecken im JS-Bundle
+        for (const bundleUrl of bundleUrlsFromHtml(html, input.url)) {
+          try {
+            const bres = await fetch(bundleUrl, { headers: { "User-Agent": "Mozilla/5.0" } })
+            if (bres.ok) raw += "\n" + extractReadableStrings(await bres.text()).join("\n")
+          } catch {
+            // einzelnes Bundle nicht abrufbar — nächstes probieren
+          }
+          if (raw.length > 3000) break
+        }
+      }
+      raw = raw.replace(/\s+/g, " ").slice(0, 15000)
+    }
+    if (raw.length < 100) {
+      return {
+        profile: null,
+        error:
+          "Zu wenig Lebenslauf-Text gefunden — Seite ist vermutlich eine reine JavaScript-App. Bitte den Lebenslauf-Text direkt einfügen.",
+      }
+    }
+    const profile = await extractCvProfile(raw)
+    await supabase
+      .from("settings")
+      .upsert({ key: "job_cv_profile", value: profile as never, updated_at: new Date().toISOString() })
+    revalidatePath("/jobs")
+    return { profile }
+  } catch (e) {
+    return { profile: null, error: e instanceof Error ? e.message : "Unbekannter Fehler" }
   }
-  if (raw.length < 100) throw new Error("Zu wenig Lebenslauf-Text gefunden.")
-  const profile = await extractCvProfile(raw)
-  await supabase
-    .from("settings")
-    .upsert({ key: "job_cv_profile", value: profile as never, updated_at: new Date().toISOString() })
-  revalidatePath("/jobs")
-  return profile
 }
 
 /** Stellenanzeige aus rohem Text erfassen: extrahieren, gegen CV scoren, speichern. */
