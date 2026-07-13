@@ -71,6 +71,14 @@ const products: Product[] = [
       { href: "/provider", label: "Anbieter" },
     ],
   },
+  {
+    id: "trading",
+    label: "TradingOS",
+    color: "text-violet-400",
+    home: "/trading",
+    match: (p) => p.startsWith("/trading"),
+    links: [{ href: "/trading", label: "Paper-Portfolio" }],
+  },
 ]
 
 export function Nav() {
@@ -129,7 +137,9 @@ export function Nav() {
                       ? "Freunde, Karten & Anlässe"
                       : pr.id === "jobs"
                         ? "Bewerbungs-Manager"
-                        : "Treatments on demand"}
+                        : pr.id === "trading"
+                          ? "Paper-Trading-Labor"
+                          : "Treatments on demand"}
                 </span>
               </Link>
             ))}
@@ -149,9 +159,22 @@ export function Nav() {
           {l.label}
         </Link>
       ))}
-      <div className="ml-auto">
-        <QuickAddContact />
-      </div>
+      <form
+        className="ml-auto"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const q = new FormData(e.currentTarget).get("q")?.toString().trim()
+          if (q) router.push(`/search?q=${encodeURIComponent(q)}`)
+        }}
+      >
+        <input
+          name="q"
+          type="search"
+          placeholder="🔎 Suche"
+          className="w-24 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 placeholder:text-zinc-600 transition-all focus:w-44 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+        />
+      </form>
+      <QuickAddContact />
       <button
         onClick={logout}
         className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:text-white"
