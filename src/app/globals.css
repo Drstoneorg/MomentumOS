@@ -25,6 +25,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Lebenslauf-Dokument: Akzentfarben + Sidebar-Grund auch im PDF drucken */
+.print-doc,
+.print-doc * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* Drucken (Lebenslauf unter /jobs/cv): nur das Dokument, weißer Grund */
 @media print {
   nav,
