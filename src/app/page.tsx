@@ -72,15 +72,23 @@ export default async function Dashboard() {
 
   // Cron-Watchdog: warnen, wenn ein Cron nie oder seit >36h nicht gelaufen ist
   // (Vercel-Hobby-Limit kann Crons stillschweigend nicht ausführen).
-  const CRONS = ["followups", "moments", "dispatch", "digest", "jobscan"]
+  // trading läuft nur werktags → längeres Fenster, sonst Fehlalarm jedes Wochenende.
+  const CRONS: { name: string; maxH: number }[] = [
+    { name: "followups", maxH: 36 },
+    { name: "moments", maxH: 36 },
+    { name: "dispatch", maxH: 36 },
+    { name: "digest", maxH: 36 },
+    { name: "jobscan", maxH: 36 },
+    { name: "trading", maxH: 100 },
+  ]
   const beats = new Map(
     (heartbeatsRes.data ?? []).map((r) => [r.key.replace("cron_heartbeat_", ""), String(r.value)])
   )
-  const cronProblems = CRONS.map((name) => {
+  const cronProblems = CRONS.map(({ name, maxH }) => {
     const last = beats.get(name)
     if (!last) return { name, info: "noch nie gelaufen" }
     const ageH = (Date.now() - new Date(last).getTime()) / 3600_000
-    return ageH > 36 ? { name, info: `zuletzt vor ${Math.round(ageH)}h` } : null
+    return ageH > maxH ? { name, info: `zuletzt vor ${Math.round(ageH)}h` } : null
   }).filter((x): x is { name: string; info: string } => x !== null)
 
   const contacts = contactsRes.data ?? []
