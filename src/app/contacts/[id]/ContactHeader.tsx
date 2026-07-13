@@ -271,6 +271,19 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
           />
         </p>
       )}
+      {!edit && (
+        <p className="mt-1 text-xs text-zinc-500">
+          🎚 Ton für diesen Kontakt:{" "}
+          <InlineField
+            value={contact.tone_offset ?? ""}
+            placeholder="z.B. frecher, mehr Emojis, förmlicher …"
+            onSave={async (v) => {
+              await updateContact(contact.id, { tone_offset: v.trim() || null })
+              router.refresh()
+            }}
+          />
+        </p>
+      )}
 
       {edit && (
         <form onSubmit={saveEdit} className="mt-4 grid gap-3 sm:grid-cols-2">

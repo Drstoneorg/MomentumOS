@@ -307,6 +307,7 @@ export type Database = {
           priority: Database["public"]["Enums"]["priority_level"]
           realm: string
           relationship_tags: string[]
+          tone_offset: string | null
           updated_at: string
         }
         Insert: {
@@ -335,6 +336,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["priority_level"]
           realm?: string
           relationship_tags?: string[]
+          tone_offset?: string | null
           updated_at?: string
         }
         Update: {
@@ -363,6 +365,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["priority_level"]
           realm?: string
           relationship_tags?: string[]
+          tone_offset?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -564,6 +567,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          interview_prep: Json | null
           match_reasons: Json | null
           match_score: number | null
           next_action: string | null
@@ -586,6 +590,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          interview_prep?: Json | null
           match_reasons?: Json | null
           match_score?: number | null
           next_action?: string | null
@@ -608,6 +613,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          interview_prep?: Json | null
           match_reasons?: Json | null
           match_score?: number | null
           next_action?: string | null
@@ -849,6 +855,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      paper_trades: {
+        Row: {
+          amount_eur: number
+          eurusd: number
+          id: string
+          is_benchmark: boolean
+          label: string
+          price_usd: number
+          symbol: string
+          thesis: string | null
+          traded_at: string
+          units: number
+        }
+        Insert: {
+          amount_eur: number
+          eurusd: number
+          id?: string
+          is_benchmark?: boolean
+          label: string
+          price_usd: number
+          symbol: string
+          thesis?: string | null
+          traded_at?: string
+          units: number
+        }
+        Update: {
+          amount_eur?: number
+          eurusd?: number
+          id?: string
+          is_benchmark?: boolean
+          label?: string
+          price_usd?: number
+          symbol?: string
+          thesis?: string | null
+          traded_at?: string
+          units?: number
+        }
+        Relationships: []
       }
       providers: {
         Row: {
@@ -1120,6 +1165,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trading_digests: {
+        Row: {
+          created_at: string
+          day: string
+          digest: string
+          id: string
+          picks: Json | null
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          digest: string
+          id?: string
+          picks?: Json | null
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          digest?: string
+          id?: string
+          picks?: Json | null
+        }
+        Relationships: []
       }
       treatments: {
         Row: {
