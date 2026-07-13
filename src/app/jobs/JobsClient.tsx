@@ -143,9 +143,14 @@ export function JobsClient({
         {cv && !cvOpen && (
           <div className="space-y-1 text-sm text-zinc-400">
             <p>{cv.skills.slice(0, 12).join(" · ")}</p>
-            <button onClick={() => setCvOpen(true)} className="text-rose-400 hover:underline">
-              Aktualisieren
-            </button>
+            <div className="flex gap-3">
+              <a href="/jobs/cv" className="text-emerald-400 hover:underline">
+                📄 Profil ansehen + Lebenslauf generieren
+              </a>
+              <button onClick={() => setCvOpen(true)} className="text-rose-400 hover:underline">
+                Aktualisieren
+              </button>
+            </div>
           </div>
         )}
         {cvOpen && (

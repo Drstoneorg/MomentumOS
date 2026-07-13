@@ -381,8 +381,10 @@ import {
   scoreJob,
   generateCoverLetter,
   generateInterviewPrep,
+  generateCvDocument,
   type CvProfile,
   type InterviewPrep,
+  type CvDocument,
 } from "@/lib/ai/jobs"
 import { findDuplicateJob } from "@/lib/jobDedupe"
 import { stripHtml, bundleUrlsFromHtml, extractReadableStrings } from "@/lib/spaText"
@@ -443,6 +445,34 @@ export async function saveJobCv(input: {
   } catch (e) {
     return { profile: null, error: e instanceof Error ? e.message : "Unbekannter Fehler" }
   }
+}
+
+/** Polierten Lebenslauf aus dem gespeicherten CV-Profil generieren (KI-Lektorat). */
+export async function generateJobCvDocument(
+  wishes?: string
+): Promise<{ doc: CvDocument | null; error?: string }> {
+  try {
+    const cv = await loadCvProfile()
+    if (!cv) return { doc: null, error: "Erst Lebenslauf hochladen (JobOS → CV)." }
+    const doc = await generateCvDocument(cv, wishes)
+    const supabase = await db()
+    await supabase
+      .from("settings")
+      .upsert({ key: "job_cv_document", value: doc as never, updated_at: new Date().toISOString() })
+    revalidatePath("/jobs/cv")
+    return { doc }
+  } catch (e) {
+    return { doc: null, error: e instanceof Error ? e.message : "Unbekannter Fehler" }
+  }
+}
+
+/** Kontaktzeile für den Lebenslauf speichern (E-Mail · Telefon · Ort). */
+export async function saveCvContact(line: string) {
+  const supabase = await db()
+  await supabase
+    .from("settings")
+    .upsert({ key: "job_cv_contact", value: line.trim() as never, updated_at: new Date().toISOString() })
+  revalidatePath("/jobs/cv")
 }
 
 /** Stellenanzeige aus rohem Text erfassen: extrahieren, gegen CV scoren, speichern. */
