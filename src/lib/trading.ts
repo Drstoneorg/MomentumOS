@@ -116,6 +116,53 @@ export async function fetchNewsHeadlines(): Promise<string[]> {
   return headlines.slice(0, 35)
 }
 
+/**
+ * Kosten-Realismus: fiktive Orderkosten (Spread + Gebühr) pro Kauf, damit das
+ * Paper-Ergebnis sich nicht selbst schmeichelt. Wirkt auf die gekaufte Stückzahl.
+ */
+export const TRADING_FEE_RATE = 0.0025
+
+export function netUnits(
+  amountEur: number,
+  priceUsd: number,
+  eurusd: number,
+  feeRate = TRADING_FEE_RATE,
+): number {
+  return (amountEur * (1 - feeRate) * eurusd) / priceUsd
+}
+
+/**
+ * Selbstkritik: Pick nach Haltefrist am Benchmark messen.
+ * richtig = mindestens Benchmark-Rendite im selben Zeitraum (Gleichstand zählt).
+ */
+export function judgeVerdict(
+  pickEntryUsd: number,
+  pickNowUsd: number,
+  benchEntryUsd: number,
+  benchNowUsd: number,
+): "right" | "wrong" {
+  const pick = pickNowUsd / pickEntryUsd - 1
+  const bench = benchNowUsd / benchEntryUsd - 1
+  return pick >= bench ? "right" : "wrong"
+}
+
+/** Trefferquote der bewerteten KI-Picks (Benchmark-Käufe zählen nie mit). */
+export function verdictStats(
+  trades: { verdict: string; is_benchmark: boolean }[],
+): { right: number; wrong: number; open: number; quote: number | null } {
+  let right = 0
+  let wrong = 0
+  let open = 0
+  for (const t of trades) {
+    if (t.is_benchmark) continue
+    if (t.verdict === "right") right++
+    else if (t.verdict === "wrong") wrong++
+    else open++
+  }
+  const judged = right + wrong
+  return { right, wrong, open, quote: judged ? right / judged : null }
+}
+
 export type Holding = {
   symbol: string
   label: string

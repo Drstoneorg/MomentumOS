@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
 import { EventInviteManager } from "./EventInviteManager"
+import { EventBudget } from "./EventBudget"
+import { EventLineup } from "./EventLineup"
 
 export const dynamic = "force-dynamic"
 
@@ -9,11 +11,12 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  const [eventRes, invitesRes, contactsRes] = await Promise.all([
+  const [eventRes, invitesRes, contactsRes, gigsRes] = await Promise.all([
     supabase.from("events").select("*").eq("id", id).single(),
     supabase.from("event_invites").select("*, contacts(name, realm, platform, relationship_tags, language, contact_channels(channel, handle))").eq("event_id", id),
     // Beide Realms: Freunde UND Matches (Event-Leads) einladbar, Freunde zuerst
     supabase.from("contacts").select("id, name, realm, relationship_tags").order("realm", { ascending: false }).order("name"),
+    supabase.from("gigs").select("id, artist_id, fee_cents, status, set_slot, artists(name)").eq("event_id", id),
   ])
 
   const event = eventRes.data
@@ -36,6 +39,17 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   }
   const platformFunnel = [...byPlatform.entries()].sort((a, b) => b[1].invited - a[1].invited)
 
+  // Budget + Lineup: Gigs aus dem BookOS-Artist-Booking dieses Events
+  const gigs = (gigsRes.data ?? []).map((g) => ({
+    id: g.id,
+    artist_id: g.artist_id,
+    artistName: g.artists?.name ?? "?",
+    fee_cents: g.fee_cents,
+    status: g.status,
+    set_slot: g.set_slot,
+  }))
+  const ticketsSold = invites.filter((i) => ["ticket", "attended"].includes(i.status)).length
+
   return (
     <div className="space-y-4">
       <Card>
@@ -56,6 +70,16 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           </a>
         </div>
       </Card>
+
+      <EventBudget
+        eventId={id}
+        ticketPriceCents={event.ticket_price_cents}
+        otherCostsCents={event.other_costs_cents}
+        ticketsSold={ticketsSold}
+        gigs={gigs}
+      />
+
+      <EventLineup gigs={gigs} />
 
       {platformFunnel.length > 1 && (
         <Card title="📊 Funnel pro Plattform — wo kommen die Gäste her?">

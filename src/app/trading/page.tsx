@@ -3,10 +3,12 @@ import { Card } from "@/components/ui"
 import {
   UNIVERSE,
   BENCHMARK,
+  TRADING_FEE_RATE,
   fetchQuotes,
   fetchEurUsd,
   aggregateHoldings,
   holdingValueEur,
+  verdictStats,
 } from "@/lib/trading"
 import { RunNowButton } from "./RunNowButton"
 import type { TradingPick } from "@/lib/ai/trading"
@@ -18,10 +20,22 @@ const eur = (n: number) =>
 
 export default async function TradingPage() {
   const supabase = await createClient()
-  const [tradesRes, digestsRes] = await Promise.all([
+  const [tradesRes, digestsRes, lessonsRes] = await Promise.all([
     supabase.from("paper_trades").select("*").order("traded_at", { ascending: false }),
     supabase.from("trading_digests").select("*").order("day", { ascending: false }).limit(7),
+    supabase.from("settings").select("value").eq("key", "trading_learnings").maybeSingle(),
   ])
+
+  let lessons: string[] = []
+  try {
+    const parsed =
+      typeof lessonsRes.data?.value === "string"
+        ? JSON.parse(lessonsRes.data.value)
+        : lessonsRes.data?.value
+    if (Array.isArray(parsed)) lessons = parsed.filter((x): x is string => typeof x === "string")
+  } catch {
+    /* keine Learnings */
+  }
 
   const trades = tradesRes.data ?? []
   const holdings = aggregateHoldings(trades)
@@ -48,6 +62,7 @@ export default async function TradingPage() {
   }
   const ki = portfolioSum(kiHoldings)
   const bench = portfolioSum(benchHoldings)
+  const stats = verdictStats(trades)
   const pct = (s: { invested: number; value: number }) =>
     s.invested > 0 ? ((s.value - s.invested) / s.invested) * 100 : 0
 
@@ -68,7 +83,9 @@ export default async function TradingPage() {
         virtuell und begründet jeden Pick — parallel läuft ein stumpfer 15-€-Sparplan in den
         MSCI World als Benchmark. Das ist keine Anlageberatung: Kein System schlägt zuverlässig
         den Markt, und dieses Labor soll genau das messbar machen. Echte Käufe machst du, wenn
-        überhaupt, selbst bei deinem Broker.
+        überhaupt, selbst bei deinem Broker. Jeder Kauf rechnet{" "}
+        {(TRADING_FEE_RATE * 100).toLocaleString("de-DE")}% fiktive Orderkosten ein, damit das
+        Ergebnis ehrlich bleibt.
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -105,6 +122,33 @@ export default async function TradingPage() {
           )}
         </Card>
       </div>
+
+      {(stats.right + stats.wrong > 0 || lessons.length > 0) && (
+        <Card title="🧠 Selbstkritik — Picks nach 7 Tagen am Benchmark gemessen">
+          {stats.right + stats.wrong > 0 && (
+            <p className="text-sm text-zinc-300">
+              Trefferquote:{" "}
+              <span className="font-semibold text-white">
+                {Math.round((stats.quote ?? 0) * 100)}%
+              </span>{" "}
+              <span className="text-zinc-500">
+                ({stats.right} richtig · {stats.wrong} falsch · {stats.open} noch offen)
+              </span>
+            </p>
+          )}
+          {lessons.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm text-zinc-400">
+              {lessons.map((l, i) => (
+                <li key={i}>• {l}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-zinc-600">
+            Läuft automatisch im Tageslauf: 7 Tage alte Picks werden gegen den MSCI World im
+            selben Zeitraum bewertet, die KI zieht Lehren daraus — die fließen in künftige Picks ein
+          </p>
+        </Card>
+      )}
 
       {kiHoldings.length > 0 && (
         <Card title="Positionen (KI)">

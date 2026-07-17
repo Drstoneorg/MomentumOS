@@ -8,6 +8,7 @@ import {
   formatEuro,
   formatFeeRange,
   gigFeeTotals,
+  gigStaleDays,
 } from "@/lib/artists"
 import { NewArtistButton } from "./NewArtistButton"
 import { GigQuickActions } from "./GigQuickActions"
@@ -78,6 +79,14 @@ export default async function ArtistsPage() {
                 {g.fee_cents ? (
                   <span className="text-zinc-300">{formatEuro(g.fee_cents)}</span>
                 ) : null}
+                {gigStaleDays(g.status, g.status_changed_at) != null && (
+                  <span
+                    className="rounded-full bg-amber-950/60 px-2 py-0.5 text-xs text-amber-300"
+                    title="Seit Tagen keine Bewegung — auf der Artist-Seite Erinnerung entwerfen"
+                  >
+                    ⏰ {gigStaleDays(g.status, g.status_changed_at)}d ohne Antwort
+                  </span>
+                )}
                 <span
                   className={`ml-auto rounded-full px-2 py-0.5 text-xs ${GIG_STATUS_COLOR[g.status]}`}
                 >

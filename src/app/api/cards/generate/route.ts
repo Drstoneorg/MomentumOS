@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     templateId?: string
     wishes?: string
     withImage?: boolean
+    overlay?: boolean
   }
   if (!body.contactId) return NextResponse.json({ error: "contactId fehlt" }, { status: 400 })
 
@@ -68,6 +69,16 @@ export async function POST(req: Request) {
           quality: "medium",
           pathPrefix: `cards/${body.contactId}`,
         })).url
+      } else if (body.overlay !== false) {
+        // Overlay-Modus (Standard ohne Vorlage): nur das Artwork generieren —
+        // Rahmen + Texte rendert CardFrame per CSS. Schärfer, Text änderbar,
+        // quadratisch statt hochkant = weniger Bildkosten.
+        const prompt = `Fantasy anime TCG artwork, square full-bleed illustration: ${details.image_prompt}. Element theme ${details.element}. Vibrant, high detail. Absolutely NO text, NO letters, NO numbers, NO card frame, NO borders — pure artwork only. No real or identifiable people.`
+        imageUrl = (await generateImage(admin, prompt, {
+          size: "1024x1024",
+          quality: "medium",
+          pathPrefix: `cards/${body.contactId}`,
+        })).url
       } else {
         const prompt = `A complete trading card game card design, portrait orientation. Ornate card frame with title banner "${details.title}", type line "${details.type_line}", element ${details.element}, rarity ${details.rarity}. Artwork area: ${details.image_prompt}. Text box with effect text "${details.effect}". Attack ${details.attack}, defense ${details.defense} shown at the bottom. Fantasy anime TCG art style, vibrant, high detail. No real or identifiable people.`
         imageUrl = (await generateImage(admin, prompt, {
@@ -88,6 +99,8 @@ export async function POST(req: Request) {
         meta: {
           card: details,
           template_id: body.templateId ?? null,
+          // Overlay: Bild ist reines Artwork, Texte rendert CardFrame per CSS
+          overlay: !body.templateId && body.overlay !== false,
           facts_used: chosen.map((f) => `${f.label}: ${f.value}`),
           // Für Re-Roll mit gleichen Einstellungen
           fact_ids: chosen.map((f) => f.id),

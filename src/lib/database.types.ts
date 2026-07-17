@@ -556,7 +556,9 @@ export type Database = {
           id: string
           image_prompt: string | null
           location: string | null
+          other_costs_cents: number | null
           starts_at: string | null
+          ticket_price_cents: number | null
           title: string
         }
         Insert: {
@@ -566,7 +568,9 @@ export type Database = {
           id?: string
           image_prompt?: string | null
           location?: string | null
+          other_costs_cents?: number | null
           starts_at?: string | null
+          ticket_price_cents?: number | null
           title: string
         }
         Update: {
@@ -576,7 +580,9 @@ export type Database = {
           id?: string
           image_prompt?: string | null
           location?: string | null
+          other_costs_cents?: number | null
           starts_at?: string | null
+          ticket_price_cents?: number | null
           title?: string
         }
         Relationships: []
@@ -629,6 +635,7 @@ export type Database = {
           notes: string | null
           set_slot: string | null
           status: Database["public"]["Enums"]["gig_status"]
+          status_changed_at: string
           title: string | null
           venue: string | null
         }
@@ -644,6 +651,7 @@ export type Database = {
           notes?: string | null
           set_slot?: string | null
           status?: Database["public"]["Enums"]["gig_status"]
+          status_changed_at?: string
           title?: string | null
           venue?: string | null
         }
@@ -659,6 +667,7 @@ export type Database = {
           notes?: string | null
           set_slot?: string | null
           status?: Database["public"]["Enums"]["gig_status"]
+          status_changed_at?: string
           title?: string | null
           venue?: string | null
         }
@@ -748,6 +757,30 @@ export type Database = {
           title?: string
           updated_at?: string
           url?: string | null
+        }
+        Relationships: []
+      }
+      job_scan_runs: {
+        Row: {
+          found: number
+          id: string
+          inserted: number
+          portal: string
+          ran_at: string
+        }
+        Insert: {
+          found?: number
+          id?: string
+          inserted?: number
+          portal: string
+          ran_at?: string
+        }
+        Update: {
+          found?: number
+          id?: string
+          inserted?: number
+          portal?: string
+          ran_at?: string
         }
         Relationships: []
       }
@@ -991,6 +1024,7 @@ export type Database = {
           thesis: string | null
           traded_at: string
           units: number
+          verdict: string
         }
         Insert: {
           amount_eur: number
@@ -1003,6 +1037,7 @@ export type Database = {
           thesis?: string | null
           traded_at?: string
           units: number
+          verdict?: string
         }
         Update: {
           amount_eur?: number
@@ -1015,6 +1050,7 @@ export type Database = {
           thesis?: string | null
           traded_at?: string
           units?: number
+          verdict?: string
         }
         Relationships: []
       }

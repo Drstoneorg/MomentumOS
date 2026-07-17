@@ -21,6 +21,8 @@ test("unauthentifiziert wird auf /login umgeleitet", async ({ page }) => {
 })
 
 test.describe("eingeloggt", () => {
+  // Seriell: parallele Logins triggern das Supabase-Auth-Rate-Limit (Flake)
+  test.describe.configure({ mode: "serial" })
   test.skip(!email || !password, "E2E_EMAIL/E2E_PASSWORD fehlen in .env.local")
 
   test("Dashboard und Kernseiten rendern", async ({ page }) => {
@@ -33,7 +35,7 @@ test.describe("eingeloggt", () => {
     await page.goto("/")
     await expect(page.getByText(/Heute dran/i)).toBeVisible()
 
-    for (const path of ["/contacts", "/pipeline", "/jobs", "/moments", "/book/artists"]) {
+    for (const path of ["/contacts", "/pipeline", "/jobs", "/moments", "/moments/people", "/cards", "/book/artists", "/trading"]) {
       const res = await page.goto(path)
       expect(res?.status(), `${path} antwortet ohne Serverfehler`).toBeLessThan(500)
       await expect(page.locator("body")).not.toContainText("Application error")

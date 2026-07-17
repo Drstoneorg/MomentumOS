@@ -445,6 +445,17 @@ function JobRow({ job }: { job: Job }) {
         <button onClick={() => setShowLetter((v) => !v)} className="text-rose-400 hover:underline">
           {letter ? "Anschreiben anzeigen" : "✍️ Anschreiben generieren"}
         </button>
+        {letter && (
+          <a
+            href={`mailto:${job.contact_email ?? ""}?subject=${encodeURIComponent(
+              `Bewerbung als ${job.title}`
+            )}&body=${encodeURIComponent(letter)}`}
+            className="text-sky-400 hover:underline"
+            title={`Öffnet das Mailprogramm mit Anschreiben als Text${job.contact_email ? ` an ${job.contact_email}` : " (Empfänger selbst eintragen)"} — CV-PDF unter CV-Profil drucken und anhängen`}
+          >
+            ✉️ Bewerbungs-Mail öffnen
+          </a>
+        )}
         <button
           onClick={() => (prep ? setShowPrep((v) => !v) : genPrep())}
           disabled={pending}

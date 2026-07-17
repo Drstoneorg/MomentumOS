@@ -5,17 +5,31 @@ import type { ReplyVariants } from "@/lib/ai/generateReplies"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
 
 type NextEvent = { title: string; starts_at: string | null; location: string | null }
+type MemoryChip = { id: string; kind: string; content: string; created_at: string }
+
+// Themen-Radar: welche Gedächtnis-Arten als anklickbare Themen taugen.
+// Älteste zuerst — die liegen am längsten brach. Offene Fragen vor allem anderen.
+const RADAR_KINDS: Record<string, string> = {
+  open_question: "❓",
+  likes: "❤️",
+  topic_works: "💬",
+  fact: "📌",
+}
 
 export function ReplyGenerator({
   contactId,
   language,
   nextEvent,
+  memories = [],
 }: {
   contactId: string
   language: string
   nextEvent?: NextEvent | null
+  memories?: MemoryChip[]
 }) {
   const [situation, setSituation] = useState("")
+  const [anchors, setAnchors] = useState<string[]>([])
+  const [radarOpen, setRadarOpen] = useState(false)
   const [channel, setChannel] = useState("manual")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<(ReplyVariants & { suggestionId?: string }) | null>(null)
@@ -27,13 +41,20 @@ export function ReplyGenerator({
   const [ideaResult, setIdeaResult] = useState<Record<string, string> | null>(null)
   const [ideaError, setIdeaError] = useState<string | null>(null)
 
+  // Angeklickte Radar-Themen fließen als weicher Auftrag in die Situation ein
+  function situationWithAnchors(): string {
+    if (!anchors.length) return situation
+    const anchorText = `Baue eines dieser Themen natürlich ein (nicht aufzählen, nur was gerade passt): ${anchors.join(" · ")}`
+    return situation ? `${situation} | ${anchorText}` : anchorText
+  }
+
   async function generate() {
     setLoading(true)
     setError(null)
     const res = await fetch("/api/ai/replies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId, situation, channel, nowLocal: new Date().toString() }),
+      body: JSON.stringify({ contactId, situation: situationWithAnchors(), channel, nowLocal: new Date().toString() }),
     })
     setLoading(false)
     const data = await res.json()
@@ -117,6 +138,62 @@ export function ReplyGenerator({
             ✨ Opener
           </button>
         </div>
+
+        {/* Themen-Radar: brachliegende Gedächtnis-Themen als 1-Klick-Anker */}
+        {(() => {
+          const radar = memories
+            .filter((m) => RADAR_KINDS[m.kind])
+            .sort((a, b) =>
+              a.kind === b.kind
+                ? a.created_at.localeCompare(b.created_at)
+                : a.kind === "open_question"
+                  ? -1
+                  : b.kind === "open_question"
+                    ? 1
+                    : 0,
+            )
+          if (!radar.length) return null
+          const shown = radarOpen ? radar : radar.slice(0, 6)
+          return (
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">
+                🧭 Themen-Radar — anklicken, damit die Antwort es natürlich einbaut:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {shown.map((m) => {
+                  const active = anchors.includes(m.content)
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() =>
+                        setAnchors((a) =>
+                          active ? a.filter((x) => x !== m.content) : [...a, m.content],
+                        )
+                      }
+                      title={m.content}
+                      className={`max-w-56 truncate rounded-full border px-2.5 py-1 text-xs ${
+                        active
+                          ? "border-emerald-600 bg-emerald-950/60 text-emerald-200"
+                          : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                      }`}
+                    >
+                      {RADAR_KINDS[m.kind]} {m.content}
+                    </button>
+                  )
+                })}
+                {radar.length > 6 && (
+                  <button
+                    onClick={() => setRadarOpen((v) => !v)}
+                    className="rounded-full px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300"
+                  >
+                    {radarOpen ? "weniger" : `+${radar.length - 6} mehr`}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="flex gap-2">
           <input
             value={situation}

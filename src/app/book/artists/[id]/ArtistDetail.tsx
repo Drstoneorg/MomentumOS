@@ -18,6 +18,7 @@ import {
   GIG_STATUS_COLOR,
   GIG_STATUS_LABELS,
   formatEuro,
+  gigStaleDays,
   parseFeeInput,
 } from "@/lib/artists"
 import { GigQuickActions } from "../GigQuickActions"
@@ -228,13 +229,21 @@ function GigRow({ gig, artist }: { gig: Gig; artist: Artist }) {
   const [msg, setMsg] = useState("")
   const [copied, setCopied] = useState(false)
   const [pending, start] = useTransition()
+  const staleDays = gigStaleDays(gig.status, gig.status_changed_at)
 
-  function generate() {
+  function generate(overrideWishes?: string) {
     setMsg("")
     start(async () => {
-      const res = await generateGigInquiry(gig.id, wishes)
+      const res = await generateGigInquiry(gig.id, overrideWishes ?? wishes)
       if (res.error) setMsg(res.error)
     })
+  }
+
+  // Follow-up bei unbeantworteter Anfrage: kurzer Erinnerungs-Entwurf
+  function generateReminder() {
+    generate(
+      `Kurze freundliche Erinnerung: die Anfrage ist seit ${staleDays} Tagen unbeantwortet. Bezug auf die vorherige Nachricht, kein Vorwurf, maximal 60 Wörter`,
+    )
   }
 
   async function copy() {
@@ -283,6 +292,11 @@ function GigRow({ gig, artist }: { gig: Gig; artist: Artist }) {
             onSave={(v) => updateGig(gig.id, gig.artist_id, { fee_cents: parseFeeInput(v) })}
           />
         </span>
+        {staleDays != null && (
+          <span className="rounded-full bg-amber-950/60 px-2 py-0.5 text-xs text-amber-300">
+            ⏰ {staleDays}d ohne Antwort
+          </span>
+        )}
         <span
           className={`ml-auto rounded-full px-2 py-0.5 text-xs ${GIG_STATUS_COLOR[gig.status]}`}
         >
@@ -301,16 +315,35 @@ function GigRow({ gig, artist }: { gig: Gig; artist: Artist }) {
 
       {!finished && (
         <div className="mt-2 space-y-2">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               value={wishes}
               onChange={(e) => setWishes(e.target.value)}
               placeholder="Wünsche für den Anfrage-Text (optional)"
-              className={`${inputCls} flex-1`}
+              className={`${inputCls} min-w-40 flex-1`}
             />
-            <button onClick={generate} disabled={pending} className={btnGhostCls}>
+            <button onClick={() => generate()} disabled={pending} className={btnGhostCls}>
               {pending ? "…" : gig.inquiry_draft ? "📨 Neu entwerfen" : "📨 Anfrage entwerfen"}
             </button>
+            {staleDays != null && (
+              <button
+                onClick={generateReminder}
+                disabled={pending}
+                className="rounded-lg border border-amber-800 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-950/40 disabled:opacity-50"
+                title="Kurzen Erinnerungs-Entwurf zur unbeantworteten Anfrage generieren"
+              >
+                ⏰ Erinnerung entwerfen
+              </button>
+            )}
+            {(gig.status === "confirmed" || gig.status === "contracted" || gig.status === "played") && (
+              <a
+                href={`/book/gigs/${gig.id}/contract`}
+                className={btnGhostCls}
+                title="Druckfertiger Booking-Vertrag (PDF über Drucken-Dialog)"
+              >
+                📄 Vertrag
+              </a>
+            )}
           </div>
           {msg && <p className="text-sm text-rose-400">{msg}</p>}
           {gig.inquiry_draft && (

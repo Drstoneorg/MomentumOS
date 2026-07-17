@@ -84,6 +84,57 @@ export function parseFeeInput(raw: string): number | null {
   return Math.round(n * 100)
 }
 
+// Nach so vielen Tagen ohne Statuswechsel gilt eine Anfrage als unbeantwortet
+export const GIG_STALE_DAYS = 5
+
+/**
+ * Follow-up-Radar: Tage, die ein Gig schon in inquired/negotiating festhängt —
+ * ab GIG_STALE_DAYS. Andere Status oder frisch → null.
+ */
+export function gigStaleDays(
+  status: Enums<"gig_status">,
+  statusChangedAt: string,
+  now = new Date(),
+): number | null {
+  if (status !== "inquired" && status !== "negotiating") return null
+  const changed = new Date(statusChangedAt).getTime()
+  if (isNaN(changed)) return null
+  const days = Math.floor((now.getTime() - changed) / 86400_000)
+  return days >= GIG_STALE_DAYS ? days : null
+}
+
+/**
+ * Set-Slot-Freitext ("23–01", "23:30-01:00", "22 Uhr bis 0 Uhr") → Minutenfenster.
+ * Skala: Minuten seit 12:00 Mittag — Stunden < 12 zählen als nach Mitternacht,
+ * damit Club-Nächte (23–01) korrekt über die Datumsgrenze sortieren.
+ * Nicht parsebar → null.
+ */
+export function parseSetSlot(slot: string | null | undefined): { start: number; end: number } | null {
+  if (!slot) return null
+  const m = slot.match(
+    /(\d{1,2})(?::(\d{2}))?\s*(?:uhr)?\s*(?:–|—|-|bis)\s*(\d{1,2})(?::(\d{2}))?/i,
+  )
+  if (!m) return null
+  const toMin = (h: number, min: number) => {
+    if (h > 23 || min > 59) return null
+    const mapped = h < 12 ? h + 24 : h // 0-11 Uhr = nach Mitternacht
+    return (mapped - 12) * 60 + min
+  }
+  const start = toMin(Number(m[1]), Number(m[2] ?? 0))
+  let end = toMin(Number(m[3]), Number(m[4] ?? 0))
+  if (start == null || end == null) return null
+  if (end <= start) end += 24 * 60 // "23–23" o.ä.: als Über-Nacht werten
+  return { start, end }
+}
+
+// Überschneiden sich zwei Slots? (Berührung Ende=Start ist KEIN Konflikt)
+export function slotsOverlap(
+  a: { start: number; end: number },
+  b: { start: number; end: number },
+): boolean {
+  return a.start < b.end && b.start < a.end
+}
+
 // Gagen-Summen für die Übersicht: fix = confirmed/contracted/played,
 // offen = inquired/negotiating (Ideen und Absagen zählen nicht).
 export function gigFeeTotals(

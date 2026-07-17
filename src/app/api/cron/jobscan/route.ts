@@ -87,6 +87,11 @@ export async function GET(req: Request) {
   const knownKeys = new Set((existing ?? []).map((j) => jobKey(j.company, j.title)))
 
   // 1) Suchseiten abrufen, KI wählt echte Stellen-Treffer aus den Links.
+  // Portal-Gesundheit: found/inserted pro Portal mitzählen — ein still
+  // gestorbener Scraper (DOM-Umbau, Bot-Block) fällt sonst wochenlang nicht auf.
+  const portalStats = new Map<string, { found: number; inserted: number }>(
+    SCRAPE_PORTALS.map((p) => [p.portal, { found: 0, inserted: 0 }])
+  )
   const candidates: { title: string; url: string; portal: string; city: string }[] = []
   for (const p of SCRAPE_PORTALS) {
     for (const term of terms) {
@@ -108,7 +113,10 @@ Antworte NUR als JSON: {"hits":[Indexzahlen]} — maximal 5.`,
         const hits = (JSON.parse(out) as { hits?: number[] }).hits ?? []
         for (const i of hits.slice(0, 5)) {
           const a = anchors[i]
-          if (a) candidates.push({ title: a.text, url: a.href, portal: p.portal, city: p.city })
+          if (a) {
+            candidates.push({ title: a.text, url: a.href, portal: p.portal, city: p.city })
+            portalStats.get(p.portal)!.found++
+          }
         }
       } catch {
         // Portal nicht erreichbar/blockt — nächstes
@@ -168,10 +176,20 @@ Antworte NUR als JSON: {"hits":[Indexzahlen]} — maximal 5.`,
       })
       created++
       createdList.push(`${job.company} (${score?.score ?? "?"}%)`)
+      portalStats.get(c.portal)!.inserted++
     } catch {
       // Detailseite blockt/Timeout — nächster Kandidat
     }
   }
+
+  // Portal-Gesundheit persistieren (auch 0-Treffer — genau das ist das Signal)
+  await supabase.from("job_scan_runs").insert(
+    [...portalStats.entries()].map(([portal, s]) => ({
+      portal,
+      found: s.found,
+      inserted: s.inserted,
+    }))
+  )
 
   // 3) Nachfass-Entwürfe: beworben, >14 Tage still, noch kein Entwurf.
   const cutoff = new Date(Date.now() - FOLLOWUP_AFTER_DAYS * 86400_000).toISOString()

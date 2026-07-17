@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { JobsClient } from "./JobsClient"
 import { Card } from "@/components/ui"
 import type { CvProfile } from "@/lib/ai/jobs"
+import { scanWarnings } from "@/lib/jobScanHealth"
 
 export const dynamic = "force-dynamic"
 
@@ -34,10 +35,15 @@ function funnelByPortal(jobs: { portal: string | null; stage: string }[]): Funne
 
 export default async function JobsPage() {
   const supabase = await createClient()
-  const [{ data: jobs }, { data: cvRow }, { data: autoRow }] = await Promise.all([
+  const [{ data: jobs }, { data: cvRow }, { data: autoRow }, { data: scanRuns }] = await Promise.all([
     supabase.from("job_applications").select("*").order("created_at", { ascending: false }),
     supabase.from("settings").select("value").eq("key", "job_cv_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "job_auto_search").maybeSingle(),
+    supabase
+      .from("job_scan_runs")
+      .select("portal, found, ran_at")
+      .order("ran_at", { ascending: false })
+      .limit(40),
   ])
 
   let autoTerms: string[] = []
@@ -64,9 +70,21 @@ export default async function JobsPage() {
   )
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—")
 
+  const deadPortals = scanWarnings(scanRuns ?? [])
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">💼 JobOS — Bewerbungen</h1>
+
+      {deadPortals.length > 0 && (
+        <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
+          ⚠ Scraper-Warnung:{" "}
+          {deadPortals
+            .map((w) => `${w.portal} liefert seit ${w.zeroRuns} Läufen 0 Treffer`)
+            .join(" · ")}{" "}
+          — Portal evtl. umgebaut oder blockt. Suchbegriffe prüfen oder Portal manuell testen.
+        </div>
+      )}
 
       {totals.applied > 0 && (
         <Card title="📊 Funnel pro Portal — wo lohnt sich bewerben?">

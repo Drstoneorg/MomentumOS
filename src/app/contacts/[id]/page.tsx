@@ -113,7 +113,17 @@ export default async function ContactPage({
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <ChatPanel contactId={id} messages={messagesRes.data ?? []} />
-          <ReplyGenerator contactId={id} language={contact.language ?? "de"} nextEvent={nextEventRes.data ?? null} />
+          <ReplyGenerator
+            contactId={id}
+            language={contact.language ?? "de"}
+            nextEvent={nextEventRes.data ?? null}
+            memories={(memoriesRes.data ?? []).map((m) => ({
+              id: m.id,
+              kind: m.kind,
+              content: m.content,
+              created_at: m.created_at,
+            }))}
+          />
           <MomentGenerator contactId={id} />
           <Timeline items={timeline} />
         </div>

@@ -136,14 +136,28 @@ export async function advanceGig(
   const next = nextGigStatus(current)
   if (!next) return
   const supabase = await db()
-  await supabase.from("gigs").update({ status: next }).eq("id", id)
+  await supabase
+    .from("gigs")
+    .update({ status: next, status_changed_at: new Date().toISOString() })
+    .eq("id", id)
   revalidateArtist(artistId)
 }
 
 export async function cancelGig(id: string, artistId: string) {
   const supabase = await db()
-  await supabase.from("gigs").update({ status: "cancelled" }).eq("id", id)
+  await supabase
+    .from("gigs")
+    .update({ status: "cancelled", status_changed_at: new Date().toISOString() })
+    .eq("id", id)
   revalidateArtist(artistId)
+}
+
+// Veranstalter-Block für Vertrags-Dokumente (settings-Key organizer_profile)
+export async function saveOrganizerProfile(text: string) {
+  const supabase = await db()
+  await supabase
+    .from("settings")
+    .upsert({ key: "organizer_profile", value: text }, { onConflict: "key" })
 }
 
 export async function deleteGig(id: string, artistId: string) {

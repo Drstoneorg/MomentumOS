@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { btnCls } from "@/components/ui"
 import { CardSend } from "./CardSend"
+import { CardFrame } from "./CardFrame"
 import { ContactPicker, type PickContact } from "./ContactPicker"
 
 type Fact = { id: string; label: string; value: string; source: string }
@@ -33,6 +34,7 @@ export function CardBuilder({
   const [templateId, setTemplateId] = useState("")
   const [wishes, setWishes] = useState("")
   const [withImage, setWithImage] = useState(true)
+  const [overlay, setOverlay] = useState(true)
   const [loading, setLoading] = useState(false)
   const [factsLoading, setFactsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -85,6 +87,7 @@ export function CardBuilder({
           templateId: templateId || undefined,
           wishes: wishes.trim() || undefined,
           withImage,
+          overlay,
         }),
       })
       const data = await res.json()
@@ -118,6 +121,15 @@ export function CardBuilder({
           <input type="checkbox" checked={withImage} onChange={(e) => setWithImage(e.target.checked)} />
           Bild generieren (kostet)
         </label>
+        {!templateId && (
+          <label
+            className="flex items-center gap-1.5 text-sm text-zinc-300"
+            title="Nur Artwork generieren, Rahmen + Texte rendert der Browser — schärfer, günstiger, Text bleibt änderbar"
+          >
+            <input type="checkbox" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} />
+            Text-Overlay (scharf + günstiger)
+          </label>
+        )}
       </div>
 
       {factsLoading && <p className="text-sm text-zinc-500">Lade freigegebene Fakten…</p>}
@@ -167,9 +179,15 @@ export function CardBuilder({
       {result && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-            {result.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.imageUrl} alt={result.details.title} className="w-64 rounded-lg border border-zinc-700" />
+            {!templateId && overlay ? (
+              <div className="w-72">
+                <CardFrame imageUrl={result.imageUrl} card={result.details} />
+              </div>
+            ) : (
+              result.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={result.imageUrl} alt={result.details.title} className="w-64 rounded-lg border border-zinc-700" />
+              )
             )}
             <div className="min-w-64 flex-1 space-y-1 text-sm">
               <p className="text-base font-bold text-white">{result.details.title}</p>

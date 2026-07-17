@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import Link from "next/link"
 import { deleteCard } from "@/lib/cardActions"
 import { CardSend } from "./CardSend"
+import { CardFrame } from "./CardFrame"
 import type { Tables } from "@/lib/database.types"
 
 type Channel = { channel: string; handle: string; is_primary?: boolean }
@@ -23,6 +24,7 @@ type CardMeta = {
   fact_ids?: string[]
   template_id?: string | null
   wishes?: string | null
+  overlay?: boolean
 }
 
 export function CardGallery({
@@ -91,11 +93,17 @@ export function CardGallery({
           const c = meta.card ?? {}
           return (
             <div key={a.id} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-              {a.content && (
-                <a href={a.content} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.content} alt={a.title ?? "Karte"} className="w-full object-cover" />
-                </a>
+              {meta.overlay ? (
+                <div className="p-2">
+                  <CardFrame imageUrl={a.content || null} card={c} />
+                </div>
+              ) : (
+                a.content && (
+                  <a href={a.content} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.content} alt={a.title ?? "Karte"} className="w-full object-cover" />
+                  </a>
+                )
               )}
               <div className="space-y-1 p-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -156,7 +164,11 @@ export function CardGallery({
                     assetId={a.id}
                     imageUrl={a.content || null}
                     channels={a.contact_id ? (channelsByContact[a.contact_id] ?? []) : []}
-                    defaultText={`Hier deine persönliche Karte 🃏 ${c.title ?? a.title ?? ""}`}
+                    defaultText={
+                      meta.overlay
+                        ? `Hier deine persönliche Karte 🃏 ${c.title ?? a.title ?? ""}${c.type_line ? ` (${c.type_line})` : ""}${c.effect ? ` — ${c.effect}` : ""}`
+                        : `Hier deine persönliche Karte 🃏 ${c.title ?? a.title ?? ""}`
+                    }
                   />
                 )}
               </div>
