@@ -56,13 +56,20 @@ export default async function SearchPage({
       .or(`title.ilike.${like},description.ilike.${like},location.ilike.${like}`)
       .limit(10),
   ])
+  const artistsRes = await supabase
+    .from("artists")
+    .select("id, name, city, artist_type, notes")
+    .or(`name.ilike.${like},city.ilike.${like},notes.ilike.${like}`)
+    .limit(10)
 
   const contacts = contactsRes.data ?? []
   const messages = messagesRes.data ?? []
   const memories = memoriesRes.data ?? []
   const jobs = jobsRes.data ?? []
   const events = eventsRes.data ?? []
-  const total = contacts.length + messages.length + memories.length + jobs.length + events.length
+  const artists = artistsRes.data ?? []
+  const total =
+    contacts.length + messages.length + memories.length + jobs.length + events.length + artists.length
 
   /** Fundstelle mit etwas Kontext um den Treffer herum anzeigen. */
   function snippet(text: string | null): string {
@@ -159,6 +166,25 @@ export default async function SearchPage({
                   {e.starts_at ? new Date(e.starts_at).toLocaleDateString("de-DE") : ""}
                   {e.location ? ` · ${e.location}` : ""}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {artists.length > 0 && (
+        <Card title={`Artists (${artists.length})`}>
+          <ul className="space-y-1 text-sm">
+            {artists.map((a) => (
+              <li key={a.id}>
+                <Link href={`/book/artists/${a.id}`} className="font-medium text-white hover:underline">
+                  {a.name}
+                </Link>{" "}
+                <span className="text-xs text-zinc-500">
+                  {a.artist_type}
+                  {a.city ? ` · ${a.city}` : ""}
+                </span>
+                {a.notes && <p className="text-xs text-zinc-400">{snippet(a.notes)}</p>}
               </li>
             ))}
           </ul>

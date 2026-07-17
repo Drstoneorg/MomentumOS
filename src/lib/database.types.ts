@@ -50,6 +50,66 @@ export type Database = {
         }
         Relationships: []
       }
+      artists: {
+        Row: {
+          active: boolean
+          artist_type: Database["public"]["Enums"]["artist_type"]
+          city: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          fee_max_cents: number | null
+          fee_min_cents: number | null
+          genres: string[]
+          hospitality: string | null
+          id: string
+          links: string[]
+          name: string
+          notes: string | null
+          rating: number | null
+          tech_rider: string | null
+        }
+        Insert: {
+          active?: boolean
+          artist_type?: Database["public"]["Enums"]["artist_type"]
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          fee_max_cents?: number | null
+          fee_min_cents?: number | null
+          genres?: string[]
+          hospitality?: string | null
+          id?: string
+          links?: string[]
+          name: string
+          notes?: string | null
+          rating?: number | null
+          tech_rider?: string | null
+        }
+        Update: {
+          active?: boolean
+          artist_type?: Database["public"]["Enums"]["artist_type"]
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          fee_max_cents?: number | null
+          fee_min_cents?: number | null
+          genres?: string[]
+          hospitality?: string | null
+          id?: string
+          links?: string[]
+          name?: string
+          notes?: string | null
+          rating?: number | null
+          tech_rider?: string | null
+        }
+        Relationships: []
+      }
       asset_sends: {
         Row: {
           asset_id: string
@@ -552,6 +612,69 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gigs: {
+        Row: {
+          artist_id: string
+          created_at: string
+          event_id: string | null
+          fee_cents: number | null
+          fee_note: string | null
+          gig_date: string | null
+          id: string
+          inquiry_draft: string | null
+          notes: string | null
+          set_slot: string | null
+          status: Database["public"]["Enums"]["gig_status"]
+          title: string | null
+          venue: string | null
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          event_id?: string | null
+          fee_cents?: number | null
+          fee_note?: string | null
+          gig_date?: string | null
+          id?: string
+          inquiry_draft?: string | null
+          notes?: string | null
+          set_slot?: string | null
+          status?: Database["public"]["Enums"]["gig_status"]
+          title?: string | null
+          venue?: string | null
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          event_id?: string | null
+          fee_cents?: number | null
+          fee_note?: string | null
+          gig_date?: string | null
+          id?: string
+          inquiry_draft?: string | null
+          notes?: string | null
+          set_slot?: string | null
+          status?: Database["public"]["Enums"]["gig_status"]
+          title?: string | null
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gigs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gigs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -2203,6 +2326,7 @@ export type Database = {
       }
     }
     Enums: {
+      artist_type: "dj" | "live_act" | "band" | "performer" | "other"
       asset_kind: "image_prompt" | "image" | "text" | "collage" | "card"
       booking_status:
         | "requested"
@@ -2214,6 +2338,14 @@ export type Database = {
         | "cancelled"
       date_status: "proposed" | "confirmed"
       event_invite_status: "invited" | "yes" | "no" | "no_reply" | "ticket" | "attended"
+      gig_status:
+        | "idea"
+        | "inquired"
+        | "negotiating"
+        | "confirmed"
+        | "contracted"
+        | "played"
+        | "cancelled"
       meetup_status:
         | "idea"
         | "proposed"
@@ -2381,6 +2513,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      artist_type: ["dj", "live_act", "band", "performer", "other"],
       asset_kind: ["image_prompt", "image", "text", "collage", "card"],
       booking_status: [
         "requested",
@@ -2393,6 +2526,15 @@ export const Constants = {
       ],
       date_status: ["proposed", "confirmed"],
       event_invite_status: ["invited", "yes", "no", "no_reply", "ticket", "attended"],
+      gig_status: [
+        "idea",
+        "inquired",
+        "negotiating",
+        "confirmed",
+        "contracted",
+        "played",
+        "cancelled",
+      ],
       meetup_status: ["idea", "proposed", "confirmed", "happened", "cancelled"],
       memory_kind: [
         "likes",
