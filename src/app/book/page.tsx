@@ -22,9 +22,14 @@ export default async function BookPage() {
     <div className="mx-auto max-w-xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Treatment buchen</h1>
-        <Link href="/book/bookings" className="text-sm text-sky-400 hover:underline">
-          Meine Buchungen →
-        </Link>
+        <span className="flex gap-3 text-sm">
+          <Link href="/book/artists" className="text-sky-400 hover:underline">
+            🎧 Artist-Booking →
+          </Link>
+          <Link href="/book/bookings" className="text-sky-400 hover:underline">
+            Meine Buchungen →
+          </Link>
+        </span>
       </div>
 
       {active && (

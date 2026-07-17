@@ -71,6 +71,7 @@ const products: Product[] = [
     links: [
       { href: "/book", label: "Treatment buchen" },
       { href: "/book/bookings", label: "Meine Buchungen" },
+      { href: "/book/artists", label: "🎧 Artists" },
       { href: "/provider", label: "Anbieter" },
     ],
   },
