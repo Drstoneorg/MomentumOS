@@ -5,85 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { QuickAddContact } from "@/components/QuickAddContact"
-
-type Product = {
-  id: string
-  label: string
-  color: string
-  home: string
-  match: (p: string) => boolean
-  links: { href: string; label: string }[]
-}
-
-const products: Product[] = [
-  {
-    id: "dating",
-    label: "MatchOS",
-    color: "text-rose-500",
-    home: "/",
-    match: (p) =>
-      p === "/" ||
-      p.startsWith("/contacts") ||
-      p.startsWith("/pipeline") ||
-      p.startsWith("/queue") ||
-      p.startsWith("/settings"),
-    links: [
-      { href: "/", label: "Dashboard" },
-      { href: "/contacts", label: "Matchbox" },
-      { href: "/pipeline", label: "Pipeline" },
-      { href: "/queue", label: "Queue" },
-      { href: "/settings", label: "Einstellungen" },
-    ],
-  },
-  {
-    id: "moments",
-    label: "MomentOS",
-    color: "text-amber-400",
-    home: "/moments",
-    match: (p) =>
-      p.startsWith("/moments") || p.startsWith("/cards") || p.startsWith("/capture"),
-    links: [
-      { href: "/moments", label: "Hub" },
-      { href: "/cards", label: "🃏 Karten" },
-      { href: "/capture", label: "📸 Erfassen" },
-      { href: "/moments/people", label: "Kontakte" },
-      { href: "/moments/events", label: "Events" },
-      { href: "/moments/meetups", label: "Meetups" },
-    ],
-  },
-  {
-    id: "jobs",
-    label: "JobOS",
-    color: "text-emerald-400",
-    home: "/jobs",
-    match: (p) => p.startsWith("/jobs"),
-    links: [
-      { href: "/jobs", label: "Bewerbungen" },
-      { href: "/jobs/cv", label: "CV-Profil" },
-    ],
-  },
-  {
-    id: "book",
-    label: "BookOS",
-    color: "text-sky-400",
-    home: "/book",
-    match: (p) => p.startsWith("/book") || p.startsWith("/provider"),
-    links: [
-      { href: "/book", label: "Treatment buchen" },
-      { href: "/book/bookings", label: "Meine Buchungen" },
-      { href: "/book/artists", label: "🎧 Artists" },
-      { href: "/provider", label: "Anbieter" },
-    ],
-  },
-  {
-    id: "trading",
-    label: "TradingOS",
-    color: "text-violet-400",
-    home: "/trading",
-    match: (p) => p.startsWith("/trading"),
-    links: [{ href: "/trading", label: "Paper-Portfolio" }],
-  },
-]
+import { MODULES } from "@/lib/modules"
 
 export function Nav() {
   const pathname = usePathname()
@@ -108,15 +30,14 @@ export function Nav() {
 
   if (pathname.startsWith("/login")) return null
 
-  const active =
-    products.find((pr) => pr.id !== "dating" && pr.match(pathname)) ?? products[0]
+  const active = MODULES.find((m) => m.id !== "match" && m.match(pathname)) ?? MODULES[0]
 
   return (
     <nav className="sticky top-0 z-20 flex items-center gap-1 border-b border-zinc-800 bg-zinc-950/90 px-4 py-2 backdrop-blur">
       <div ref={ref} className="relative mr-4">
         <button
           onClick={() => setOpen((v) => !v)}
-          className={`flex items-center gap-1 font-bold ${active.color}`}
+          className={`flex items-center gap-1 font-bold ${active.text}`}
         >
           {active.label}
           <svg width="12" height="12" viewBox="0 0 12 12" className={`transition-transform ${open ? "rotate-180" : ""}`}>
@@ -124,27 +45,20 @@ export function Nav() {
           </svg>
         </button>
         {open && (
-          <div className="absolute left-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
-            {products.map((pr) => (
+          <div className="absolute left-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
+            {MODULES.map((m) => (
               <Link
-                key={pr.id}
-                href={pr.home}
+                key={m.id}
+                href={m.home}
                 className={`block px-4 py-2.5 text-sm hover:bg-zinc-800 ${
-                  pr.id === active.id ? `font-semibold ${pr.color}` : "text-zinc-300"
+                  m.id === active.id ? `font-semibold ${m.text}` : "text-zinc-300"
                 }`}
               >
-                {pr.label}
-                <span className="block text-[10px] font-normal text-zinc-500">
-                  {pr.id === "dating"
-                    ? "Dating-Agent"
-                    : pr.id === "moments"
-                      ? "Freunde, Karten & Anlässe"
-                      : pr.id === "jobs"
-                        ? "Bewerbungs-Manager"
-                        : pr.id === "trading"
-                          ? "Paper-Trading-Labor"
-                          : "Treatments on demand"}
+                <span className="flex items-center gap-2">
+                  <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
+                  {m.label}
                 </span>
+                <span className="block pl-3.5 text-[10px] font-normal text-zinc-500">{m.tagline}</span>
               </Link>
             ))}
           </div>
@@ -163,21 +77,23 @@ export function Nav() {
           {l.label}
         </Link>
       ))}
-      <form
-        className="ml-auto"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const q = new FormData(e.currentTarget).get("q")?.toString().trim()
-          if (q) router.push(`/search?q=${encodeURIComponent(q)}`)
-        }}
+      <Link
+        href="/inbox"
+        title="Inbox — alle Signale aller Module"
+        className={`ml-auto rounded-lg px-2 py-1.5 text-sm ${
+          pathname === "/inbox" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:text-white"
+        }`}
       >
-        <input
-          name="q"
-          type="search"
-          placeholder="🔎 Suche"
-          className="w-24 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 placeholder:text-zinc-600 transition-all focus:w-44 focus:outline-none focus:ring-1 focus:ring-zinc-600"
-        />
-      </form>
+        📥 Inbox
+      </Link>
+      <button
+        onClick={() => window.dispatchEvent(new Event("matchos:palette"))}
+        title="Befehle & Suche (⌘K)"
+        className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-500 hover:text-zinc-200"
+      >
+        🔎
+        <kbd className="rounded border border-zinc-700 bg-zinc-800 px-1 text-[10px] text-zinc-400">⌘K</kbd>
+      </button>
       <QuickAddContact />
       <button
         onClick={logout}

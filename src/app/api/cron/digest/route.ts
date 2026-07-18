@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { daysUntilBirthday } from "@/lib/moments"
 import { sendPushToAll } from "@/lib/push"
+import { sendTelegramBot } from "@/lib/telegramBot"
 import { beatCron } from "@/lib/cronHeartbeat"
+import { collectSignals, type Signal } from "@/lib/signals"
+import { chatJSON } from "@/lib/ai/deepseek"
 
-export const maxDuration = 30
-
-const STALE_DAYS = 3
+export const maxDuration = 60
 
 /**
- * Morgen-Digest: zählt fällige Follow-ups, eingeschlafene Chats und heutige
- * Geburtstage, schickt EINE Push mit Link aufs Dashboard („Heute dran"-Box).
- * Erzeugt nichts, sendet keine Nachrichten — reine Tagesübersicht.
+ * Morgen-Briefing (täglich 7:00): sammelt ALLE Signale über collectSignals
+ * (dieselbe Quelle wie Dashboard-Feed und /inbox), lässt DeepSeek einen kurzen
+ * Tagesplan formulieren (Fallback: deterministische Liste), speichert ihn für
+ * die Dashboard-Kachel und schickt ihn per Telegram-Bot (sonst Web-Push).
+ * Erzeugt nichts, sendet nichts an Kontakte — reine Übersicht an MICH.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET
@@ -23,53 +25,86 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient()
   await beatCron(supabase, "digest")
-  const now = new Date().toISOString()
 
-  const jobCutoff = new Date(Date.now() - 14 * 86400_000).toISOString()
-  const [{ data: followups }, { data: contacts }, { data: lastMsgs }, { count: jobsDue }] =
-    await Promise.all([
-      supabase.from("followups").select("id").eq("done", false).lte("due_at", now),
-      supabase.from("contacts").select("id, birthday, pipeline_stage").neq("pipeline_stage", "archived"),
-      supabase.from("messages").select("contact_id, sent_at").order("sent_at", { ascending: false }),
-      // JobOS: beworben vor >14 Tagen, keine Antwort → nachfassen
-      supabase
-        .from("job_applications")
-        .select("id", { count: "exact", head: true })
-        .eq("stage", "applied")
-        .lt("applied_at", jobCutoff),
-    ])
-
-  const lastByContact = new Map<string, string>()
-  for (const m of lastMsgs ?? []) {
-    if (!lastByContact.has(m.contact_id)) lastByContact.set(m.contact_id, m.sent_at)
+  const signals = await collectSignals(supabase)
+  const today = new Date().toISOString().slice(0, 10)
+  const counts = {
+    warn: signals.filter((s) => s.prio === 0).length,
+    today: signals.filter((s) => s.prio === 1).length,
+    soon: signals.filter((s) => s.prio === 2).length,
   }
-  const staleCutoff = Date.now() - STALE_DAYS * 86400_000
-  const stale = (contacts ?? []).filter((c) => {
-    const last = lastByContact.get(c.id)
-    return (
-      last &&
-      new Date(last).getTime() < staleCutoff &&
-      ["chatting", "interest_visible", "on_messenger"].includes(c.pipeline_stage)
+
+  let text = fallbackBriefing(signals)
+  let source: "ki" | "fallback" = "fallback"
+  if (signals.length > 0) {
+    try {
+      const raw = await chatJSON(
+        [
+          "Du bist der Morgen-Assistent einer persönlichen Lebens-Plattform (Dating, Freunde/Events, Bewerbungen, DJ-Booking, Paper-Trading).",
+          "Schreib aus den gelieferten Signalen ein knappes Morgen-Briefing auf Deutsch, Du-Form, maximal 6 Zeilen.",
+          "Reihenfolge: Warnungen (prio 0) zuerst, dann die wichtigsten heutigen Aktionen (prio 1) mit konkreten Namen, dann höchstens eine Zeile Ausblick (prio 2, zusammengefasst).",
+          "STRIKT: nur Fakten aus den Signalen verwenden, NICHTS erfinden, keine Namen oder Zahlen dazudichten. Kein Gruß, kein Motivations-Blabla — direkt zur Sache.",
+          'Antworte als JSON: {"text": "…"} — Zeilen mit \\n getrennt, gern mit den mitgelieferten Icons.',
+        ].join(" "),
+        JSON.stringify(
+          signals.slice(0, 40).map((s) => ({
+            prio: s.prio,
+            modul: s.module,
+            icon: s.icon,
+            titel: s.title,
+            detail: s.detail ?? null,
+          }))
+        ),
+        "briefing"
+      )
+      const parsed = JSON.parse(raw) as { text?: string }
+      if (typeof parsed.text === "string" && parsed.text.trim().length > 10) {
+        text = parsed.text.trim()
+        source = "ki"
+      }
+    } catch {
+      /* KI optional — deterministischer Fallback steht schon */
+    }
+  }
+
+  await supabase
+    .from("settings")
+    .upsert(
+      { key: "morning_briefing", value: JSON.stringify({ date: today, text, counts, source }) },
+      { onConflict: "key" }
     )
-  }).length
 
-  const birthdays = (contacts ?? []).filter((c) => daysUntilBirthday(c.birthday) === 0).length
-  const due = followups?.length ?? 0
-
-  const parts = [
-    due ? `${due} Follow-up${due > 1 ? "s" : ""} fällig` : null,
-    stale ? `${stale} Chat${stale > 1 ? "s" : ""} eingeschlafen` : null,
-    birthdays ? `${birthdays} Geburtstag${birthdays > 1 ? "e" : ""} heute 🎂` : null,
-    jobsDue ? `💼 ${jobsDue} Bewerbung${jobsDue > 1 ? "en" : ""} nachfassen` : null,
-  ].filter(Boolean)
-
-  if (parts.length) {
-    await sendPushToAll({
-      title: "MatchOS — Heute dran",
-      body: parts.join(" · "),
-      url: "/",
-    }).catch(() => {})
+  let sent: "telegram" | "push" | "none" = "none"
+  if (signals.length > 0) {
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    const viaTelegram = await sendTelegramBot(
+      supabase,
+      `🌅 <b>Morgen-Briefing</b>\n\n${esc(text)}\n\nhttps://matchos-ten.vercel.app/inbox`
+    )
+    if (viaTelegram) {
+      sent = "telegram"
+    } else {
+      await sendPushToAll({
+        title: "MatchOS — Morgen-Briefing",
+        body: `${counts.today} heute dran · ${counts.soon} demnächst${counts.warn ? ` · ⚠️ ${counts.warn} Warnungen` : ""}`,
+        url: "/inbox",
+      }).catch(() => {})
+      sent = "push"
+    }
   }
 
-  return NextResponse.json({ due, stale, birthdays, jobsDue: jobsDue ?? 0, pushed: parts.length > 0 })
+  return NextResponse.json({ ...counts, source, sent })
+}
+
+/** Ohne KI trotzdem brauchbar: Warnungen + Top-Aktionen als Liste. */
+function fallbackBriefing(signals: Signal[]): string {
+  if (signals.length === 0) return "Alles ruhig — keine offenen Aktionen. 🏝"
+  const lines: string[] = []
+  for (const s of signals.filter((x) => x.prio === 0)) lines.push(`⚠️ ${s.title}`)
+  for (const s of signals.filter((x) => x.prio === 1).slice(0, 6)) {
+    lines.push(`${s.icon} ${s.title}${s.detail ? ` — ${s.detail}` : ""}`)
+  }
+  const soon = signals.filter((x) => x.prio === 2).length
+  if (soon > 0) lines.push(`🔭 dazu ${soon} Dinge demnächst — Details in der Inbox`)
+  return lines.join("\n")
 }

@@ -12,6 +12,7 @@ import {
   fetchEurUsd,
   fetchNewsHeadlines,
   aggregateHoldings,
+  holdingValueEur,
   judgeVerdict,
   netUnits,
 } from "@/lib/trading"
@@ -169,6 +170,43 @@ async function runTradingDay(supabase: SupabaseClient<Database>) {
     digest: decision.digest || "Kein Digest generiert",
     picks: buyable as never,
   })
+
+  // Equity-Snapshot für die Dashboard-Sparkline: Depotwert KI vs. Benchmark
+  // heute, rollierende 60 Tage in settings (kein eigener Tisch nötig)
+  try {
+    const holdingsNow = aggregateHoldings([...(tradesRes.data ?? []), ...rows])
+    let kiValue = 0
+    let benchValue = 0
+    for (const h of holdingsNow) {
+      const v = holdingValueEur(h, quotes, eurusd)
+      if (v == null) continue
+      if (h.isBenchmark) benchValue += v
+      else kiValue += v
+    }
+    const { data: histRow } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "trading_equity")
+      .maybeSingle()
+    let hist: { d: string; ki: number; bench: number }[] = []
+    try {
+      const parsed = typeof histRow?.value === "string" ? JSON.parse(histRow.value) : histRow?.value
+      if (Array.isArray(parsed)) hist = parsed
+    } catch {
+      /* kaputte Historie → neu anfangen */
+    }
+    hist = [
+      ...hist.filter((x) => x.d !== day),
+      { d: day, ki: Math.round(kiValue * 100) / 100, bench: Math.round(benchValue * 100) / 100 },
+    ]
+      .sort((a, b) => a.d.localeCompare(b.d))
+      .slice(-60)
+    await supabase
+      .from("settings")
+      .upsert({ key: "trading_equity", value: JSON.stringify(hist) }, { onConflict: "key" })
+  } catch {
+    /* Snapshot optional — Lauf gilt trotzdem */
+  }
 
   if (buyable.length) {
     await sendTelegramBot(

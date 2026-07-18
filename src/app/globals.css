@@ -10,6 +10,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Design-Tokens: Modul-Akzente + Flächen — eine Quelle, überall gleich.
+     Erzeugt Utilities wie text-match / bg-book / border-trading. */
+  --color-match: #f43f5e;
+  --color-moments: #fbbf24;
+  --color-jobs: #34d399;
+  --color-book: #38bdf8;
+  --color-trading: #a78bfa;
+  --color-surface: #18181b;
+  --color-surface-2: #27272a;
+  --color-edge: #27272a;
 }
 
 @media (prefers-color-scheme: dark) {
