@@ -152,7 +152,12 @@ export async function GET(req: Request) {
     // --- Reminder (Follow-up) ---
     let reason: string | null = null
     if (bday != null && bday >= 0 && bday <= 3) {
-      reason = bday === 0 ? "🎂 Geburtstag heute!" : `🎂 Geburtstag in ${bday} Tagen`
+      reason =
+        bday === 0
+          ? "🎂 Geburtstag heute!"
+          : bday === 1
+            ? "🎂 Geburtstag morgen"
+            : `🎂 Geburtstag in ${bday} Tagen`
     } else {
       const { overdue, daysSince } = connectionScore(c)
       if (overdue && (c.relationship_tags?.length ?? 0) > 0) {
@@ -161,16 +166,24 @@ export async function GET(req: Request) {
     }
     if (!reason) continue
 
-    const since = new Date(Date.now() - 20 * 3600_000).toISOString()
-    const { data: existing } = await supabase
+    // EIN offener Reminder pro Kontakt reicht: existiert schon einer, wird nur
+    // der Text aktuell gehalten (44 → 45 Tage) statt täglich neu zu stapeln.
+    // Solange irgendein Follow-up offen ist (auch manuell), kommt kein zweites dazu.
+    const { data: openFollowups } = await supabase
       .from("followups")
-      .select("id")
+      .select("id, reason")
       .eq("contact_id", c.id)
       .eq("done", false)
-      .gte("created_at", since)
-      .limit(1)
-      .maybeSingle()
-    if (existing) continue
+    const isCronReminder = (r: string | null) =>
+      !!r && (r.startsWith("🎂 Geburtstag") || r.startsWith("Kontaktpause — "))
+    if (openFollowups?.length) {
+      const mine = openFollowups.find((f) => isCronReminder(f.reason))
+      if (mine && mine.reason !== reason) {
+        await supabase.from("followups").update({ reason }).eq("id", mine.id)
+        results.push({ contactId: c.id, action: `reminder aktualisiert: ${reason}` })
+      }
+      continue
+    }
 
     await supabase.from("followups").insert({
       contact_id: c.id,
