@@ -5,10 +5,13 @@ import type { Database } from "@/lib/database.types"
  * Telegram-Bot-Versand (Bot-API, kein Worker nötig): schickt Nachrichten an den
  * User selbst (Digest, Warnungen) — NIE an Matches. Bot-Token + Chat-ID kommen
  * aus den Einstellungen (User legt den Bot selbst über @BotFather an).
+ * Optional mit Inline-Buttons (reply_markup) — Callbacks verarbeitet
+ * /api/telegram/webhook, sofern der Webhook in den Einstellungen aktiviert ist.
  */
 export async function sendTelegramBot(
   supabase: SupabaseClient<Database>,
-  text: string
+  text: string,
+  replyMarkup?: unknown
 ): Promise<boolean> {
   const [{ data: tokenRow }, { data: chatRow }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "telegram_bot_token").maybeSingle(),
@@ -21,7 +24,13 @@ export async function sendTelegramBot(
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      }),
     })
     return res.ok
   } catch {

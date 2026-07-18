@@ -4,6 +4,7 @@ import { Card, StageBadge, ModuleChip, ModuleTile, EmptyState } from "@/componen
 import { Sparkline } from "@/components/charts"
 import { FollowupDone } from "@/components/FollowupDone"
 import { QuickReply } from "@/components/QuickReply"
+import { SignalActions } from "@/components/SignalActions"
 import { ArchiveCandidates } from "@/components/ArchiveCandidates"
 import type { Enums } from "@/lib/database.types"
 import { daysUntilBirthday, connectionScore } from "@/lib/moments"
@@ -259,6 +260,7 @@ export default async function Dashboard() {
                     </div>
                     {s.detail && <p className="text-zinc-400">{s.detail}</p>}
                     {s.contactId && s.module === "match" && <QuickReply contactId={s.contactId} />}
+                    <SignalActions signal={s} />
                   </div>
                   {s.followupId && <FollowupDone id={s.followupId} />}
                 </li>
@@ -273,6 +275,14 @@ export default async function Dashboard() {
         </Card>
 
         <Card title="🌅 Morgen-Briefing">
+          {feed.length > 0 && (
+            <Link
+              href="/focus"
+              className="mb-3 block rounded-lg bg-rose-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-rose-500"
+            >
+              ▶ Tag starten — {feed.length} Signale durchgehen
+            </Link>
+          )}
           {briefing?.date === today ? (
             <p className="whitespace-pre-wrap text-sm text-zinc-300">{briefing.text}</p>
           ) : briefing ? (

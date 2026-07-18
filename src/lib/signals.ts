@@ -23,6 +23,13 @@ export type Signal = {
   /** Für Inline-Aktionen im Feed */
   contactId?: string
   followupId?: string
+  gigId?: string
+  jobId?: string
+  jobEmail?: string | null
+  jobHasLetter?: boolean
+  dateId?: string
+  /** Check-in-Entwurf anbieten (MomentOS-Rhythmus/Geburtstag) */
+  checkin?: boolean
 }
 
 export const PRIO_LABELS: Record<0 | 1 | 2, string> = {
@@ -85,6 +92,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
     jobsNewRes,
     datesRes,
     eventsRes,
+    snoozesRes,
   ] = await Promise.all([
     supabase
       .from("contacts")
@@ -119,7 +127,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .limit(10),
     supabase
       .from("job_applications")
-      .select("id, company, title, match_score")
+      .select("id, company, title, match_score, contact_email, cover_letter")
       .eq("stage", "discovered")
       .gte("match_score", 65)
       .gte("created_at", dayAgo)
@@ -138,6 +146,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .lte("starts_at", in7d)
       .order("starts_at")
       .limit(3),
+    supabase.from("signal_snoozes").select("key, until").gte("until", nowIso),
   ])
 
   const signals: Signal[] = []
@@ -251,6 +260,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
   for (const d of datesRes.data ?? []) {
     const inDays = Math.floor((new Date(d.starts_at).getTime() - now.getTime()) / 86400_000)
     signals.push({
+      dateId: d.id,
       key: `date-${d.id}`,
       module: "match",
       icon: "💘",
@@ -280,6 +290,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
         href: `/contacts/${c.id}`,
         prio: d === 0 ? 1 : 2,
         contactId: c.id,
+        checkin: true,
       })
     }
   }
@@ -298,6 +309,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       href: `/contacts/${c.id}`,
       prio: 2,
       contactId: c.id,
+      checkin: true,
     })
   }
   for (const e of eventsRes.data ?? []) {
@@ -325,6 +337,9 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       detail: `${j.match_score}% Match — neu gefunden, bewerben?`,
       href: "/jobs",
       prio: 1,
+      jobId: j.id,
+      jobEmail: j.contact_email,
+      jobHasLetter: !!j.cover_letter?.trim(),
     })
   }
   for (const j of jobsFollowRes.data ?? []) {
@@ -347,6 +362,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
     const staleDays = gigStaleDays(g.status, g.status_changed_at, now)
     if (staleDays == null) continue
     signals.push({
+      gigId: g.id,
       key: `gig-${g.id}`,
       module: "book",
       icon: "🎧",
@@ -357,5 +373,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
     })
   }
 
-  return sortSignals(signals)
+  // Gesnoozte Signale ausblenden (bis-Datum liegt in der Zukunft)
+  const snoozed = new Set((snoozesRes.data ?? []).map((s) => s.key))
+  return sortSignals(signals.filter((s) => !snoozed.has(s.key)))
 }

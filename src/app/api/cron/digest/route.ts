@@ -77,9 +77,35 @@ export async function GET(req: Request) {
   let sent: "telegram" | "push" | "none" = "none"
   if (signals.length > 0) {
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+
+    // Inline-Buttons: Links immer; Aktions-Knöpfe (Erledigt/Snooze) nur wenn
+    // der Webhook aktiviert ist — sonst wären sie tot.
+    const { data: hookRow } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "telegram_webhook_secret")
+      .maybeSingle()
+    const hookActive = typeof hookRow?.value === "string" && hookRow.value.length > 0
+    const keyboard: { text: string; url?: string; callback_data?: string }[][] = [
+      [
+        { text: "📥 Inbox", url: "https://matchos-ten.vercel.app/inbox" },
+        { text: "▶ Fokus", url: "https://matchos-ten.vercel.app/focus" },
+      ],
+    ]
+    if (hookActive) {
+      for (const s of signals.filter((x) => x.prio === 1 && x.followupId).slice(0, 3)) {
+        const short = s.title.split(":")[0].slice(0, 24)
+        keyboard.push([
+          { text: `✓ ${short}`, callback_data: `fu:${s.followupId}` },
+          { text: "💤 1d", callback_data: `sn:${s.key}:1` },
+        ])
+      }
+    }
+
     const viaTelegram = await sendTelegramBot(
       supabase,
-      `🌅 <b>Morgen-Briefing</b>\n\n${esc(text)}\n\nhttps://matchos-ten.vercel.app/inbox`
+      `🌅 <b>Morgen-Briefing</b>\n\n${esc(text)}`,
+      { inline_keyboard: keyboard }
     )
     if (viaTelegram) {
       sent = "telegram"

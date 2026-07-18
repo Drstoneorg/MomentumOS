@@ -4,6 +4,7 @@ import { collectSignals, PRIO_LABELS, type Signal } from "@/lib/signals"
 import { ModuleChip, EmptyState } from "@/components/ui"
 import { FollowupDone } from "@/components/FollowupDone"
 import { QuickReply } from "@/components/QuickReply"
+import { SignalActions } from "@/components/SignalActions"
 
 export const dynamic = "force-dynamic"
 
@@ -21,13 +22,21 @@ export default async function InboxPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <div className="flex items-baseline gap-3">
+      <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-xl font-bold">📥 Inbox</h1>
         <p className="text-sm text-zinc-500">
           {signals.length === 0
             ? "alles abgearbeitet"
             : `${signals.length} Signal${signals.length === 1 ? "" : "e"} aus allen Modulen`}
         </p>
+        {signals.length > 0 && (
+          <Link
+            href="/focus"
+            className="ml-auto rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-500"
+          >
+            ▶ Fokus-Modus
+          </Link>
+        )}
       </div>
 
       {signals.length === 0 && (
@@ -64,6 +73,7 @@ export default async function InboxPage() {
                     </div>
                     {s.detail && <p className="mt-0.5 text-sm text-zinc-400">{s.detail}</p>}
                     {s.contactId && s.module === "match" && <QuickReply contactId={s.contactId} />}
+                    <SignalActions signal={s} />
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {s.followupId && <FollowupDone id={s.followupId} />}

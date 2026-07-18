@@ -1230,6 +1230,24 @@ export type Database = {
           },
         ]
       }
+      signal_snoozes: {
+        Row: {
+          created_at: string
+          key: string
+          until: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          until: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          until?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           key: string

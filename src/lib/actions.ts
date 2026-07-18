@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { maybeCreatePromiseFollowup } from "@/lib/promiseFollowup"
 import type { Enums, TablesInsert, TablesUpdate } from "@/lib/database.types"
 
 async function db() {
@@ -105,6 +106,12 @@ export async function addMessage(input: TablesInsert<"messages">) {
       last_contact_initiator: input.direction === "out" ? "me" : "them",
     })
     .eq("id", input.contact_id)
+  if (input.direction === "in" && input.content) {
+    // Zusagen („meld mich nächste Woche") automatisch als Wiedervorlage
+    await maybeCreatePromiseFollowup(supabase, input.contact_id, [
+      { direction: "in", content: input.content },
+    ]).catch(() => {})
+  }
   revalidatePath(`/contacts/${input.contact_id}`)
 }
 
@@ -136,6 +143,11 @@ export async function importChat(
   if (rows.length) {
     const { error } = await supabase.from("messages").insert(rows)
     if (error) throw new Error(error.message)
+    await maybeCreatePromiseFollowup(
+      supabase,
+      contactId,
+      rows.map((r) => ({ direction: r.direction, content: r.content }))
+    ).catch(() => {})
   }
   revalidatePath(`/contacts/${contactId}`)
   return rows.length

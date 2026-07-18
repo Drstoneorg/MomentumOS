@@ -35,7 +35,7 @@ test.describe("eingeloggt", () => {
     await page.goto("/")
     await expect(page.getByText(/Heute dran/i)).toBeVisible()
 
-    for (const path of ["/inbox", "/contacts", "/pipeline", "/jobs", "/moments", "/moments/people", "/cards", "/book/artists", "/trading"]) {
+    for (const path of ["/inbox", "/focus", "/contacts", "/pipeline", "/jobs", "/moments", "/moments/people", "/cards", "/book/artists", "/trading"]) {
       const res = await page.goto(path)
       expect(res?.status(), `${path} antwortet ohne Serverfehler`).toBeLessThan(500)
       await expect(page.locator("body")).not.toContainText("Application error")

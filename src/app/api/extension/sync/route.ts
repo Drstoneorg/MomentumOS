@@ -8,6 +8,7 @@ import { generateReplies, type ReplyVariants } from "@/lib/ai/generateReplies"
 import { suggestIntent } from "@/lib/scoring"
 import { splitChatBlock, parseChatLines, type ParsedChatMessage } from "@/lib/chatParse"
 import { matchSentSuggestions, markSuggestionReplied } from "@/lib/outcomes"
+import { maybeCreatePromiseFollowup } from "@/lib/promiseFollowup"
 import { createOpenerDraft } from "@/lib/ai/openerDraft"
 
 export const maxDuration = 60
@@ -171,6 +172,14 @@ export async function POST(req: Request) {
       // Backfill beim Hochscrollen soll keinen neuen Entwurf auslösen.
       freshInbound = (groups.get(null) ?? []).some((m) => m.direction === "in")
       if (rows.length) await supabase.from("messages").insert(rows)
+
+      // Zusagen-Wiedervorlage: NUR frische Nachrichten prüfen — Backfill enthält
+      // alte Zusagen, die längst erledigt sind.
+      await maybeCreatePromiseFollowup(
+        supabase,
+        contactId,
+        (groups.get(null) ?? []).map((m) => ({ direction: m.direction, content: m.content }))
+      ).catch(() => {})
 
       // Outcome-Loop: neue ausgehende Nachrichten gegen offene Vorschläge matchen
       // (Vorschlag wurde offenbar gesendet), neue eingehende als Antwort auf den
