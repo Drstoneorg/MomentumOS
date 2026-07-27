@@ -160,7 +160,7 @@ export function StyleLearnCard({ current }: { current: Learned }) {
           <input
             value={myName}
             onChange={(e) => setMyName(e.target.value)}
-            placeholder="Dein Name, exakt wie im Export (z. B. Effy)"
+            placeholder="Dein Name, exakt wie im Export (z. B. Max)"
             className={inputCls}
           />
           <button

@@ -86,17 +86,18 @@ A measurement experiment, not a broker.
 - **Play money only.** There is no broker integration, no order routing, and nothing here is
   financial advice
 
-### MatchOS — dating
+### MatchOS — new acquaintances
 
-The module the repository is named after, and now the smallest one.
+Help with the early stage of getting to know someone: remembering what was said, and not
+leaving people hanging. The module the repository is named after, and now the smallest one.
 
-- Contact inbox across platforms with a per-person memory store and conversation summaries
-- Reply generator producing several tones, with a learned per-contact tone offset and an
-  answer-rate feedback loop
-- Pipeline with match scoring, a ghosting radar, promise detection (an incoming *"I'll get
-  back to you next week"* becomes a dated follow-up, pure regex, no model call), and automatic
-  archiving after 90 days
-- Dates with ICS export
+- Contact inbox with a per-person memory store and conversation summaries, so context survives
+  a two-week gap
+- Reply drafts in several tones, with a learned per-person tone offset
+- Promise detection: an incoming *"I'll get back to you next week"* becomes a dated reminder
+  (plain regex, no model call)
+- Reminders for conversations that went quiet, and automatic archiving after 90 days
+- Meetings with ICS export
 
 ---
 
@@ -198,8 +199,11 @@ Environment variables (`.env.local` locally, project settings in Vercel):
 This is a personal, single-user system, published for reference rather than as a product.
 There is no multi-tenancy, no onboarding, and no support.
 
-- **The browser helper reads pages you have open.** Automating accounts on third-party
-  platforms can violate their terms of service. Use it on your own accounts, at human pace,
-  and at your own risk. It never sends messages on your behalf.
+- **Your data stays yours.** Everything the app stores — contacts, notes, message history —
+  lives in your own Supabase project, readable only by your account. Nothing is shared, sold,
+  or sent anywhere except the model provider you configure.
+- **The browser helper is a reading aid.** It works on pages you already have open in your own
+  logged-in session and files what it finds into your own notes. It never sends messages. Check
+  the terms of any service you use it on, and keep it to a human pace.
 - **TradingOS is a simulation.** No broker, no real orders, no investment advice.
 - **No licence is granted.** The source is public to read; all rights reserved.

@@ -31,7 +31,7 @@ export function ContractTools({
         onChange={(e) => setText(e.target.value)}
         onBlur={() => start(() => saveOrganizerProfile(text))}
         rows={3}
-        placeholder={"Veranstalter-Block für den Vertrag, z.B.\nEffy Stone\nMusterstraße 1, 1010 Wien\nkontakt@…"}
+        placeholder={"Veranstalter-Block für den Vertrag, z.B.\nMax Mustermann\nMusterstraße 1, 1010 Wien\nkontakt@…"}
         className={inputCls}
       />
       <p className="text-xs text-zinc-500">
