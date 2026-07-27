@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { OFFER_TTL_SECONDS, DISPATCH_RADIUS_LIMIT } from "@/lib/bookos"
 import { sendPushToAll } from "@/lib/push"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 60
 
@@ -18,13 +18,8 @@ const SCHEDULE_LEAD_MIN = 30
  * Schutz: optionaler `Authorization: Bearer <CRON_SECRET>`.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = req.headers.get("authorization")
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
 
   const supabase = createAdminClient()
   await beatCron(supabase, "dispatch")

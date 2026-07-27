@@ -5,7 +5,7 @@ import { generateMomentMessages } from "@/lib/ai/momentMessage"
 import { generateImagePrompt } from "@/lib/ai/imagePrompt"
 import { generateImage, imageGenerationAvailable } from "@/lib/ai/generateImage"
 import { sendPushToAll } from "@/lib/push"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 120
 
@@ -25,12 +25,8 @@ const BDAY_LEAD_DAYS = 3
  * Kein ungeprüfter Versand: Telegram-Gruß hat Veto, alles andere nur Reminder.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
 
   const supabase = createAdminClient()
   await beatCron(supabase, "moments")

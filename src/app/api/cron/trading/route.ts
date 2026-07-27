@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 import {
   UNIVERSE,
   BENCHMARK,
@@ -228,12 +228,8 @@ async function runTradingDay(supabase: SupabaseClient<Database>) {
 
 /** Vercel-Cron (Bearer CRON_SECRET). */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
   try {
     return NextResponse.json(await runTradingDay(createAdminClient()))
   } catch (e) {

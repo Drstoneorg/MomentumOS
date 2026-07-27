@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendPushToAll } from "@/lib/push"
 import { sendTelegramBot } from "@/lib/telegramBot"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 import { outcomeStats } from "@/lib/outcomes"
 import { monthlyUsage } from "@/lib/ai/usage"
 
@@ -15,12 +15,8 @@ export const maxDuration = 30
  * Sendet nichts an Kontakte.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
 
   const supabase = createAdminClient()
   await beatCron(supabase, "weekly")

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { loadContactContext } from "@/lib/ai/context"
 import { generateReplies } from "@/lib/ai/generateReplies"
 import { sendPushToAll } from "@/lib/push"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 
 export const maxDuration = 60
 
@@ -14,17 +14,11 @@ const AUTO_ARCHIVE_DAYS = 90
  * Autonome Follow-up-Engine. Scannt eingeschlafene Gespräche, generiert je einen
  * Nachfass-Entwurf in die Queue (status=draft). Sendet nichts — Freigabe bleibt manuell.
  *
- * Schutz: Header `Authorization: Bearer <CRON_SECRET>`. Vercel-Cron setzt das automatisch,
- * wenn CRON_SECRET als Env-Var gesetzt ist.
+ * Schutz: siehe cronAuthError — Bearer CRON_SECRET, fail-closed.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = req.headers.get("authorization")
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
 
   const supabase = createAdminClient()
   await beatCron(supabase, "followups")

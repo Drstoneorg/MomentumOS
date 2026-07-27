@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 
 // Adresse → Koordinaten via OpenStreetMap Nominatim (kostenlos, kein Key).
 // Nutzungsrichtlinie: aussagekräftiger User-Agent, moderate Frequenz.
+// Kontaktadresse per Env-Var, damit im öffentlichen Repo keine private Mail steht.
+const USER_AGENT = `MatchOS-BookOS/1.0 (${process.env.CONTACT_EMAIL || "noreply@example.com"})`
 export async function GET(req: Request) {
   const supabase = await createClient()
   const {
@@ -19,7 +21,7 @@ export async function GET(req: Request) {
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,
-        { headers: { "User-Agent": "MatchOS-BookOS/1.0 (effystone00@icloud.com)" } }
+        { headers: { "User-Agent": USER_AGENT } }
       )
       if (!res.ok) return NextResponse.json({ results: [] })
       const r = (await res.json()) as { display_name?: string }
@@ -41,7 +43,7 @@ export async function GET(req: Request) {
     encodeURIComponent(q)
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "MatchOS-BookOS/1.0 (effystone00@icloud.com)" },
+      headers: { "User-Agent": USER_AGENT },
     })
     if (!res.ok) return NextResponse.json({ results: [] })
     const data = (await res.json()) as Array<{

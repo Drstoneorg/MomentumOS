@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { chatJSON } from "@/lib/ai/deepseek"
 import { extractJob, scoreJob, generateCoverLetter, type CvProfile } from "@/lib/ai/jobs"
 import { sendPushToAll } from "@/lib/push"
-import { beatCron } from "@/lib/cronHeartbeat"
+import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 import { normalizeJobUrl, jobKey } from "@/lib/jobDedupe"
 
 export const maxDuration = 60
@@ -53,12 +53,8 @@ function extractAnchors(html: string, baseUrl: string): { text: string; href: st
  * ohne Antwort. Bewerben/Senden bleibt beim Nutzer.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  }
+  const denied = cronAuthError(req)
+  if (denied) return denied
 
   const supabase = createAdminClient()
   await beatCron(supabase, "jobscan")

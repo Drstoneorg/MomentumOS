@@ -8,8 +8,10 @@ export function pushAvailable() {
 // Sendet Push an alle registrierten Geräte; räumt tote Subscriptions weg.
 export async function sendPushToAll(payload: { title: string; body: string; url?: string }) {
   if (!pushAvailable()) return { sent: 0 }
+  // VAPID verlangt eine Kontaktadresse; über Env-Var, damit im öffentlichen
+  // Repo keine private Mailadresse steht.
   webpush.setVapidDetails(
-    "mailto:effystone00@icloud.com",
+    `mailto:${process.env.CONTACT_EMAIL || "noreply@example.com"}`,
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!
   )
