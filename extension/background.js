@@ -15,6 +15,20 @@ const PLATFORM_MAP = [
   ["web.telegram.org", "telegram"],
 ]
 
+// Beim Umzug auf die neue Adresse steht in chrome.storage noch die alte —
+// einmalig nachziehen, damit niemand sie von Hand eintragen muss.
+const LEGACY_URLS = ["https://matchos-ten.vercel.app", "http://matchos-ten.vercel.app"]
+const CURRENT_URL = "https://momentumos-hq.vercel.app"
+
+function migrateBaseUrl() {
+  chrome.storage.sync.get(["baseUrl"], (v) => {
+    const stored = (v?.baseUrl || "").replace(/\/$/, "")
+    if (LEGACY_URLS.includes(stored)) {
+      chrome.storage.sync.set({ baseUrl: CURRENT_URL })
+    }
+  })
+}
+
 function setupMenu() {
   // removeAll verhindert "duplicate id"-Fehler bei Extension-Reload
   chrome.contextMenus.removeAll(() => {
@@ -25,8 +39,14 @@ function setupMenu() {
     })
   })
 }
-chrome.runtime.onInstalled.addListener(setupMenu)
-chrome.runtime.onStartup.addListener(setupMenu)
+chrome.runtime.onInstalled.addListener(() => {
+  setupMenu()
+  migrateBaseUrl()
+})
+chrome.runtime.onStartup.addListener(() => {
+  setupMenu()
+  migrateBaseUrl()
+})
 
 // Tastenkürzel Alt+M: Panel im aktiven Tab auf/zu
 chrome.commands.onCommand.addListener(async (command) => {
