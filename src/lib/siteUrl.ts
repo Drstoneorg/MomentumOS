@@ -7,4 +7,4 @@
  * gesetzte Variable nichts bricht. Wandert die App auf eine neue Adresse,
  * ist das genau ein Eintrag statt einer Suche durch den Quelltext.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://matchos-ten.vercel.app").replace(/\/$/, "")
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://momentumos-hq.vercel.app").replace(/\/$/, "")

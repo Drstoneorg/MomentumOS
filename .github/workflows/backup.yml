@@ -24,7 +24,7 @@ jobs:
           set -euo pipefail
           code=$(curl -s -o backup.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.BACKUP_SECRET }}" \
-            "https://matchos-ten.vercel.app/api/backup")
+            "https://momentumos-hq.vercel.app/api/backup")
           echo "HTTP $code"
           if [ "$code" != "200" ]; then cat backup.json; exit 1; fi
           python3 - <<'EOF'

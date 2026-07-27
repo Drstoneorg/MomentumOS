@@ -33,7 +33,7 @@ if (!supabaseUrl || !serviceKey) {
   process.exit(1)
 }
 
-const matchosUrl = (process.env.MATCHOS_URL ?? "https://matchos-ten.vercel.app").replace(/\/$/, "")
+const matchosUrl = (process.env.MATCHOS_URL ?? "https://momentumos-hq.vercel.app").replace(/\/$/, "")
 const VETO_MINUTES = Number(process.env.AUTOPILOT_VETO_MINUTES ?? 10)
 
 const supabase = createClient<Database>(supabaseUrl, serviceKey)

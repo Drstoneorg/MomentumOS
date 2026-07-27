@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           code=$(curl -s -o /tmp/body -w "%{http_code}" \
-            "https://matchos-ten.vercel.app/api/keepalive")
+            "https://momentumos-hq.vercel.app/api/keepalive")
           echo "HTTP $code"
           cat /tmp/body
           if [ "$code" != "200" ]; then

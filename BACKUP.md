@@ -3,7 +3,7 @@
 ## Wie es läuft
 
 - **Täglich ~04:43 UTC** holt die GitHub Action `DB Backup` (`.github/workflows/backup.yml`)
-  einen Voll-Export aller App-Tabellen von `https://matchos-ten.vercel.app/api/backup`
+  einen Voll-Export aller App-Tabellen von `https://momentumos-hq.vercel.app/api/backup`
   (Auth: `Authorization: Bearer <BACKUP_SECRET>`) und speichert ihn als
   **Workflow-Artifact** (gzip + GPG, 90 Tage Aufbewahrung). Nichts landet in der Git-History.
 - **Verschlüsselt mit `BACKUP_SECRET`.** Bei einem öffentlichen Repository kann jeder
@@ -18,7 +18,7 @@ GitHub → Actions → „DB Backup" → „Run workflow", oder direkt:
 
 ```bash
 curl -H "Authorization: Bearer $BACKUP_SECRET" \
-  https://matchos-ten.vercel.app/api/backup -o backup.json
+  https://momentumos-hq.vercel.app/api/backup -o backup.json
 ```
 
 Artifact herunterladen: GitHub → Actions → Lauf anklicken → „Artifacts".

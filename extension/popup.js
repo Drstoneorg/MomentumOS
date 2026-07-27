@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id)
 
 chrome.storage.sync.get(["baseUrl", "token"], (v) => {
-  $("baseUrl").value = v.baseUrl || "https://matchos-ten.vercel.app"
+  $("baseUrl").value = v.baseUrl || "https://momentumos-hq.vercel.app"
   $("token").value = v.token || ""
 })
 
