@@ -1,5 +1,5 @@
 /* MomentumOS Service Worker: Offline-Shell + Web Push */
-const CACHE = "matchos-v1"
+const CACHE = "momentumos-v1"
 const OFFLINE_URL = "/offline"
 
 self.addEventListener("install", (event) => {

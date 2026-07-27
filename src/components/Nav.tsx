@@ -93,7 +93,7 @@ export function Nav() {
         📥 Inbox
       </Link>
       <button
-        onClick={() => window.dispatchEvent(new Event("matchos:palette"))}
+        onClick={() => window.dispatchEvent(new Event("momentumos:palette"))}
         title="Befehle & Suche (⌘K)"
         className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-500 hover:text-zinc-200"
       >

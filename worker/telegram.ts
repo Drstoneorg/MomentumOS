@@ -33,7 +33,7 @@ if (!supabaseUrl || !serviceKey) {
   process.exit(1)
 }
 
-const matchosUrl = (process.env.MATCHOS_URL ?? "https://momentumos-hq.vercel.app").replace(/\/$/, "")
+const siteUrl = (process.env.MOMENTUMOS_URL ?? process.env.MATCHOS_URL ?? "https://momentumos-hq.vercel.app").replace(/\/$/, "")
 const VETO_MINUTES = Number(process.env.AUTOPILOT_VETO_MINUTES ?? 10)
 
 const supabase = createClient<Database>(supabaseUrl, serviceKey)
@@ -111,7 +111,7 @@ async function draftReply(contactId: string, username: string) {
       console.warn("Kein extension_token in settings — kein Auto-Entwurf.")
       return
     }
-    const res = await fetch(`${matchosUrl}/api/extension/replies`, {
+    const res = await fetch(`${siteUrl}/api/extension/replies`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ contactId, situation: "Antworte passend auf die letzte Nachricht." }),
@@ -151,8 +151,8 @@ async function draftReply(contactId: string, username: string) {
     const preview = reply.variants["locker"]?.slice(0, 120) ?? ""
     await client.sendMessage("me", {
       message: auto
-        ? `🤖 MatchOS Autopilot: Antwort an ${contact?.name ?? username} geht in ${VETO_MINUTES} Min raus:\n\n„${preview}“\n\nVeto: ${matchosUrl}/queue`
-        : `📝 MatchOS: Entwurf für ${contact?.name ?? username} liegt in der Queue: ${matchosUrl}/queue`,
+        ? `🤖 MomentumOS Autopilot: Antwort an ${contact?.name ?? username} geht in ${VETO_MINUTES} Min raus:\n\n„${preview}“\n\nVeto: ${siteUrl}/queue`
+        : `📝 MomentumOS: Entwurf für ${contact?.name ?? username} liegt in der Queue: ${siteUrl}/queue`,
     })
     console.log(`✎ Entwurf für ${username}${auto ? ` (auto, ${VETO_MINUTES}m)` : ""}`)
   } catch (e) {

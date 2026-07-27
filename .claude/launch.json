@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "matchos-dev",
+      "name": "momentumos-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",

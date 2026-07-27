@@ -55,7 +55,7 @@ export function CardSend({
     if (!imageUrl) return flash("Kein Bild zum Teilen")
     try {
       const blob = await (await fetch(imageUrl)).blob()
-      const file = new File([blob], "matchos-karte.png", { type: blob.type || "image/png" })
+      const file = new File([blob], "momentumos-karte.png", { type: blob.type || "image/png" })
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
       if (nav.canShare?.({ files: [file] })) {
         await nav.share({ files: [file], text })

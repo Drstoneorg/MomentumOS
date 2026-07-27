@@ -59,10 +59,10 @@ export function CommandPalette() {
       setOpen(true)
     }
     window.addEventListener("keydown", onKey)
-    window.addEventListener("matchos:palette", onOpen)
+    window.addEventListener("momentumos:palette", onOpen)
     return () => {
       window.removeEventListener("keydown", onKey)
-      window.removeEventListener("matchos:palette", onOpen)
+      window.removeEventListener("momentumos:palette", onOpen)
     }
   }, [close])
 

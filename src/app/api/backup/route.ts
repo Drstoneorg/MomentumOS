@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     { generated_at: new Date().toISOString(), table_count: TABLES.length, total_rows: totalRows, tables },
     {
       headers: {
-        "Content-Disposition": `attachment; filename="matchos-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+        "Content-Disposition": `attachment; filename="momentumos-backup-${new Date().toISOString().slice(0, 10)}.json"`,
         "Cache-Control": "no-store",
       },
     }

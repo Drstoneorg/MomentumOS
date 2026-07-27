@@ -76,7 +76,7 @@ export async function GET(
   return new NextResponse(value, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="date-${date.contacts?.name ?? "matchos"}.ics"`,
+      "Content-Disposition": `attachment; filename="date-${date.contacts?.name ?? "momentumos"}.ics"`,
     },
   })
 }

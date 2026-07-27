@@ -1,11 +1,11 @@
 /**
- * MatchOS Companion — Content-Script.
+ * MomentumOS Companion — Content-Script.
  * Extrahiert sichtbaren Profil-/Chattext (generisch, DOM-Layout-unabhängig),
- * synct zu MatchOS, zeigt Antwortvarianten. Sendet NIE selbst.
+ * synct zu MomentumOS, zeigt Antwortvarianten. Sendet NIE selbst.
  */
 ;(() => {
-  if (window.__matchosLoaded) return
-  window.__matchosLoaded = true
+  if (window.__momentumosLoaded) return
+  window.__momentumosLoaded = true
 
   const PLATFORM_MAP = [
     ["tinder.com", "tinder"],
@@ -40,13 +40,13 @@
 
   // ---------- UI ----------
   const fab = document.createElement("button")
-  fab.id = "matchos-fab"
+  fab.id = "momentumos-fab"
   fab.textContent = "M"
-  fab.title = "MatchOS: Seite scannen"
+  fab.title = "MomentumOS: Seite scannen"
   document.documentElement.appendChild(fab)
 
   const panel = document.createElement("div")
-  panel.id = "matchos-panel"
+  panel.id = "momentumos-panel"
   panel.hidden = true
   document.documentElement.appendChild(panel)
 
@@ -181,7 +181,7 @@
       return
     }
     panel.innerHTML = `
-      <div class="mox-head">MatchOS <span class="mox-badge">${esc(platform)}</span></div>
+      <div class="mox-head">MomentumOS <span class="mox-badge">${esc(platform)}</span></div>
       ${roundupHtml()}
       <div id="mox-taste"></div>
       <p class="mox-hint">Markiere Text (Profil oder Chat) und klicke Scannen — ohne Markierung wird der sichtbare Seitentext genommen.</p>
@@ -599,7 +599,7 @@
           <input class="mox-input" id="mox-idea" placeholder="Wie ich's sagen würde: grobe Idee tippen, KI formuliert nur aus" />
           <button class="mox-copy mox-chip" id="mox-idea-go">In meinem Stil</button>
         </div>
-        <a class="mox-link" href="${baseUrl}/contacts/${data.contactId}" target="_blank">In MatchOS öffnen ↗</a>
+        <a class="mox-link" href="${baseUrl}/contacts/${data.contactId}" target="_blank">In MomentumOS öffnen ↗</a>
         <div id="mox-replies-out"></div>`
       const situationOf = () => out.querySelector("#mox-situation").value.trim()
       out
@@ -841,7 +841,7 @@
   // ---------- Instagram Activity-Tracker ----------
   // Liest beim Browsen sichtbare Ereignisse: ungelesene DM-Threads (Inbox) und
   // Notification-Einträge (Likes, Story-Reaktionen, Erwähnungen). Meldet sie an
-  // MatchOS → dort werden bekannte Kontakte zu fälligen Follow-ups mit ⚡-Antwort.
+  // MomentumOS → dort werden bekannte Kontakte zu fälligen Follow-ups mit ⚡-Antwort.
   // Nur Lesen + Erinnern — gesendet wird nie automatisch.
   function igCollectEvents() {
     const events = []
@@ -918,16 +918,16 @@
   }
   if (platform === "instagram") setInterval(igReportActivity, 15000)
 
-  // ---------- Ergebnisse vom Kontextmenü („An MatchOS senden") ----------
+  // ---------- Ergebnisse vom Kontextmenü („An MomentumOS senden") ----------
   try {
     chrome.runtime.onMessage.addListener((msg) => {
-    if (msg && msg.type === "matchos-toggle") {
+    if (msg && msg.type === "momentumos-toggle") {
       // Alt+M: Panel auf/zu
       panel.hidden = !panel.hidden
       if (!panel.hidden) renderIdle()
       return
     }
-    if (!msg || msg.type !== "matchos-sync-result") return
+    if (!msg || msg.type !== "momentumos-sync-result") return
     panel.hidden = false
     renderIdle()
     const out = panel.querySelector("#mox-out")

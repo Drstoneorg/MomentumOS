@@ -49,6 +49,6 @@ jobs:
       - name: Als Artifact sichern
         uses: actions/upload-artifact@v4
         with:
-          name: matchos-backup-${{ github.run_number }}
+          name: momentumos-backup-${{ github.run_number }}
           path: backup.json.gz.enc
           retention-days: 90

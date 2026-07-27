@@ -61,7 +61,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
     const caption = imgResult?.caption ?? ""
     try {
       const blob = await (await fetch(imgUrl)).blob()
-      const file = new File([blob], "matchos-bild.png", { type: blob.type || "image/png" })
+      const file = new File([blob], "momentumos-bild.png", { type: blob.type || "image/png" })
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
       if (nav.canShare?.({ files: [file] })) {
         await nav.share({ files: [file], text: caption })

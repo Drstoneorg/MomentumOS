@@ -1,6 +1,6 @@
 /**
- * MatchOS Companion — Background-Worker.
- * Kontextmenü „An MatchOS senden": markierten Text an /api/extension/sync schicken.
+ * MomentumOS Companion — Background-Worker.
+ * Kontextmenü „An MomentumOS senden": markierten Text an /api/extension/sync schicken.
  * Ergebnis geht als Message an den Tab (Overlay zeigt es); Fallback: Badge am Icon.
  */
 
@@ -19,8 +19,8 @@ function setupMenu() {
   // removeAll verhindert "duplicate id"-Fehler bei Extension-Reload
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
-      id: "matchos-send",
-      title: "An MatchOS senden",
+      id: "momentumos-send",
+      title: "An MomentumOS senden",
       contexts: ["selection"],
     })
   })
@@ -32,7 +32,7 @@ chrome.runtime.onStartup.addListener(setupMenu)
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "toggle-panel") return
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (tab?.id != null) chrome.tabs.sendMessage(tab.id, { type: "matchos-toggle" }).catch(() => {})
+  if (tab?.id != null) chrome.tabs.sendMessage(tab.id, { type: "momentumos-toggle" }).catch(() => {})
 })
 
 function badge(text, color) {
@@ -42,7 +42,7 @@ function badge(text, color) {
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== "matchos-send" || !info.selectionText) return
+  if (info.menuItemId !== "momentumos-send" || !info.selectionText) return
   const { baseUrl, token } = await chrome.storage.sync.get(["baseUrl", "token"])
   if (!baseUrl || !token) {
     badge("cfg", "#f59e0b")
@@ -61,10 +61,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     })
     const data = await res.json()
     result = res.ok
-      ? { type: "matchos-sync-result", ok: true, ...data }
-      : { type: "matchos-sync-result", ok: false, error: data.error || String(res.status) }
+      ? { type: "momentumos-sync-result", ok: true, ...data }
+      : { type: "momentumos-sync-result", ok: false, error: data.error || String(res.status) }
   } catch (e) {
-    result = { type: "matchos-sync-result", ok: false, error: String(e && e.message ? e.message : e) }
+    result = { type: "momentumos-sync-result", ok: false, error: String(e && e.message ? e.message : e) }
   }
   badge(result.ok ? "✓" : "✗", result.ok ? "#10b981" : "#ef4444")
   if (tab?.id != null) {
