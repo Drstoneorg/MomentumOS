@@ -112,7 +112,7 @@ The module the repository is named after, and now the smallest one.
 | Browser helper | Optional extension that reads a visible profile or chat and files it into the app |
 | Cost control | Every model call logged with tokens and estimated cost; a monthly budget blocks further calls when reached |
 | Health | Cron heartbeats with a watchdog on the dashboard, daily database backups to GitHub Actions artifacts |
-| Tests | 118 unit tests plus a Playwright smoke suite; typecheck and build on every push |
+| Tests | 121 unit tests plus a Playwright smoke suite; typecheck, tests and build on every push |
 
 ### Automation schedule
 
