@@ -1,4 +1,4 @@
-# MatchOS — Personal Operations Platform
+# MomentumOS — Personal Operations Platform
 
 [![CI](https://github.com/Drstoneorg/matchos/actions/workflows/ci.yml/badge.svg)](https://github.com/Drstoneorg/matchos/actions/workflows/ci.yml)
 
@@ -89,7 +89,7 @@ A measurement experiment, not a broker.
 ### MatchOS — new acquaintances
 
 Help with the early stage of getting to know someone: remembering what was said, and not
-leaving people hanging. The module the repository is named after, and now the smallest one.
+leaving people hanging. The oldest module, and now the smallest one.
 
 - Contact inbox with a per-person memory store and conversation summaries, so context survives
   a two-week gap
@@ -191,6 +191,7 @@ Environment variables (`.env.local` locally, project settings in Vercel):
 | `BACKUP_SECRET` | Guards the backup export endpoint |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web push |
 | `CONTACT_EMAIL` | Contact address for VAPID and the Nominatim user agent |
+| `NEXT_PUBLIC_SITE_URL` | Public base URL — used for Telegram buttons and webhook addresses. Falls back to the current production URL |
 | `STRIPE_SECRET_KEY` | Optional — without it, bookings run in test mode |
 | `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` / `TELEGRAM_SESSION` | Local worker only |
 

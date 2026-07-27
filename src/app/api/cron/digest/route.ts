@@ -5,6 +5,7 @@ import { sendTelegramBot } from "@/lib/telegramBot"
 import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 import { collectSignals, type Signal } from "@/lib/signals"
 import { chatJSON } from "@/lib/ai/deepseek"
+import { SITE_URL } from "@/lib/siteUrl"
 
 export const maxDuration = 60
 
@@ -84,8 +85,8 @@ export async function GET(req: Request) {
     const hookActive = typeof hookRow?.value === "string" && hookRow.value.length > 0
     const keyboard: { text: string; url?: string; callback_data?: string }[][] = [
       [
-        { text: "📥 Inbox", url: "https://matchos-ten.vercel.app/inbox" },
-        { text: "▶ Fokus", url: "https://matchos-ten.vercel.app/focus" },
+        { text: "📥 Inbox", url: `${SITE_URL}/inbox` },
+        { text: "▶ Fokus", url: `${SITE_URL}/focus` },
       ],
     ]
     if (hookActive) {
@@ -107,7 +108,7 @@ export async function GET(req: Request) {
       sent = "telegram"
     } else {
       await sendPushToAll({
-        title: "MatchOS — Morgen-Briefing",
+        title: "MomentumOS — Morgen-Briefing",
         body: `${counts.today} heute dran · ${counts.soon} demnächst${counts.warn ? ` · ⚠️ ${counts.warn} Warnungen` : ""}`,
         url: "/inbox",
       }).catch(() => {})

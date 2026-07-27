@@ -4,7 +4,7 @@ export default function OfflinePage() {
       <p className="text-4xl">📡</p>
       <h1 className="text-xl font-bold">Offline</h1>
       <p className="text-sm text-zinc-400">
-        Keine Verbindung. MatchOS lädt automatisch, sobald du wieder online bist.
+        Keine Verbindung. MomentumOS lädt automatisch, sobald du wieder online bist.
       </p>
     </div>
   )

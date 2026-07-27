@@ -125,7 +125,7 @@ export async function GET(req: Request) {
   const drafts = results.filter((r) => r.status === "draft_created").length
   if (drafts) {
     await sendPushToAll({
-      title: "MatchOS Follow-ups",
+      title: "MomentumOS Follow-ups",
       body: `${drafts} neue Antwort-Entwürfe warten in der Queue`,
       url: "/queue",
     }).catch(() => {})

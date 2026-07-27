@@ -8,7 +8,7 @@ import { CommandPalette } from "@/components/CommandPalette"
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "MatchOS",
+  title: "MomentumOS",
   description: "Persönlicher Dating-Agent",
 }
 

@@ -1,4 +1,4 @@
-/* MatchOS Service Worker: Offline-Shell + Web Push */
+/* MomentumOS Service Worker: Offline-Shell + Web Push */
 const CACHE = "matchos-v1"
 const OFFLINE_URL = "/offline"
 
@@ -34,10 +34,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {}
   } catch {
-    data = { title: "MatchOS", body: event.data ? event.data.text() : "" }
+    data = { title: "MomentumOS", body: event.data ? event.data.text() : "" }
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "MatchOS", {
+    self.registration.showNotification(data.title || "MomentumOS", {
       body: data.body || "",
       icon: "/icon-192.png",
       badge: "/icon-192.png",

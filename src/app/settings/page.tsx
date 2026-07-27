@@ -157,7 +157,7 @@ export default async function SettingsPage() {
 
       <Card title="📈 Antwortquoten (gemessen, nicht Geschmack)">
         <p className="mb-2 text-sm text-zinc-400">
-          Beim Browser-Sync erkennt MatchOS automatisch, welcher Vorschlag wirklich
+          Beim Browser-Sync erkennt MomentumOS automatisch, welcher Vorschlag wirklich
           gesendet wurde und ob eine Antwort kam. Ab 10 gemessenen Sendungen fließen
           die Quoten in jeden neuen Vorschlag ein — die KI lernt aus Ergebnissen.
         </p>
@@ -217,7 +217,7 @@ export default async function SettingsPage() {
 
       <Card title="Browser-Extension">
         <p className="mb-2 text-sm text-zinc-400">
-          MatchOS Companion liest Tinder/Bumble/Boo/WhatsApp-Web/Instagram mit und legt
+          MomentumOS Companion liest Tinder/Bumble/Boo/WhatsApp-Web/Instagram mit und legt
           Kontakte + Antwortentwürfe an. Installation: siehe README (extension/-Ordner).
         </p>
         <ExtensionTokenForm
@@ -274,7 +274,7 @@ export default async function SettingsPage() {
       <Card title="Push-Benachrichtigungen">
         <p className="mb-2 text-sm text-zinc-400">
           Geburtstage, fällige Follow-ups und Queue-Entwürfe direkt aufs Gerät.
-          Auf dem Handy: MatchOS erst „Zum Home-Bildschirm“ hinzufügen (PWA), dann aktivieren.
+          Auf dem Handy: MomentumOS erst „Zum Home-Bildschirm“ hinzufügen (PWA), dann aktivieren.
         </p>
         <PushToggle vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
       </Card>

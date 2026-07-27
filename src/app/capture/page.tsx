@@ -1,6 +1,6 @@
 import { CaptureClient } from "./CaptureClient"
 
-export const metadata = { title: "Erfassen — MatchOS" }
+export const metadata = { title: "Erfassen — MomentumOS" }
 
 export default function CapturePage() {
   return (

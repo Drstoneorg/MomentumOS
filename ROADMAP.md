@@ -1,4 +1,4 @@
-# MatchOS Roadmap — Leitfaden
+# MomentumOS Roadmap — Leitfaden
 
 Stand: 2026-07-08. Drei Phasen. Reihenfolge fix: Phase 1 → 2 → 3 (2 ist technische Voraussetzung für 3).
 

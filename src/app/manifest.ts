@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MatchOS",
-    short_name: "MatchOS",
-    description: "Dating-Agent, MomentOS-CRM und BookOS-Treatments",
+    name: "MomentumOS",
+    short_name: "MomentumOS",
+    description: "Menschen, Auftritte, Bewerbungen, Trading — ein Signal-Feed",
     start_url: "/",
     display: "standalone",
     background_color: "#18181b",

@@ -93,7 +93,7 @@ export async function GET(req: Request) {
     for (const term of terms) {
       try {
         const res = await fetch(p.url(term), {
-          headers: { "User-Agent": "Mozilla/5.0 (Macintosh) MatchOS-JobScan" },
+          headers: { "User-Agent": "Mozilla/5.0 (Macintosh) MomentumOS-JobScan" },
           signal: AbortSignal.timeout(8000),
         })
         if (!res.ok) continue
@@ -128,7 +128,7 @@ Antworte NUR als JSON: {"hits":[Indexzahlen]} — maximal 5.`,
     if (knownUrls.has(normalizeJobUrl(c.url))) continue
     try {
       const res = await fetch(c.url, {
-        headers: { "User-Agent": "Mozilla/5.0 (Macintosh) MatchOS-JobScan" },
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh) MomentumOS-JobScan" },
         signal: AbortSignal.timeout(8000),
       })
       if (!res.ok) continue

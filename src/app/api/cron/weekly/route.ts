@@ -5,6 +5,7 @@ import { sendTelegramBot } from "@/lib/telegramBot"
 import { beatCron, cronAuthError } from "@/lib/cronHeartbeat"
 import { outcomeStats } from "@/lib/outcomes"
 import { monthlyUsage } from "@/lib/ai/usage"
+import { SITE_URL } from "@/lib/siteUrl"
 
 export const maxDuration = 30
 
@@ -96,7 +97,7 @@ export async function GET(req: Request) {
     : null
 
   const lines = [
-    "📊 <b>MatchOS Wochen-Digest</b>",
+    "📊 <b>MomentumOS Wochen-Digest</b>",
     "",
     `💘 ${newMatches ?? 0} neue Matches · ${sentOut} gesendet · ${gotIn} Antworten erhalten`,
     quoteLine || null,
@@ -105,14 +106,14 @@ export async function GET(req: Request) {
     costLine || null,
     "",
     `Offen: ${dueFollowups ?? 0} Follow-ups fällig · ${openDrafts ?? 0} Entwürfe in der Queue`,
-    "https://matchos-ten.vercel.app",
+    SITE_URL,
   ].filter((l): l is string => l !== null)
 
   const text = lines.join("\n")
   const viaTelegram = await sendTelegramBot(supabase, text)
   if (!viaTelegram) {
     await sendPushToAll({
-      title: "MatchOS — Wochen-Digest",
+      title: "MomentumOS — Wochen-Digest",
       body: `${newMatches ?? 0} neue Matches, ${gotIn} Antworten, ${dueFollowups ?? 0} Follow-ups fällig`,
       url: "/",
     }).catch(() => {})

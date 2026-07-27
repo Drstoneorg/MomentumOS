@@ -4,8 +4,7 @@ import { randomUUID } from "crypto"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { generateJobCoverLetter } from "@/lib/actions"
-
-const SITE_URL = "https://matchos-ten.vercel.app"
+import { SITE_URL } from "@/lib/siteUrl"
 
 async function db() {
   const supabase = await createClient()

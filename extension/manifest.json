@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "MatchOS Companion",
+  "name": "MomentumOS Companion",
   "version": "0.7.3",
-  "description": "Liest Dating-Profile und Chats mit, legt Kontakte in MatchOS an und liefert Antwortentwürfe. Sendet nie selbst.",
+  "description": "Liest Dating-Profile und Chats mit, legt Kontakte in MomentumOS an und liefert Antwortentwürfe. Sendet nie selbst.",
   "permissions": ["storage", "activeTab", "contextMenus"],
   "background": { "service_worker": "background.js" },
   "host_permissions": [
@@ -60,11 +60,11 @@
   "commands": {
     "toggle-panel": {
       "suggested_key": { "default": "Alt+M" },
-      "description": "MatchOS-Panel öffnen/schließen"
+      "description": "MomentumOS-Panel öffnen/schließen"
     }
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "MatchOS Companion"
+    "default_title": "MomentumOS Companion"
   }
 }

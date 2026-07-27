@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { saveSetting } from "@/lib/actions"
 import { btnCls, btnGhostCls } from "@/components/ui"
+import { SITE_URL } from "@/lib/siteUrl"
 
 /**
  * Ticketshop-Webhook aktivieren: Secret generieren, URL in Pretix/Eventbrite
@@ -21,7 +22,7 @@ export function TicketWebhookForm({
   const [copied, setCopied] = useState(false)
 
   const webhookUrl = secret
-    ? `https://matchos-ten.vercel.app/api/tickets/webhook?key=${secret}`
+    ? `${SITE_URL}/api/tickets/webhook?key=${secret}`
     : null
 
   function generate() {

@@ -23,7 +23,7 @@ const RATIO: Record<ImagePromptInput["format"], string> = {
 
 /**
  * Erzeugt einen fertigen Bild-Generierungs-Prompt (für Midjourney/DALL-E/SDXL).
- * MatchOS generiert keine Pixel — der Prompt wird in der Asset Library gespeichert,
+ * MomentumOS generiert keine Pixel — der Prompt wird in der Asset Library gespeichert,
  * das fertige Bild lädt man als URL zurück.
  */
 export async function generateImagePrompt(

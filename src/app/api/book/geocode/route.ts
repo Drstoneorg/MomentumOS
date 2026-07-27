@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 // Adresse → Koordinaten via OpenStreetMap Nominatim (kostenlos, kein Key).
 // Nutzungsrichtlinie: aussagekräftiger User-Agent, moderate Frequenz.
 // Kontaktadresse per Env-Var, damit im öffentlichen Repo keine private Mail steht.
-const USER_AGENT = `MatchOS-BookOS/1.0 (${process.env.CONTACT_EMAIL || "noreply@example.com"})`
+const USER_AGENT = `MomentumOS-BookOS/1.0 (${process.env.CONTACT_EMAIL || "noreply@example.com"})`
 export async function GET(req: Request) {
   const supabase = await createClient()
   const {
