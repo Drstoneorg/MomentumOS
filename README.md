@@ -1,6 +1,6 @@
 # MomentumOS — Personal Operations Platform
 
-[![CI](https://github.com/Drstoneorg/matchos/actions/workflows/ci.yml/badge.svg)](https://github.com/Drstoneorg/matchos/actions/workflows/ci.yml)
+[![CI](https://github.com/Drstoneorg/momentumos/actions/workflows/ci.yml/badge.svg)](https://github.com/Drstoneorg/momentumos/actions/workflows/ci.yml)
 
 A single-user platform that runs the recurring parts of a personal and professional life:
 staying in touch with the people who matter, booking artists for events, running a job
