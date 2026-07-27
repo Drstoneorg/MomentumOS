@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent-Worktrees liegen im Repo und enthalten eine komplette Kopie samt
+    // Build-Ordner — ohne diese Zeile lintet jeder Lauf das Projekt doppelt.
+    ".claude/**",
   ]),
 ]);
 
