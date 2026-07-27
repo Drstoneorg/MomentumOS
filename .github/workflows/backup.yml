@@ -2,6 +2,12 @@
 # als Workflow-Artifact ab (90 Tage Aufbewahrung, nichts landet in der Git-History).
 # Wiederherstellen: siehe BACKUP.md. Roter Lauf = GitHub-Mail = Frühwarnung.
 # Braucht Secret BACKUP_SECRET (gleicher Wert wie in Vercel).
+#
+# Das Artifact ist mit BACKUP_SECRET symmetrisch verschlüsselt. Grund: bei einem
+# öffentlichen Repository kann JEDER Workflow-Artifacts herunterladen — ein
+# Klartext-Dump wäre die komplette Datenbank für alle. Derselbe Schlüssel für
+# Abruf und Verschlüsselung ist hier kein Verlust: wer ihn hat, könnte /api/backup
+# ohnehin direkt aufrufen.
 name: DB Backup
 
 on:
@@ -30,9 +36,19 @@ jobs:
           EOF
           gzip -9 backup.json
 
+      - name: Verschlüsseln
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_SECRET }}
+        run: |
+          set -euo pipefail
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -in backup.json.gz -out backup.json.gz.enc -pass env:PASSPHRASE
+          rm -f backup.json.gz
+          ls -l backup.json.gz.enc
+
       - name: Als Artifact sichern
         uses: actions/upload-artifact@v4
         with:
           name: matchos-backup-${{ github.run_number }}
-          path: backup.json.gz
+          path: backup.json.gz.enc
           retention-days: 90

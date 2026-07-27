@@ -5,7 +5,9 @@
 - **Täglich ~04:43 UTC** holt die GitHub Action `DB Backup` (`.github/workflows/backup.yml`)
   einen Voll-Export aller App-Tabellen von `https://matchos-ten.vercel.app/api/backup`
   (Auth: `Authorization: Bearer <BACKUP_SECRET>`) und speichert ihn als
-  **Workflow-Artifact** (gzip, 90 Tage Aufbewahrung). Nichts landet in der Git-History.
+  **Workflow-Artifact** (gzip + GPG, 90 Tage Aufbewahrung). Nichts landet in der Git-History.
+- **Verschlüsselt mit `BACKUP_SECRET`.** Bei einem öffentlichen Repository kann jeder
+  Workflow-Artifacts herunterladen — deshalb liegt dort nur Chiffrat.
 - Roter Workflow-Lauf = GitHub schickt eine Mail = Frühwarnung.
 - GitHub deaktiviert Schedules nach 60 Tagen ohne Repo-Aktivität — bei der
   Deaktivierungs-Mail den Workflow manuell wieder aktivieren.
@@ -23,7 +25,14 @@ Artifact herunterladen: GitHub → Actions → Lauf anklicken → „Artifacts".
 
 ## Wiederherstellen
 
-1. Backup-JSON besorgen (Artifact entpacken: `gunzip backup.json.gz`).
+1. Backup-JSON besorgen. Artifact herunterladen, dann entschlüsseln und entpacken:
+
+```bash
+BACKUP_SECRET='…' openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+  -in backup.json.gz.enc -out backup.json.gz -pass env:BACKUP_SECRET
+gunzip backup.json.gz
+```
+
 2. `.env.local` braucht `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
    (Supabase-Dashboard → Settings → API → service_role).
 3. Zurückspielen (Upsert, löscht nichts):
