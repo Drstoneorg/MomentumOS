@@ -17,6 +17,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState("")
   const [remote, setRemote] = useState<Command[]>([])
   const [index, setIndex] = useState(0)
+  const [lastPath, setLastPath] = useState(pathname)
   const inputRef = useRef<HTMLInputElement>(null)
   const fetchSeq = useRef(0)
 
@@ -24,7 +25,8 @@ export function CommandPalette() {
   const staticHits = useMemo(() => filterCommands(query, allStatic), [query, allStatic])
 
   const items = useMemo(() => {
-    const list: Command[] = [...staticHits, ...remote]
+    // Live-Treffer erst ab 2 Zeichen zeigen — darunter zählen nur statische Kommandos
+    const list: Command[] = [...staticHits, ...(query.trim().length >= 2 ? remote : [])]
     if (query.trim().length >= 2) {
       list.push({
         label: `„${query.trim()}" überall suchen`,
@@ -67,15 +69,16 @@ export function CommandPalette() {
   useEffect(() => {
     if (open) inputRef.current?.focus()
   }, [open])
-  useEffect(() => close(), [pathname, close])
-  useEffect(() => setIndex(0), [query])
+
+  // Navigation schließt die Palette — Anpassung beim Render statt im Effekt
+  if (pathname !== lastPath) {
+    setLastPath(pathname)
+    close()
+  }
 
   // Live-Suche, debounced; veraltete Antworten werden verworfen
   useEffect(() => {
-    if (!open || query.trim().length < 2) {
-      setRemote([])
-      return
-    }
+    if (!open || query.trim().length < 2) return
     const seq = ++fetchSeq.current
     const t = setTimeout(async () => {
       try {
@@ -109,7 +112,10 @@ export function CommandPalette() {
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setIndex(0)
+          }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault()

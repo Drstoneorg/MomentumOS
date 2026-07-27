@@ -177,7 +177,7 @@ export function CardSend({
 
       <p className="text-[10px] text-zinc-600">
         Hinweis: WhatsApp/Instagram-Links können kein Bild automatisch anhängen (Plattform-Grenze).
-        Text wird vorbefüllt/kopiert, Bild über „Teilen" oder eingefügt. Telegram sendet Bild + Text komplett.
+        Text wird vorbefüllt/kopiert, Bild über „Teilen&quot; oder eingefügt. Telegram sendet Bild + Text komplett.
       </p>
     </div>
   )

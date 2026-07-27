@@ -43,7 +43,7 @@ export default async function ArchivePage() {
         </Link>
       </div>
       <p className="text-sm text-zinc-400">
-        Alle erzeugten Bilder. „Gesendet" zeigt, an wen/über welchen Kanal du das Bild verschickt hast (im Generator notiert).
+        Alle erzeugten Bilder. „Gesendet&quot; zeigt, an wen/über welchen Kanal du das Bild verschickt hast (im Generator notiert).
       </p>
 
       {!list.length && (

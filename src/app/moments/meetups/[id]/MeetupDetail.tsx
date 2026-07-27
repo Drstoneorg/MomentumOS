@@ -116,7 +116,7 @@ export function MeetupDetail({
 
       <Card title="Nachbereitung">
         <p className="mb-2 text-sm text-zinc-400">
-          „Wie war's" — landet als Gedächtnis-Eintrag bei allen Teilnehmern und schließt das Meetup ab.
+          „Wie war&apos;s&quot; — landet als Gedächtnis-Eintrag bei allen Teilnehmern und schließt das Meetup ab.
         </p>
         <textarea value={recap} onChange={(e) => setRecap(e.target.value)} rows={3} placeholder="Kurze Notiz zum Treffen…" className={inputCls} />
         <button

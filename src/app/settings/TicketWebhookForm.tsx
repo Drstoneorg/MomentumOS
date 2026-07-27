@@ -58,7 +58,7 @@ export function TicketWebhookForm({
         {secret ? "Neu generieren (alte URL wird ungültig)" : "Webhook aktivieren"}
       </button>
       <p className="text-xs text-zinc-500">
-        Diese URL im Ticketshop als Webhook für „Bestellung bezahlt" eintragen
+        Diese URL im Ticketshop als Webhook für „Bestellung bezahlt&quot; eintragen
         (Pretix: Einstellungen → Webhooks). Enthält die Bestellung einen Promo-Code
         eines Gastes, springt dessen Einladung automatisch auf 🎟 Ticket.
       </p>

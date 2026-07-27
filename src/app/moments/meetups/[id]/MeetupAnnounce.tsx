@@ -82,7 +82,7 @@ export function MeetupAnnounce({
           {slot ? (
             <>📍 {slot.place || "Ort offen"} · 🕒 {whenStr}</>
           ) : (
-            <>Noch kein Termin gewählt — trotzdem einladen geht, Ort/Zeit dann „wird abgestimmt".</>
+            <>Noch kein Termin gewählt — trotzdem einladen geht, Ort/Zeit dann „wird abgestimmt&quot;.</>
           )}
         </div>
 

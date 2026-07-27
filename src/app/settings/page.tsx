@@ -228,7 +228,7 @@ export default async function SettingsPage() {
       <Card title="Beuteschema (Typ-Check)">
         <p className="mb-2 text-sm text-zinc-400">
           Stichwörter, auf die die Extension den Profiltext prüft. Bei Treffer zeigt das
-          Overlay „Passt zu deinem Typ" plus einen Like-Button, den du selbst drückst.
+          Overlay „Passt zu deinem Typ&quot; plus einen Like-Button, den du selbst drückst.
         </p>
         <TasteProfileForm
           current={{
@@ -254,7 +254,7 @@ export default async function SettingsPage() {
       <Card title="🎟 Ticketshop-Webhook">
         <p className="mb-2 text-sm text-zinc-400">
           Verbindet den Ticketshop mit dem Event-Funnel: Kauf mit Promo-Code
-          setzt die Einladung automatisch auf „Ticket gekauft".
+          setzt die Einladung automatisch auf „Ticket gekauft&quot;.
         </p>
         <TicketWebhookForm
           currentSecret={typeof twSecret?.value === "string" ? twSecret.value : ""}

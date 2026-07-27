@@ -221,7 +221,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
             <p className="text-xs text-zinc-600">
               {customPrompt.trim() ? (
                 <span className="text-amber-400">
-                  Aktiv — „Bild erzeugen" nutzt genau diesen Text. Anlass/Stil/Vibe oben werden ignoriert.
+                  Aktiv — „Bild erzeugen&quot; nutzt genau diesen Text. Anlass/Stil/Vibe oben werden ignoriert.
                 </span>
               ) : (
                 "Leer lassen, wenn du oben mit Anlass + Vibe arbeitest. Gefüllt = überschreibt alles darüber."
@@ -241,7 +241,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               <p className="text-zinc-500"><b>Negativ:</b> {imgResult.negative_prompt}</p>
               <p className="text-zinc-400"><b>Caption:</b> {imgResult.caption}</p>
               <p className="text-xs text-zinc-600">
-                „Bild erzeugen" malt direkt (braucht OPENAI_API_KEY). Alternativ Prompt in Midjourney/DALL-E nutzen.
+                „Bild erzeugen&quot; malt direkt (braucht OPENAI_API_KEY). Alternativ Prompt in Midjourney/DALL-E nutzen.
               </p>
             </div>
           )}
@@ -258,7 +258,7 @@ export function MomentGenerator({ contactId }: { contactId: string }) {
               </div>
               {shareMsg && <p className="text-xs text-amber-400">{shareMsg}</p>}
               <p className="text-xs text-zinc-600">
-                „Teilen" öffnet auf dem Handy die App-Auswahl (WhatsApp, Telegram, Signal, Mail …) mit dem Bild als Datei. Am Desktop: „Bild-URL kopieren" und im Chat einfügen.
+                „Teilen&quot; öffnet auf dem Handy die App-Auswahl (WhatsApp, Telegram, Signal, Mail …) mit dem Bild als Datei. Am Desktop: „Bild-URL kopieren&quot; und im Chat einfügen.
               </p>
               {assetId && (
                 <div className="border-t border-zinc-800 pt-2">

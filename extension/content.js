@@ -356,7 +356,7 @@
           ${d.hits && d.hits.length ? `<p class="mox-hint">✓ ${d.hits.map(esc).join(", ")}</p>` : ""}
           ${d.concerns && d.concerns.length ? `<p class="mox-hint">⚠ ${d.concerns.map(esc).join(", ")}</p>` : ""}
         </div>`
-    } catch (e) {
+    } catch {
       out.innerHTML = `<p class="mox-err">Netzwerkfehler.</p>`
     }
   }

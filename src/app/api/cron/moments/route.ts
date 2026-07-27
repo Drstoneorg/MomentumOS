@@ -94,7 +94,6 @@ export async function GET(req: Request) {
               turningAge(c.birthday) ? `wird ${turningAge(c.birthday)}` : null,
             ].filter(Boolean).join(" · "),
           })
-          const text = Object.values(msg.variants)[0] ?? `Alles Gute zum Geburtstag, ${c.name}! 🎉`
 
           let imageUrl: string | null = null
           if (imageGenerationAvailable()) {

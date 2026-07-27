@@ -114,7 +114,7 @@ export function FocusClient({ signals }: { signals: Signal[] }) {
       </div>
 
       <p className="text-center text-[11px] text-zinc-600">
-        Tastatur: → weiter · ← zurück — Aktionen wirken sofort, „Weiter" überspringt nur die Ansicht
+        Tastatur: → weiter · ← zurück — Aktionen wirken sofort, „Weiter&quot; überspringt nur die Ansicht
       </p>
     </div>
   )

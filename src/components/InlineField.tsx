@@ -24,8 +24,15 @@ export function InlineField({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
+  const [lastValue, setLastValue] = useState(value)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+
+  // Neuer Wert von außen überschreibt den Entwurf — Anpassung beim Render statt im Effekt
+  if (value !== lastValue) {
+    setLastValue(value)
+    setDraft(value)
+  }
 
   useEffect(() => {
     if (editing) {
@@ -33,7 +40,6 @@ export function InlineField({
       if (ref.current instanceof HTMLInputElement && type === "text") ref.current.select()
     }
   }, [editing, type])
-  useEffect(() => setDraft(value), [value])
 
   async function commit() {
     if (draft === value) {

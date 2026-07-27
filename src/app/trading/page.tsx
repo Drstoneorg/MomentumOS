@@ -186,7 +186,7 @@ export default async function TradingPage() {
       <Card title="📰 Tages-Digests (Weltlage + Picks)">
         {(digestsRes.data ?? []).length === 0 && (
           <p className="text-sm text-zinc-500">
-            Noch kein Lauf — oben „Tageslauf jetzt" drücken oder auf den Werktags-Cron warten.
+            Noch kein Lauf — oben „Tageslauf jetzt&quot; drücken oder auf den Werktags-Cron warten.
           </p>
         )}
         <ul className="space-y-4">

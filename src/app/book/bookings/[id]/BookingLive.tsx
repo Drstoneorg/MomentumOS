@@ -33,10 +33,17 @@ export function BookingLive({
   const [comment, setComment] = useState("")
   const [searchSecs, setSearchSecs] = useState(0)
 
+  // Jede neue Suchphase startet den Zähler bei 0 — Anpassung beim Render statt im Effekt
+  const searching = booking.status === "requested" && !booking.scheduled_at
+  const [wasSearching, setWasSearching] = useState(searching)
+  if (searching !== wasSearching) {
+    setWasSearching(searching)
+    setSearchSecs(0)
+  }
+
   // Watchdog: solange gesucht wird, alle 10s prüfen ob Offers abgelaufen → neue Runde
   useEffect(() => {
     if (booking.status !== "requested" || booking.scheduled_at) return
-    setSearchSecs(0)
     const tick = setInterval(() => setSearchSecs((s) => s + 1), 1000)
     const watchdog = setInterval(async () => {
       const redispatched = await ensureDispatch(booking.id).catch(() => null)

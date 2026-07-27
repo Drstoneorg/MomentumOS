@@ -90,11 +90,13 @@ export function JobsClient({
     () => (city === "alle" ? jobs : jobs.filter((j) => j.city === city)),
     [jobs, city]
   )
+  // Beim Mount eingefrorener Zeitstempel — Date.now() im Render wäre unrein
+  const [now] = useState(() => Date.now())
   const followupDue = jobs.filter(
     (j) =>
       j.stage === "applied" &&
       j.applied_at &&
-      Date.now() - new Date(j.applied_at).getTime() > 14 * 86400_000
+      now - new Date(j.applied_at).getTime() > 14 * 86400_000
   )
 
   function submitJob() {
@@ -181,7 +183,7 @@ export function JobsClient({
       {/* Nachfassen fällig */}
       {followupDue.length > 0 && (
         <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
-          ⏰ Nachfassen: {followupDue.map((j) => `${j.company} (${Math.round((Date.now() - new Date(j.applied_at!).getTime()) / 86400_000)}d)`).join(", ")}
+          ⏰ Nachfassen: {followupDue.map((j) => `${j.company} (${Math.round((now - new Date(j.applied_at!).getTime()) / 86400_000)}d)`).join(", ")}
         </div>
       )}
 
@@ -207,7 +209,7 @@ export function JobsClient({
             {addMsg && <span className="text-sm text-zinc-400">{addMsg}</span>}
           </div>
           <p className="text-xs text-zinc-500">
-            Noch schneller: Extension auf LinkedIn & Co. — Alt+M auf der Anzeige drückt „Job erfassen".
+            Noch schneller: Extension auf LinkedIn & Co. — Alt+M auf der Anzeige drückt „Job erfassen&quot;.
           </p>
         </div>
       </Card>

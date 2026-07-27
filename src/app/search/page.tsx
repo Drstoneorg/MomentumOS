@@ -83,7 +83,7 @@ export default async function SearchPage({
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">
-        🔎 „{query}" <span className="text-sm font-normal text-zinc-500">({total} Treffer)</span>
+        🔎 „{query}&quot; <span className="text-sm font-normal text-zinc-500">({total} Treffer)</span>
       </h1>
 
       {contacts.length > 0 && (

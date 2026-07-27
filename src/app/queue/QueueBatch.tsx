@@ -69,7 +69,7 @@ export function QueueBatch({ items }: { items: Item[] }) {
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-zinc-500">
-        Queue leer. Auf einer Personenseite Antworten mit Kanal „Telegram" generieren.
+        Queue leer. Auf einer Personenseite Antworten mit Kanal „Telegram&quot; generieren.
       </p>
     )
   }

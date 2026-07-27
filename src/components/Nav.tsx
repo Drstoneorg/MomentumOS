@@ -11,9 +11,15 @@ export function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [lastPath, setLastPath] = useState(pathname)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => setOpen(false), [pathname])
+  // Navigation schließt das Menü — Anpassung beim Render statt im Effekt
+  if (pathname !== lastPath) {
+    setLastPath(pathname)
+    setOpen(false)
+  }
+
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)

@@ -123,7 +123,8 @@ export function EventInviteManager({
                   checked={selected.has(c.id)}
                   onChange={(e) => {
                     const n = new Set(selected)
-                    e.target.checked ? n.add(c.id) : n.delete(c.id)
+                    if (e.target.checked) n.add(c.id)
+                    else n.delete(c.id)
                     setSelected(n)
                   }}
                 />

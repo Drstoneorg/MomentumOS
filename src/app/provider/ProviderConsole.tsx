@@ -41,7 +41,7 @@ export function ProviderConsole({
   useRealtimeRefresh("bookings")
   const router = useRouter()
   const [pending, start] = useTransition()
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
   const watchRef = useRef<number | null>(null)
 
   const provider = providers.find((p) => p.id === activeId)!

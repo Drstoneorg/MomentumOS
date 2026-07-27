@@ -4,7 +4,6 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import type { Enums, Tables } from "@/lib/database.types"
 import {
-  cancelGig,
   createGig,
   deleteArtist,
   deleteGig,
