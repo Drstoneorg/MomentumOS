@@ -1,4 +1,4 @@
-import { MODULES, type SignalModule } from "@/lib/modules"
+import { MODULES, PLATFORM, type SignalModule } from "@/lib/modules"
 
 /**
  * Command-Palette (⌘K): Fuzzy-Matching + statischer Kommando-Katalog.
@@ -49,13 +49,14 @@ export function fuzzyScore(query: string, text: string): number {
 
 export function staticCommands(): Command[] {
   const cmds: Command[] = [
+    { label: "MomentumOS — Dashboard", href: "/", module: null, icon: "🏠" },
     { label: "Inbox — alle Signale", href: "/inbox", module: null, icon: "📥" },
     { label: "Fokus-Modus starten", href: "/focus", module: null, icon: "▶" },
     { label: "Fragen — Freitext über alle Daten", href: "/ask", module: null, icon: "🔮" },
     { label: "Schnell erfassen (Screenshot/Text)", href: "/capture", module: "moments", icon: "📸" },
     { label: "Karte erstellen", href: "/cards", module: "moments", icon: "🃏" },
     { label: "Lebenslauf ansehen", href: "/jobs/cv", module: "jobs", icon: "📄" },
-    { label: "Einstellungen", href: "/settings", module: null, icon: "⚙️" },
+    { label: `${PLATFORM.label} — Einstellungen`, href: "/settings", module: null, icon: "⚙️" },
   ]
   for (const m of MODULES) {
     for (const l of m.links) {

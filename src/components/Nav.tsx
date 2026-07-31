@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { QuickAddContact } from "@/components/QuickAddContact"
-import { MODULES } from "@/lib/modules"
+import { MODULES, PLATFORM, sectionForPath } from "@/lib/modules"
 
 export function Nav() {
   const pathname = usePathname()
@@ -36,7 +36,7 @@ export function Nav() {
 
   if (pathname.startsWith("/login")) return null
 
-  const active = MODULES.find((m) => m.id !== "match" && m.match(pathname)) ?? MODULES[0]
+  const active = sectionForPath(pathname)
 
   return (
     <nav className="sticky top-0 z-20 flex items-center gap-1 border-b border-zinc-800 bg-zinc-950/90 px-4 py-2 backdrop-blur">
@@ -51,14 +51,14 @@ export function Nav() {
           </svg>
         </button>
         {open && (
-          <div className="absolute left-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
-            {MODULES.map((m) => (
+          <div className="absolute left-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
+            {[PLATFORM, ...MODULES].map((m) => (
               <Link
                 key={m.id}
                 href={m.home}
                 className={`block px-4 py-2.5 text-sm hover:bg-zinc-800 ${
-                  m.id === active.id ? `font-semibold ${m.text}` : "text-zinc-300"
-                }`}
+                  m.id === "platform" ? "border-b border-zinc-800" : ""
+                } ${m.id === active.id ? `font-semibold ${m.text}` : "text-zinc-300"}`}
               >
                 <span className="flex items-center gap-2">
                   <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />

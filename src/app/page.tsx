@@ -170,7 +170,12 @@ export default async function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Dashboard</h1>
+      <div>
+        <h1 className="text-xl font-bold">MomentumOS</h1>
+        <p className="text-sm text-zinc-400">
+          Alle fünf Module auf einen Blick. Über das Menü links wechselst du in eines davon.
+        </p>
+      </div>
 
       {warnings.length > 0 && (
         <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">

@@ -2,6 +2,11 @@
  * Zentrale Modul-Registry: eine Quelle für Farben, Links und Beschreibungen
  * aller fünf Module. Nav, Dashboard, Inbox und Command-Palette lesen hieraus —
  * neue Module oder Farbwechsel passieren nur noch an dieser Stelle.
+ *
+ * Über den Modulen steht PLATFORM (MomentumOS): Dashboard, Fokus und
+ * Einstellungen gehören keinem einzelnen Modul, sondern der Plattform. Vorher
+ * hing das Dashboard an MatchOS — dadurch stand auf der Startseite der Name
+ * des Dating-Moduls über allem.
  */
 export type ModuleId = "match" | "moments" | "jobs" | "book" | "trading"
 export type SignalModule = ModuleId | "system"
@@ -26,26 +31,18 @@ export const MODULES: ModuleDef[] = [
   {
     id: "match",
     label: "MatchOS",
-    tagline: "Dating-Agent",
-    home: "/",
+    tagline: "Kennenlernen",
+    home: "/contacts",
     text: "text-rose-500",
     bg: "bg-rose-950/40",
     border: "border-rose-800/60",
     dot: "bg-rose-500",
     hex: "#f43f5e",
-    match: (p) =>
-      p === "/" ||
-      p.startsWith("/inbox") ||
-      p.startsWith("/contacts") ||
-      p.startsWith("/pipeline") ||
-      p.startsWith("/queue") ||
-      p.startsWith("/settings"),
+    match: (p) => p.startsWith("/contacts") || p.startsWith("/pipeline") || p.startsWith("/queue"),
     links: [
-      { href: "/", label: "Dashboard" },
       { href: "/contacts", label: "Matchbox" },
       { href: "/pipeline", label: "Pipeline" },
       { href: "/queue", label: "Queue" },
-      { href: "/settings", label: "Einstellungen" },
     ],
   },
   {
@@ -118,6 +115,41 @@ export const MODULES: ModuleDef[] = [
 ]
 
 export const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]))
+
+/** Die Ebene über den Modulen — Startseite und alles Modulübergreifende. */
+export type NavSection = Omit<ModuleDef, "id"> & { id: ModuleId | "platform" }
+
+export const PLATFORM: NavSection = {
+  id: "platform",
+  label: "MomentumOS",
+  tagline: "Alle Module auf einen Blick",
+  home: "/",
+  text: "text-zinc-100",
+  bg: "bg-zinc-800/60",
+  border: "border-zinc-700",
+  dot: "bg-zinc-100",
+  hex: "#f4f4f5",
+  // Inbox, Fragen und Suche gehören ebenfalls hierher, haben in der Nav aber
+  // eigene Knöpfe rechts — deshalb nicht zusätzlich in der Linkleiste.
+  match: (p) =>
+    p === "/" ||
+    p.startsWith("/inbox") ||
+    p.startsWith("/focus") ||
+    p.startsWith("/ask") ||
+    p.startsWith("/search") ||
+    p.startsWith("/settings"),
+  links: [
+    { href: "/", label: "Dashboard" },
+    { href: "/focus", label: "▶ Fokus" },
+    { href: "/settings", label: "Einstellungen" },
+  ],
+}
+
+/** Welcher Bereich gehört zu diesem Pfad? Plattform schlägt Modul. */
+export function sectionForPath(pathname: string): NavSection {
+  if (PLATFORM.match(pathname)) return PLATFORM
+  return MODULES.find((m) => m.match(pathname)) ?? PLATFORM
+}
 
 /** Anzeige-Infos für System-Signale (Cron/Scraper-Warnungen) neben den Modulen. */
 export const SYSTEM_STYLE = {
