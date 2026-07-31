@@ -540,13 +540,28 @@ export const ASK_TOOLS: AskTool[] = [
           link: `/contacts/${x.c.id}`,
         }))
 
-      const alle = [...termine, ...geburtstage].sort((a, b) => a.am.localeCompare(b.am)).slice(0, 40)
-      const offen = alle.filter((t) => "ueberfaellig" in t && t.ueberfaellig).length
+      // Die Fälligkeit als fertigen Satzbaustein mitgeben statt als Flag: ein
+      // Feld „überfällig seit 21 Tagen" übersieht das Modell nicht, ein
+      // boolesches ueberfaellig schon.
+      const alle = [...termine, ...geburtstage]
+        .sort((a, b) => a.am.localeCompare(b.am))
+        .slice(0, 40)
+        .map((t) => {
+          const d = tageSeit(t.am)
+          return {
+            ...t,
+            ueberfaellig: undefined,
+            faelligkeit:
+              d == null ? null : d > 0 ? `überfällig seit ${d} Tagen` : d === 0 ? "heute fällig" : `in ${-d} Tagen`,
+          }
+        })
+      const offen = alle.filter((t) => t.faelligkeit?.startsWith("überfällig")).length
       return {
         zeitfenster_tage: tage,
+        anzahl_ueberfaellig: offen,
         hinweis:
           offen > 0
-            ? `${offen} Einträge sind mit ueberfaellig markiert — deren Fälligkeit liegt in der VERGANGENHEIT. Sie nicht als kommende Termine darstellen, sondern als überfällig.`
+            ? `${offen} Einträge sind ÜBERFÄLLIG — ihr Datum liegt in der Vergangenheit. Diese niemals als kommende Termine darstellen. Das Feld faelligkeit enthält die richtige Formulierung, benutze sie.`
             : undefined,
         termine: alle,
       }
