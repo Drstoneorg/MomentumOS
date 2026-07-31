@@ -6,6 +6,7 @@ import { FollowupDone } from "@/components/FollowupDone"
 import { QuickReply } from "@/components/QuickReply"
 import { SignalActions } from "@/components/SignalActions"
 import { ArchiveCandidates } from "@/components/ArchiveCandidates"
+import { AskPanel } from "@/components/AskPanel"
 import type { Enums } from "@/lib/database.types"
 import { daysUntilBirthday, connectionScore } from "@/lib/moments"
 import { collectSignals } from "@/lib/signals"
@@ -240,6 +241,11 @@ export default async function Dashboard() {
           )}
         </ModuleTile>
       </div>
+
+      {/* Frage-Chat über alle Module — Antworten kommen aus der eigenen Datenbank */}
+      <Card title="🔮 Fragen">
+        <AskPanel hoehe="h-64" />
+      </Card>
 
       {/* Feed + Briefing */}
       <div className="grid gap-4 lg:grid-cols-3">

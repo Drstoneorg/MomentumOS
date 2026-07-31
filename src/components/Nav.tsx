@@ -92,6 +92,15 @@ export function Nav() {
       >
         📥 Inbox
       </Link>
+      <Link
+        href="/ask"
+        title="Fragen — Freitext über alle Module"
+        className={`rounded-lg px-2 py-1.5 text-sm ${
+          pathname === "/ask" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:text-white"
+        }`}
+      >
+        🔮 Fragen
+      </Link>
       <button
         onClick={() => window.dispatchEvent(new Event("momentumos:palette"))}
         title="Befehle & Suche (⌘K)"

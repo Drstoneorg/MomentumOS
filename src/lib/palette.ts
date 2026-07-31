@@ -51,6 +51,7 @@ export function staticCommands(): Command[] {
   const cmds: Command[] = [
     { label: "Inbox — alle Signale", href: "/inbox", module: null, icon: "📥" },
     { label: "Fokus-Modus starten", href: "/focus", module: null, icon: "▶" },
+    { label: "Fragen — Freitext über alle Daten", href: "/ask", module: null, icon: "🔮" },
     { label: "Schnell erfassen (Screenshot/Text)", href: "/capture", module: "moments", icon: "📸" },
     { label: "Karte erstellen", href: "/cards", module: "moments", icon: "🃏" },
     { label: "Lebenslauf ansehen", href: "/jobs/cv", module: "jobs", icon: "📄" },
