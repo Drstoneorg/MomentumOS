@@ -480,7 +480,17 @@ export const ASK_TOOLS: AskTool[] = [
         db.from("contacts").select("id, name, birthday").not("birthday", "is", null),
       ])
 
-      const termine: { am: string; was: string; titel: string; detail: string | null; link: string }[] = []
+      // Überfällige Follow-ups bleiben bewusst drin — sie sind das Dringlichste,
+      // was es gibt. Sie werden aber markiert, damit sie nicht als „kommt noch"
+      // durchgehen: ihr Fälligkeitsdatum liegt in der Vergangenheit.
+      const termine: {
+        am: string
+        was: string
+        titel: string
+        detail: string | null
+        link: string
+        ueberfaellig?: boolean
+      }[] = []
       for (const d of dates.data ?? []) {
         termine.push({
           am: d.starts_at,
@@ -511,6 +521,7 @@ export const ASK_TOOLS: AskTool[] = [
           titel: f.contacts?.name ?? "?",
           detail: f.reason,
           link: `/contacts/${f.contact_id}`,
+          ueberfaellig: f.due_at < jetzt,
         })
       }
       for (const m of meetups.data ?? []) {
@@ -529,9 +540,15 @@ export const ASK_TOOLS: AskTool[] = [
           link: `/contacts/${x.c.id}`,
         }))
 
+      const alle = [...termine, ...geburtstage].sort((a, b) => a.am.localeCompare(b.am)).slice(0, 40)
+      const offen = alle.filter((t) => "ueberfaellig" in t && t.ueberfaellig).length
       return {
         zeitfenster_tage: tage,
-        termine: [...termine, ...geburtstage].sort((a, b) => a.am.localeCompare(b.am)).slice(0, 40),
+        hinweis:
+          offen > 0
+            ? `${offen} Einträge sind mit ueberfaellig markiert — deren Fälligkeit liegt in der VERGANGENHEIT. Sie nicht als kommende Termine darstellen, sondern als überfällig.`
+            : undefined,
+        termine: alle,
       }
     },
   },
