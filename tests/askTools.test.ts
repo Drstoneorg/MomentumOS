@@ -152,4 +152,14 @@ describe("Werkzeug-Registry", () => {
       expect(quelle).not.toContain(verboten)
     }
   })
+
+  it("vergleicht realm gegen den Wert aus der Datenbank", async () => {
+    // In contacts.realm steht "moment", nicht "moments". Der Vergleich gegen
+    // "moments" traf nie zu und meldete MomentOS-Kontakte als MatchOS.
+    const { readFileSync } = await import("node:fs")
+    const quelle = readFileSync("src/lib/ai/askTools.ts", "utf8")
+    expect(quelle).not.toContain('realm === "moments"')
+    expect(quelle).not.toContain('"moments", "match"')
+    expect(quelle).toContain('realm === "moment"')
+  })
 })

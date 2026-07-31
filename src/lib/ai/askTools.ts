@@ -122,8 +122,8 @@ export const ASK_TOOLS: AskTool[] = [
         name: { type: "string", description: "Gesuchter Name oder Namensteil" },
         realm: {
           type: "string",
-          description: "Optional eingrenzen: moments = Freunde/Familie, match = Kennenlernen",
-          enum: ["moments", "match"],
+          description: "Optional eingrenzen: moment = Freunde/Familie, match = Kennenlernen",
+          enum: ["moment", "match"],
         },
       },
       required: ["name"],
@@ -144,7 +144,7 @@ export const ASK_TOOLS: AskTool[] = [
         treffer: treffer.slice(0, 8).map((c) => ({
           kontakt_id: c.id,
           name: c.name,
-          bereich: c.realm === "moments" ? "MomentOS" : "MatchOS",
+          bereich: c.realm === "moment" ? "MomentOS" : "MatchOS",
           plattform: c.platform,
           ort: c.location,
           stufe: c.pipeline_stage,
@@ -179,7 +179,7 @@ export const ASK_TOOLS: AskTool[] = [
       const score = connectionScore(data)
       return {
         name: data.name,
-        bereich: data.realm === "moments" ? "MomentOS" : "MatchOS",
+        bereich: data.realm === "moment" ? "MomentOS" : "MatchOS",
         alter: data.age,
         ort: data.location,
         sprache: data.language,
@@ -435,7 +435,7 @@ export const ASK_TOOLS: AskTool[] = [
       return {
         treffer: (data ?? []).map((m) => ({
           person: m.contacts?.name ?? "?",
-          bereich: m.contacts?.realm === "moments" ? "MomentOS" : "MatchOS",
+          bereich: m.contacts?.realm === "moment" ? "MomentOS" : "MatchOS",
           art: m.kind,
           inhalt: m.content,
           link: `/contacts/${m.contact_id}`,
@@ -593,7 +593,7 @@ export const ASK_TOOLS: AskTool[] = [
         hinweis: "Sortiert nach Dringlichkeit, oben die am längsten überfälligen.",
         kontakte: bewertet.map((x) => ({
           name: x.c.name,
-          bereich: x.c.realm === "moments" ? "MomentOS" : "MatchOS",
+          bereich: x.c.realm === "moment" ? "MomentOS" : "MatchOS",
           rhythmus_score_0_bis_100: x.s.score,
           rhythmus_tage: x.c.contact_frequency_days,
           tage_seit_kontakt: tageSeit(x.c.last_contact_at),
@@ -628,7 +628,7 @@ export const ASK_TOOLS: AskTool[] = [
             name: x.c.name,
             datum: x.c.birthday,
             in_tagen: x.d,
-            bereich: x.c.realm === "moments" ? "MomentOS" : "MatchOS",
+            bereich: x.c.realm === "moment" ? "MomentOS" : "MatchOS",
             link: `/contacts/${x.c.id}`,
           })),
       }
@@ -1051,7 +1051,7 @@ export const ASK_TOOLS: AskTool[] = [
         zaehle("memories"),
       ])
       const { data: realms } = await db.from("contacts").select("realm")
-      const moments = (realms ?? []).filter((r) => r.realm === "moments").length
+      const moments = (realms ?? []).filter((r) => r.realm === "moment").length
       return {
         kontakte_gesamt: contacts,
         davon_momentos: moments,

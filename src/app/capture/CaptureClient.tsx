@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { channelDeepLink } from "@/lib/channels"
 import { btnCls, btnGhostCls, inputCls } from "@/components/ui"
+import { downscale, istBild } from "@/lib/imageResize"
 
 type ItemResult = {
   contactId: string
@@ -25,50 +26,52 @@ type Item = {
   payload: { image?: string; text?: string }
 }
 
-// Bilder vor dem Upload verkleinern — Vision braucht keine 12-MP-Fotos.
-async function downscale(file: File, maxDim = 1600): Promise<string> {
-  const dataUrl: string = await new Promise((res, rej) => {
-    const r = new FileReader()
-    r.onload = () => res(r.result as string)
-    r.onerror = rej
-    r.readAsDataURL(file)
-  })
-  const img = await new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image()
-    i.onload = () => res(i)
-    i.onerror = rej
-    i.src = dataUrl
-  })
-  const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
-  if (scale >= 1) return dataUrl
-  const canvas = document.createElement("canvas")
-  canvas.width = Math.round(img.width * scale)
-  canvas.height = Math.round(img.height * scale)
-  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL("image/jpeg", 0.85)
-}
-
 export function CaptureClient() {
   const [items, setItems] = useState<Item[]>([])
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const camRef = useRef<HTMLInputElement>(null)
   const runningRef = useRef(false)
 
   const addFiles = useCallback(async (files: File[]) => {
     for (const f of files) {
-      if (!f.type.startsWith("image/")) continue
-      const image = await downscale(f)
-      setItems((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          label: f.name || "Bild",
-          preview: image,
-          status: "wartet",
-          payload: { image },
-        },
-      ])
+      const label = f.name || "Bild"
+      if (!istBild(f)) {
+        // Früher wurde hier still übersprungen — am Handy sah das aus, als
+        // passiere gar nichts.
+        setItems((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            label,
+            preview: null,
+            status: "fehler",
+            error: `„${label}“ ist kein Bild${f.type ? ` (${f.type})` : ""}`,
+            payload: {},
+          },
+        ])
+        continue
+      }
+      try {
+        const image = await downscale(f)
+        setItems((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), label, preview: image, status: "wartet", payload: { image } },
+        ])
+      } catch (e) {
+        setItems((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            label,
+            preview: null,
+            status: "fehler",
+            error: e instanceof Error ? e.message : "Bild konnte nicht vorbereitet werden",
+            payload: {},
+          },
+        ])
+      }
     }
   }, [])
 
@@ -152,15 +155,27 @@ export function CaptureClient() {
           dragOver ? "border-rose-500 bg-rose-950/20 text-rose-200" : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
         }`}
       >
-        <p className="font-medium">Bilder hierher ziehen, klicken zum Auswählen</p>
+        <p className="font-medium">Bilder hierher ziehen, tippen zum Auswählen</p>
         <p className="mt-1 text-xs text-zinc-500">
-          oder Screenshot mit Strg/Cmd+V einfügen · am Handy öffnet sich die Kamera
+          Fotos, Screenshots, Visitenkarten · am Rechner auch mit Strg/Cmd+V
         </p>
+        {/* Ohne capture-Attribut: sonst erzwingt das Handy die Kamera und die
+            Galerie ist gar nicht erreichbar. Kamera hat einen eigenen Knopf. */}
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
           multiple
+          hidden
+          onChange={(e) => {
+            addFiles([...(e.target.files ?? [])])
+            e.target.value = ""
+          }}
+        />
+        <input
+          ref={camRef}
+          type="file"
+          accept="image/*"
           capture="environment"
           hidden
           onChange={(e) => {
@@ -169,6 +184,13 @@ export function CaptureClient() {
           }}
         />
       </div>
+
+      <button
+        onClick={() => camRef.current?.click()}
+        className={btnGhostCls + " w-full sm:hidden"}
+      >
+        📷 Mit der Kamera aufnehmen
+      </button>
 
       <div className="flex gap-2">
         <input

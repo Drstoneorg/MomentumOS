@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { Card, btnCls, inputCls } from "@/components/ui"
+import { downscale, istBild } from "@/lib/imageResize"
 import type { PhotoVerdict } from "@/lib/ai/vision"
 
 export function PhotoAnalyzeCard({ available }: { available: boolean }) {
@@ -13,17 +14,25 @@ export function PhotoAnalyzeCard({ available }: { available: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ""
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const d = reader.result as string
+    setError(null)
+    if (!istBild(file)) {
+      setError(`„${file.name}“ ist kein Bild`)
+      return
+    }
+    try {
+      // Verkleinern statt roh schicken — Handyfotos sprengen sonst das
+      // Body-Limit und der Aufruf scheitert ohne brauchbare Meldung.
+      const d = await downscale(file)
       setDataUrl(d)
       setPreview(d)
       setUrl("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bild konnte nicht gelesen werden")
     }
-    reader.readAsDataURL(file)
   }
 
   async function analyze() {
