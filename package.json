@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx worker/telegram.ts",
+    "worker:daemon": "bash scripts/worker-launchd.sh install",
+    "worker:daemon:stop": "bash scripts/worker-launchd.sh uninstall",
+    "worker:daemon:status": "bash scripts/worker-launchd.sh status",
     "telegram:login": "tsx worker/telegram-login.ts",
     "test": "vitest run",
     "test:e2e": "playwright test"

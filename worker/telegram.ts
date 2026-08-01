@@ -26,11 +26,14 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
 
 if (!apiId || !apiHash || !session) {
   console.error("Telegram-Env fehlt. Erst `npm run telegram:login` ausführen.")
-  process.exit(1)
+  // Exit 0 statt 1: unter launchd (KeepAlive bei Fehler) würde Exit 1 ein
+  // Neustart-Gewitter auslösen. Sauber beendet heißt: schlafen, bis die
+  // Config da ist und der Dienst neu geladen wird.
+  process.exit(0)
 }
 if (!supabaseUrl || !serviceKey) {
-  console.error("NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY fehlen.")
-  process.exit(1)
+  console.error("NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY fehlen in .env.local.")
+  process.exit(0)
 }
 
 const siteUrl = (process.env.MOMENTUMOS_URL ?? process.env.MATCHOS_URL ?? "https://momentumos-hq.vercel.app").replace(/\/$/, "")
