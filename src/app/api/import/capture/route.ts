@@ -8,8 +8,28 @@ import {
 import { CHANNELS } from "@/lib/channels"
 import { suggestIntent } from "@/lib/scoring"
 import { createOpenerDraft } from "@/lib/ai/openerDraft"
+import { findeUrl, holeSeite, profilAusUrl, type UrlProfil } from "@/lib/urlCapture"
 
 export const maxDuration = 60
+
+/** Grundgerüst, wenn nur die Adresse etwas hergibt (Anmeldeschranke). */
+function ausProfil(profil: UrlProfil): CapturedContact {
+  const beruflich = profil.channel === "linkedin" || profil.channel === "xing"
+  return {
+    name: profil.nameVorschlag ?? "Unbekannt",
+    kind: beruflich ? "business" : "unbekannt",
+    age: null,
+    location: null,
+    language: "de",
+    birthday: null,
+    company: null,
+    bio: null,
+    interests: [],
+    notes: `Aus dem Link übernommen (${profil.plattform} gibt ohne Anmeldung nichts preis): ${profil.url}`,
+    tags: beruflich ? ["business"] : [],
+    channels: [],
+  }
+}
 
 const normPhone = (h: string) => h.replace(/[^\d]/g, "").slice(-9) // letzte 9 Ziffern als Vergleichsbasis
 
@@ -32,9 +52,45 @@ export async function POST(req: Request) {
   }
 
   try {
-    const p: CapturedContact = image
-      ? await extractContactFromImage(image)
-      : await extractContactFromText(text!)
+    // Steckt eine Adresse im Text, wird sie zur Quelle — der Rest bleibt Kontext.
+    const url = !image && text ? findeUrl(text) : null
+    const profil = url ? profilAusUrl(url) : null
+    let quelle: "bild" | "text" | "seite" | "nur_link" = image ? "bild" : "text"
+    let quellenHinweis: string | null = null
+
+    let p: CapturedContact
+    if (image) {
+      p = await extractContactFromImage(image)
+    } else if (url && profil) {
+      const rest = text!.replace(url, "").replace(/^\s*[-–:,]\s*/, "").trim()
+      const seite = await holeSeite(url)
+      if (seite.ok) {
+        p = await extractContactFromText(
+          [
+            `Quelle: ${url} (${profil.plattform})`,
+            seite.text,
+            rest ? `Ergänzung des Nutzers: ${rest}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        )
+        quelle = "seite"
+      } else {
+        // Kein Modellaufruf: aus der Adresse allein gibt es nichts zu deuten.
+        p = ausProfil(profil)
+        if (rest) p.notes = `${p.notes} · ${rest}`
+        quelle = "nur_link"
+        quellenHinweis =
+          seite.grund === "gesperrt"
+            ? `${profil.plattform} gibt ohne Anmeldung keine Profildaten heraus — Kontakt aus dem Link angelegt. Für mehr: Profiltext oder Screenshot hier einwerfen.`
+            : `Seite nicht erreichbar (${seite.info}) — Kontakt aus dem Link angelegt.`
+      }
+    } else {
+      p = await extractContactFromText(text!)
+    }
+
+    // Der Kanal aus der Adresse ist belegt, unabhängig davon, was die Seite hergab.
+    if (profil) p.channels = [...p.channels, { channel: profil.channel, handle: profil.handle }]
 
     // Nur Kanäle aus der Registry übernehmen
     const channels = p.channels.filter((c) => CHANNELS[c.channel])
@@ -86,7 +142,12 @@ export async function POST(req: Request) {
           birthday: cur?.birthday ?? p.birthday ?? undefined,
           bio: cur?.bio ?? p.bio ?? undefined,
           interests: cur?.interests?.length ? undefined : p.interests.length ? p.interests : undefined,
-          notes: cur?.notes ? (notes ? `${cur.notes} · ${notes}` : undefined) : notes || undefined,
+          // Beim zweiten Erfassen derselben Quelle nicht nochmal anhängen
+          notes: cur?.notes
+            ? notes && !cur.notes.includes(notes)
+              ? `${cur.notes} · ${notes}`
+              : undefined
+            : notes || undefined,
           relationship_tags: cur?.relationship_tags?.length ? undefined : tags.length ? tags : undefined,
         })
         .eq("id", contactId)
@@ -150,6 +211,8 @@ export async function POST(req: Request) {
       birthday: p.birthday,
       channels: [...(existingCh ?? []), ...fresh],
       addedChannels: fresh.length,
+      quelle,
+      quellenHinweis,
     })
   } catch (e) {
     return NextResponse.json(

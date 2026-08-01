@@ -114,6 +114,39 @@ export const CHANNELS: Record<string, ChannelInfo> = {
     deepLink: (h) => (/^\d{5,}$/.test(clean(h)) ? `https://discord.com/users/${clean(h)}` : null),
     hint: "Bei User-ID öffnet Profil, sonst Namen kopieren.",
   },
+  // Profil-Kanäle: kein Chat, aber der Ort, an dem die Person zu finden ist.
+  linkedin: {
+    id: "linkedin",
+    label: "LinkedIn",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => (h.startsWith("http") ? h : `https://www.linkedin.com/in/${clean(h)}`),
+    hint: "Öffnet das Profil — Nachricht dort selbst schreiben.",
+  },
+  xing: {
+    id: "xing",
+    label: "Xing",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => (h.startsWith("http") ? h : `https://www.xing.com/profile/${clean(h)}`),
+    hint: "Öffnet das Profil.",
+  },
+  github: {
+    id: "github",
+    label: "GitHub",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => (h.startsWith("http") ? h : `https://github.com/${clean(h)}`),
+    hint: "Öffnet das Profil.",
+  },
+  website: {
+    id: "website",
+    label: "Website",
+    prefill: false,
+    auto: false,
+    deepLink: (h) => (h.startsWith("http") ? h : `https://${h}`),
+    hint: "Öffnet die Seite.",
+  },
 }
 
 /** Alle Kanal-IDs für Auswahl-Dropdowns. */

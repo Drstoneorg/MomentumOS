@@ -14,6 +14,8 @@ type ItemResult = {
   birthday: string | null
   channels: { channel: string; handle: string }[]
   addedChannels: number
+  quelle?: "bild" | "text" | "seite" | "nur_link"
+  quellenHinweis?: string | null
 }
 
 type Item = {
@@ -197,13 +199,17 @@ export function CaptureClient() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addText()}
-          placeholder='Oder Text: "Anna Huber +43 660 1234567, anna@mail.at, Geb. 12.5.1995"'
+          placeholder='Link oder Text: linkedin.com/in/max-mustermann · "Anna Huber +43 660 1234567"'
           className={inputCls}
         />
         <button onClick={addText} disabled={!text.trim()} className={btnCls}>
           Erfassen
         </button>
       </div>
+      <p className="-mt-2 text-xs text-zinc-500">
+        Links werden geöffnet und ausgelesen. LinkedIn, Instagram und TikTok zeigen ohne Anmeldung
+        nichts — dort entsteht der Kontakt aus der Adresse, Rest per Screenshot nachreichen.
+      </p>
 
       {items.length > 0 && (
         <div className="space-y-2">
@@ -232,6 +238,9 @@ export function CaptureClient() {
                         {i.result.addedChannels ? ` · ${i.result.addedChannels} Kanal/Kanäle neu` : ""}
                       </span>
                     </p>
+                    {i.result.quellenHinweis && (
+                      <p className="mt-1 text-xs text-amber-400/90">{i.result.quellenHinweis}</p>
+                    )}
                     {i.result.channels.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {i.result.channels.map((c) => {
