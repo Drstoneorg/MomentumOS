@@ -6,6 +6,7 @@ import { StyleLearnCard } from "./StyleLearnCard"
 import { ExtensionTokenForm } from "./ExtensionTokenForm"
 import { TelegramBotForm } from "./TelegramBotForm"
 import { TicketWebhookForm } from "./TicketWebhookForm"
+import { CalendarFeedForm } from "./CalendarFeedForm"
 import { TasteProfileForm } from "./TasteProfileForm"
 import { PushToggle } from "./PushToggle"
 import { AiBudgetForm } from "./AiBudgetForm"
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: tgToken }, { data: tgChat }, { data: twSecret }, { data: twLast }, { data: fbRows }, { data: tgHook }] = await Promise.all([
+  const [{ data: style }, { data: styleRules }, { data: learnedStyle }, { data: extToken }, { data: taste }, { data: tgToken }, { data: tgChat }, { data: twSecret }, { data: twLast }, { data: fbRows }, { data: tgHook }, { data: calToken }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "user_style_profile").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "user_style_rules").maybeSingle(),
     supabase.from("settings").select("value").eq("key", "learned_style").maybeSingle(),
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
     supabase.from("settings").select("value").eq("key", "ticket_webhook_last").maybeSingle(),
     supabase.from("reply_feedback").select("style, rating, content, created_at").order("created_at", { ascending: false }).limit(500),
     supabase.from("settings").select("value").eq("key", "telegram_webhook_secret").maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "calendar_token").maybeSingle(),
   ])
 
   // Daumen-Auswertung: pro Stil hoch/runter + zuletzt bewertete Beispiele
@@ -269,6 +271,15 @@ export default async function SettingsPage() {
             }
           })()}
         />
+      </Card>
+
+      <Card title="📅 Kalender-Feed (Abo)">
+        <p className="mb-2 text-sm text-zinc-400">
+          Alles Datierte als abonnierbarer Kalender: Dates, Events, Gigs, Meetups und
+          Geburtstage (jährlich wiederkehrend). Einmal abonnieren — die Kalender-App
+          holt sich Änderungen selbst.
+        </p>
+        <CalendarFeedForm currentToken={typeof calToken?.value === "string" ? calToken.value : ""} />
       </Card>
 
       <Card title="Push-Benachrichtigungen">
