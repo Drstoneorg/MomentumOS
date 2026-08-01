@@ -111,6 +111,13 @@ export function ArtistDetail({
             <Row label="Stadt">
               <InlineField value={artist.city ?? ""} onSave={(v) => save({ city: v || null })} />
             </Row>
+            <Row label="Zielpublikum">
+              <InlineField
+                value={artist.audience ?? ""}
+                placeholder="wen zieht der Act? z. B. Goth-Crowd, 20–30"
+                onSave={(v) => save({ audience: v || null })}
+              />
+            </Row>
             <Row label="Gage von">
               <InlineField
                 value={artist.fee_min_cents ? formatEuro(artist.fee_min_cents) : ""}

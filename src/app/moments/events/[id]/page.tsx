@@ -4,6 +4,7 @@ import { Card } from "@/components/ui"
 import { EventInviteManager } from "./EventInviteManager"
 import { EventBudget } from "./EventBudget"
 import { EventLineup } from "./EventLineup"
+import { EventAudience } from "./EventAudience"
 
 export const dynamic = "force-dynamic"
 
@@ -60,6 +61,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {event.capacity ? ` · Kapazität ${event.capacity}` : ""}
         </p>
         {event.description && <p className="mt-2 text-sm text-zinc-300">{event.description}</p>}
+        <EventAudience eventId={id} audience={event.audience} />
         <div className="mt-3">
           <a
             href={`/api/events/${id}/guestlist`}

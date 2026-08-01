@@ -54,6 +54,7 @@ export type Database = {
         Row: {
           active: boolean
           artist_type: Database["public"]["Enums"]["artist_type"]
+          audience: string | null
           city: string | null
           contact_email: string | null
           contact_name: string | null
@@ -73,6 +74,7 @@ export type Database = {
         Insert: {
           active?: boolean
           artist_type?: Database["public"]["Enums"]["artist_type"]
+          audience?: string | null
           city?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -92,6 +94,7 @@ export type Database = {
         Update: {
           active?: boolean
           artist_type?: Database["public"]["Enums"]["artist_type"]
+          audience?: string | null
           city?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -550,6 +553,7 @@ export type Database = {
       }
       events: {
         Row: {
+          audience: string | null
           capacity: number | null
           created_at: string
           description: string | null
@@ -562,6 +566,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          audience?: string | null
           capacity?: number | null
           created_at?: string
           description?: string | null
@@ -574,6 +579,7 @@ export type Database = {
           title: string
         }
         Update: {
+          audience?: string | null
           capacity?: number | null
           created_at?: string
           description?: string | null
