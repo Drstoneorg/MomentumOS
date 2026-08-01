@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 import { daysUntilBirthday, connectionScore } from "@/lib/moments"
 import { GIG_STATUS_LABELS, formatEuro } from "@/lib/artists"
+import { SHRINE_TOOLS } from "@/lib/ai/shrineTools"
 
 /**
  * Werkzeugkasten für den Frage-Chat: feste, ausschließlich LESENDE Abfragen über
@@ -130,15 +131,40 @@ export const ASK_TOOLS: AskTool[] = [
     },
     async run(db, args) {
       const q = str(args.name)
-      let query = db
-        .from("contacts")
-        .select("id, name, realm, platform, location, pipeline_stage, last_contact_at, birthday")
-        .limit(200)
       const realm = str(args.realm)
-      if (realm) query = query.eq("realm", realm)
-      const { data, error } = await query
-      if (error) return { fehler: error.message }
-      const treffer = rankKontakte(q, data ?? [])
+      const felder = "id, name, realm, platform, location, pipeline_stage, last_contact_at, birthday"
+      type Zeile = Pick<
+        Database["public"]["Tables"]["contacts"]["Row"],
+        "id" | "name" | "realm" | "platform" | "location" | "pipeline_stage" | "last_contact_at" | "birthday"
+      >
+      // DB-seitig vorfiltern statt blind die ersten 200 Zeilen zu holen — sonst
+      // fällt ab ~200 Kontakten still jemand hinten runter. ilike auf den ganzen
+      // Begriff plus einzelne Wörter, damit „Anna Huber“ auch „Huber Anna“ trifft.
+      const kandidaten = new Map<string, Zeile>()
+      const begriffe = [q, ...q.split(/\s+/)]
+        .map((s) => s.trim())
+        .filter((s) => s.length >= 2)
+        .slice(0, 4)
+      for (const b of begriffe) {
+        let query = db.from("contacts").select(felder).ilike("name", `%${b}%`).limit(60)
+        if (realm) query = query.eq("realm", realm)
+        const { data, error } = await query
+        if (error) return { fehler: error.message }
+        for (const z of data ?? []) kandidaten.set(z.id, z)
+      }
+      // Tippfehler- und Umlaut-Netz: findet ilike kaum etwas, nochmal breit
+      // holen und unscharf bewerten („joerg“ → „Jörg“).
+      if (kandidaten.size < 3) {
+        let query = db
+          .from("contacts")
+          .select(felder)
+          .order("last_contact_at", { ascending: false, nullsFirst: false })
+          .limit(200)
+        if (realm) query = query.eq("realm", realm)
+        const { data } = await query
+        for (const z of data ?? []) if (!kandidaten.has(z.id)) kandidaten.set(z.id, z)
+      }
+      const treffer = rankKontakte(q, [...kandidaten.values()])
       if (!treffer.length) return { treffer: [], hinweis: `Keine Person namens „${q}“ gefunden.` }
       return {
         treffer: treffer.slice(0, 8).map((c) => ({
@@ -674,6 +700,7 @@ export const ASK_TOOLS: AskTool[] = [
             keine_antwort: zaehle("no_reply") + zaehle("invited"),
             tickets,
             erschienen: zaehle("attended"),
+            zielpublikum: e.audience,
             ticket_preis: e.ticket_price_cents != null ? formatEuro(e.ticket_price_cents) : null,
             erloes_geschaetzt:
               e.ticket_price_cents != null ? formatEuro(tickets * e.ticket_price_cents) : null,
@@ -761,10 +788,12 @@ export const ASK_TOOLS: AskTool[] = [
 
   {
     name: "bewerbungen",
-    description: "JobOS: Bewerbungen mit Stufe, Match-Score, Firma, Stadt und nächster Aktion.",
+    description:
+      "JobOS: Bewerbungen mit Stufe, Match-Score, Firma, Stadt und nächster Aktion. Für „habe ich mich bei X beworben“ den Parameter suche nutzen.",
     parameters: {
       type: "object",
       properties: {
+        suche: { type: "string", description: "Optional: Firma oder Jobtitel, z. B. „Adidas“ oder „Social Media Manager“" },
         stufe: { type: "string", description: "Optional nach Stufe filtern, z. B. gefunden, beworben, interview" },
         anzahl: { type: "number", description: "Standard 15" },
       },
@@ -778,6 +807,9 @@ export const ASK_TOOLS: AskTool[] = [
         .limit(Math.min(num(args.anzahl, 15), 50))
       const stufe = str(args.stufe)
       if (stufe) q = q.eq("stage", stufe)
+      // Kommas und Klammern raus — sie würden die or()-Syntax zerlegen.
+      const suche = str(args.suche).replace(/[,%()]/g, " ").trim()
+      if (suche) q = q.or(`company.ilike.%${suche}%,title.ilike.%${suche}%`)
       const { data, error } = await q
       if (error) return { fehler: error.message }
       return {
@@ -831,6 +863,7 @@ export const ASK_TOOLS: AskTool[] = [
     parameters: {
       type: "object",
       properties: {
+        suche: { type: "string", description: "Optional: Artist-Name oder Namensteil" },
         genre: { type: "string", description: "Optional nach Genre filtern" },
         gig_status: {
           type: "string",
@@ -843,7 +876,7 @@ export const ASK_TOOLS: AskTool[] = [
     async run(db, args) {
       const genre = str(args.genre)
       const [artistRes, gigRes] = await Promise.all([
-        db.from("artists").select("id, name, artist_type, genres, city, fee_min_cents, fee_max_cents, rating, active"),
+        db.from("artists").select("id, name, artist_type, genres, city, audience, fee_min_cents, fee_max_cents, rating, active"),
         (() => {
           let q = db
             .from("gigs")
@@ -856,10 +889,14 @@ export const ASK_TOOLS: AskTool[] = [
         })(),
       ])
       if (artistRes.error) return { fehler: artistRes.error.message }
-      const artists = (artistRes.data ?? []).filter(
-        (a) => !genre || (a.genres ?? []).some((g) => g.toLowerCase().includes(genre.toLowerCase()))
+      const suche = str(args.suche)
+      const artists = (artistRes.data ?? [])
+        .filter((a) => !genre || (a.genres ?? []).some((g) => g.toLowerCase().includes(genre.toLowerCase())))
+        .filter((a) => !suche || normName(a.name).includes(normName(suche)))
+      // Gig-Liste bei Namenssuche auf diesen Artist eingrenzen
+      const gigs = (gigRes.data ?? []).filter(
+        (g) => !suche || normName(g.artists?.name ?? "").includes(normName(suche))
       )
-      const gigs = gigRes.data ?? []
       const summeGezahlt = gigs
         .filter((g) => g.status === "played")
         .reduce((sum, g) => sum + (g.fee_cents ?? 0), 0)
@@ -869,6 +906,7 @@ export const ASK_TOOLS: AskTool[] = [
           typ: a.artist_type,
           genres: a.genres,
           stadt: a.city,
+          zielpublikum: a.audience,
           gagen_rahmen:
             a.fee_min_cents != null || a.fee_max_cents != null
               ? `${a.fee_min_cents != null ? formatEuro(a.fee_min_cents) : "?"} – ${a.fee_max_cents != null ? formatEuro(a.fee_max_cents) : "?"}`
@@ -1067,13 +1105,79 @@ export const ASK_TOOLS: AskTool[] = [
       }
     },
   },
+
+  // Zweites Supabase-Projekt: AirbnbWorker (env-gated, sonst nur Status-Stub)
+  ...SHRINE_TOOLS,
 ]
 
 export const ASK_TOOL_BY_NAME = new Map(ASK_TOOLS.map((t) => [t.name, t]))
 
+// ------------------------------------------------- Vorfilter nach Modul
+// Die volle Werkzeugliste kostet ~2500 Token pro Modellaufruf. Personen-Fragen
+// („wann habe ich Anna gesehen?“) brauchen die Job-/Book-/Trading-Werkzeuge
+// nie — die Basis geht immer mit, Spezialgruppen nur bei Stichwort-Treffer.
+// Sicherheitsnetz: ask.ts führt jedes ECHTE Werkzeug aus, auch wenn es nicht
+// angeboten wurde — ein Fehlgriff des Filters kostet also höchstens Präzision
+// beim ersten Versuch, nie die Antwort.
+
+export type WerkzeugModul = "basis" | "match" | "event" | "job" | "book" | "trading" | "kosten" | "airbnb"
+
+export const WERKZEUG_MODUL: Record<string, WerkzeugModul> = {
+  finde_kontakt: "basis",
+  kontakt_profil: "basis",
+  kontakt_gedaechtnis: "basis",
+  letzter_kontakt: "basis",
+  letztes_treffen: "basis",
+  nachrichten_suchen: "basis",
+  gedaechtnis_suchen: "basis",
+  kommende_termine: "basis",
+  vernachlaessigte_kontakte: "basis",
+  geburtstage: "basis",
+  plattform_statistik: "basis",
+  pipeline_uebersicht: "match",
+  offene_entwuerfe: "match",
+  antwortquoten: "match",
+  events_uebersicht: "event",
+  bewerbungen: "job",
+  job_funnel: "job",
+  artists_und_gigs: "book",
+  buchungen: "book",
+  trading_stand: "trading",
+  ki_kosten: "kosten",
+  airbnb_reservierungen: "airbnb",
+  airbnb_putzplan: "airbnb",
+  airbnb_gaeste_nachrichten: "airbnb",
+  airbnb_worker_status: "airbnb",
+  airbnb_status: "airbnb",
+}
+
+const MODUL_STICHWORTE: Record<Exclude<WerkzeugModul, "basis">, RegExp> = {
+  match: /match|tinder|bumble|hinge|badoo|pipeline|queue|entwurf|entwürfe|opener|dating|antwortquote|ghosting|eingeschlafen/i,
+  event: /event|party|feier|gäste|gaeste|ticket|promo|einladung|eingeladen|zugesagt|erlös|erloes|kapazität|kapazitaet/i,
+  job: /\bjob|bewerbung|beworben|bewerbe|interview|firma|stelle|gehalt|lebenslauf|\bcv\b|anschreiben|portal|karriere/i,
+  book: /\bdj\b|artist|künstler|kuenstler|\bgig|gage|booking|buchung|lineup|treatment|massage|anbieter|auflegen/i,
+  trading: /trading|depot|aktie|krypto|bitcoin|\betf\b|börse|boerse|portfolio|\btrade|position|these|spielgeld/i,
+  kosten: /kosten|budget|ausgegeben|deepseek|token|teuer|\bapi\b/i,
+  airbnb: /airbnb|wohnung|apartment|listing|reinigung|putz|giorgia|reservierung|check-?in|check-?out|gast\b|gäste.*(wohnung|airbnb)|shrine/i,
+}
+
+/**
+ * Werkzeugauswahl für eine Frage samt bisherigem Verlauf. Nennt der Text kein
+ * Spezialgebiet, bleibt es bei der Basis — nennt er „alle Module“ oder ähnlich,
+ * geht alles mit.
+ */
+export function werkzeugeFuerFrage(text: string): AskTool[] {
+  if (/alle module|überblick|ueberblick|insgesamt|zusammenfassung/i.test(text)) return ASK_TOOLS
+  const aktiv = new Set<WerkzeugModul>(["basis"])
+  for (const [modul, re] of Object.entries(MODUL_STICHWORTE)) {
+    if (re.test(text)) aktiv.add(modul as WerkzeugModul)
+  }
+  return ASK_TOOLS.filter((t) => aktiv.has(WERKZEUG_MODUL[t.name] ?? "basis"))
+}
+
 /** Schema-Teil für die API — ohne `run`, das bleibt serverseitig. */
-export function toolSchemas() {
-  return ASK_TOOLS.map((t) => ({
+export function toolSchemas(tools: AskTool[] = ASK_TOOLS) {
+  return tools.map((t) => ({
     type: "function" as const,
     function: { name: t.name, description: t.description, parameters: t.parameters },
   }))

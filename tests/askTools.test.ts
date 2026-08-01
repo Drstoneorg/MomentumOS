@@ -10,6 +10,8 @@ import {
   ASK_TOOLS,
   ASK_TOOL_BY_NAME,
   toolSchemas,
+  werkzeugeFuerFrage,
+  WERKZEUG_MODUL,
 } from "../src/lib/ai/askTools"
 
 const JETZT = new Date("2026-07-31T12:00:00Z").getTime()
@@ -153,6 +155,12 @@ describe("Werkzeug-Registry", () => {
     }
   })
 
+  it("ordnet jedes Werkzeug einem Modul zu (Vorfilter-Vollständigkeit)", () => {
+    for (const t of ASK_TOOLS) {
+      expect(WERKZEUG_MODUL[t.name], `${t.name} fehlt in WERKZEUG_MODUL`).toBeDefined()
+    }
+  })
+
   it("vergleicht realm gegen den Wert aus der Datenbank", async () => {
     // In contacts.realm steht "moment", nicht "moments". Der Vergleich gegen
     // "moments" traf nie zu und meldete MomentOS-Kontakte als MatchOS.
@@ -161,5 +169,55 @@ describe("Werkzeug-Registry", () => {
     expect(quelle).not.toContain('realm === "moments"')
     expect(quelle).not.toContain('"moments", "match"')
     expect(quelle).toContain('realm === "moment"')
+  })
+
+  it("shrineTools enthält keine schreibenden Supabase-Aufrufe", async () => {
+    const { readFileSync } = await import("node:fs")
+    const quelle = readFileSync("src/lib/ai/shrineTools.ts", "utf8")
+    for (const verboten of [".insert(", ".update(", ".delete(", ".upsert(", ".rpc("]) {
+      expect(quelle).not.toContain(verboten)
+    }
+  })
+})
+
+describe("werkzeugeFuerFrage (Vorfilter)", () => {
+  const namen = (frage: string) => werkzeugeFuerFrage(frage).map((t) => t.name)
+
+  it("Personen-Frage: Basis ohne Job/Book/Trading", () => {
+    const n = namen("wann habe ich Anna das letzte Mal gesehen?")
+    expect(n).toContain("finde_kontakt")
+    expect(n).toContain("letztes_treffen")
+    expect(n).not.toContain("bewerbungen")
+    expect(n).not.toContain("trading_stand")
+    expect(n).not.toContain("artists_und_gigs")
+  })
+
+  it("Job-Stichwort holt die Job-Werkzeuge dazu, Basis bleibt", () => {
+    const n = namen("habe ich mich bei Adidas schon beworben?")
+    expect(n).toContain("bewerbungen")
+    expect(n).toContain("job_funnel")
+    expect(n).toContain("finde_kontakt")
+    expect(n).not.toContain("trading_stand")
+  })
+
+  it("mehrere Module gleichzeitig sind möglich", () => {
+    const n = namen("welcher DJ passt zum Event vom Ticket-Verkauf her?")
+    expect(n).toContain("artists_und_gigs")
+    expect(n).toContain("events_uebersicht")
+  })
+
+  it("„Überblick“ liefert die volle Liste", () => {
+    expect(werkzeugeFuerFrage("gib mir einen Überblick")).toHaveLength(ASK_TOOLS.length)
+  })
+
+  it("Historie zählt mit: Nachfrage bleibt im Modul", () => {
+    const n = namen("wie viele Bewerbungen laufen? und wie viele davon in Wien?")
+    expect(n).toContain("bewerbungen")
+  })
+
+  it("Airbnb-Stichworte holen die Anbindung dazu", () => {
+    // Ohne SHRINE_SERVICE_ROLE_KEY (Testumgebung) ist das der Status-Stub.
+    const n = namen("hat ein Airbnb-Gast geschrieben?")
+    expect(n.some((x) => x.startsWith("airbnb_"))).toBe(true)
   })
 })

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 import { deepseek } from "@/lib/ai/deepseek"
 import { assertBudget, logUsage } from "@/lib/ai/usage"
-import { ASK_TOOL_BY_NAME, toolSchemas } from "@/lib/ai/askTools"
+import { ASK_TOOL_BY_NAME, toolSchemas, werkzeugeFuerFrage } from "@/lib/ai/askTools"
 
 /**
  * Frage-Schleife: Modell wählt Werkzeuge, wir führen sie aus, Modell antwortet.
@@ -36,6 +36,7 @@ Die Plattform hat fünf Module:
 - JobOS: Bewerbungen
 - BookOS: Artist-Booking und Treatment-Buchungen
 - TradingOS: Papierdepot mit Spielgeld
+Dazu angebunden: AirbnbWorker (Ferienwohnungen — Reservierungen, Putzplan, Gäste-Nachrichten) aus einem zweiten Projekt.
 
 Regeln:
 1. Antworte AUSSCHLIESSLICH mit dem, was die Werkzeuge zurückgeben. Erfinde nichts — keine Namen, keine Daten, keine Zahlen.
@@ -65,11 +66,15 @@ export async function ask(
 
   const schritte: AskStep[] = []
 
+  // Werkzeugliste nach Modul vorgefiltert — Historie zählt mit, damit
+  // Nachfragen („und wie viele davon?“) im selben Modul bleiben.
+  const angebot = werkzeugeFuerFrage([...historie.map((m) => m.content), frage].join(" "))
+
   for (let runde = 0; runde < MAX_RUNDEN; runde++) {
     const res = await client.chat.completions.create({
       model: "deepseek-chat",
       messages,
-      tools: toolSchemas(),
+      tools: toolSchemas(angebot),
       tool_choice: "auto",
       temperature: 0.2,
     })

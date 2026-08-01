@@ -45,6 +45,11 @@ const WERKZEUG_LABELS: Record<string, string> = {
   antwortquoten: "Antwortquoten",
   ki_kosten: "KI-Kosten",
   plattform_statistik: "Statistik",
+  airbnb_reservierungen: "Airbnb-Reservierungen",
+  airbnb_putzplan: "Putzplan",
+  airbnb_gaeste_nachrichten: "Airbnb-Gäste",
+  airbnb_worker_status: "Airbnb-Worker",
+  airbnb_status: "Airbnb-Anbindung",
 }
 
 /** Minimaler Markdown-Ersatz: Links und Fettes. Bewusst kein HTML-Einschleusen. */
