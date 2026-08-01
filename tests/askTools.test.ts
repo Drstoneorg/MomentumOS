@@ -210,6 +210,13 @@ describe("werkzeugeFuerFrage (Vorfilter)", () => {
     expect(werkzeugeFuerFrage("gib mir einen Überblick")).toHaveLength(ASK_TOOLS.length)
   })
 
+  it("„insgesamt“ allein schaltet NICHT auf die volle Liste", () => {
+    const n = namen("wie viele Bewerbungen habe ich insgesamt?")
+    expect(n).toContain("bewerbungen")
+    expect(n).not.toContain("trading_stand")
+    expect(n.length).toBeLessThan(ASK_TOOLS.length)
+  })
+
   it("Historie zählt mit: Nachfrage bleibt im Modul", () => {
     const n = namen("wie viele Bewerbungen laufen? und wie viele davon in Wien?")
     expect(n).toContain("bewerbungen")

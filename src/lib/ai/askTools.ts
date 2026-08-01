@@ -1167,7 +1167,9 @@ const MODUL_STICHWORTE: Record<Exclude<WerkzeugModul, "basis">, RegExp> = {
  * geht alles mit.
  */
 export function werkzeugeFuerFrage(text: string): AskTool[] {
-  if (/alle module|überblick|ueberblick|insgesamt|zusammenfassung/i.test(text)) return ASK_TOOLS
+  // Bewusst enge Auslöser: „insgesamt“ stand hier zuerst auch — ist aber ein
+  // Alltagswort („wie viele Bewerbungen insgesamt?“) und hebelte den Filter aus.
+  if (/alle module|überblick|ueberblick|über alles|quer durch/i.test(text)) return ASK_TOOLS
   const aktiv = new Set<WerkzeugModul>(["basis"])
   for (const [modul, re] of Object.entries(MODUL_STICHWORTE)) {
     if (re.test(text)) aktiv.add(modul as WerkzeugModul)
