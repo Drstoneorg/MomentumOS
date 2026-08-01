@@ -46,3 +46,6 @@ backups/
 # playwright
 test-results/
 playwright-report/
+
+# Wegwerf-Playwright-Läufe (Screenshots mit echten Daten — nie committen)
+.pwtmp/
