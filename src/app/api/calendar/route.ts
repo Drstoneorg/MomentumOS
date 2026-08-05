@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
   const seit = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [dates, events, gigs, meetups, kontakte] = await Promise.all([
+  const [dates, events, gigs, meetups, kontakte, interviews] = await Promise.all([
     db
       .from("dates")
       .select("starts_at, place, idea, status, contacts(name)")
@@ -77,6 +77,12 @@ export async function GET(req: Request) {
       .limit(100),
     db.from("meetups").select("title, status, slots, chosen_slot").neq("status", "cancelled").limit(100),
     db.from("contacts").select("name, birthday").not("birthday", "is", null).limit(400),
+    db
+      .from("job_applications")
+      .select("company, title, interview_at")
+      .not("interview_at", "is", null)
+      .gte("interview_at", seit)
+      .limit(50),
   ])
 
   const eintraege: EventAttributes[] = []
@@ -127,6 +133,17 @@ export async function GET(req: Request) {
       startOutputType: "utc",
       duration: { hours: 2 },
       location: slot.place || undefined,
+    })
+  }
+  for (const j of interviews.data ?? []) {
+    if (!j.interview_at) continue
+    eintraege.push({
+      title: `💼 Interview: ${j.company}`,
+      start: utcTeile(j.interview_at),
+      startInputType: "utc",
+      startOutputType: "utc",
+      duration: { hours: 1 },
+      description: j.title,
     })
   }
   for (const k of kontakte.data ?? []) {

@@ -529,6 +529,24 @@ export async function updateJobStage(id: string, stage: string) {
   revalidatePath("/jobs")
 }
 
+export async function updateJobInterview(
+  id: string,
+  at: string | null
+): Promise<{ error?: string }> {
+  const supabase = await db()
+  if (at && isNaN(new Date(at).getTime())) return { error: "ungültiges Datum" }
+  const patch: TablesUpdate<"job_applications"> = {
+    interview_at: at ? new Date(at).toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }
+  // Termin gesetzt = Prozess ist im Gespräch — Stage zieht mit
+  if (at) patch.stage = "interview"
+  const { error } = await supabase.from("job_applications").update(patch).eq("id", id)
+  if (error) return { error: error.message }
+  revalidatePath("/jobs")
+  return {}
+}
+
 export async function updateJobNotes(id: string, notes: string) {
   const supabase = await db()
   await supabase

@@ -5,6 +5,7 @@ import {
   addJob,
   saveJobCv,
   updateJobStage,
+  updateJobInterview,
   updateJobNotes,
   deleteJob,
   generateJobCoverLetter,
@@ -16,6 +17,15 @@ import type { Tables } from "@/lib/database.types"
 import { Card, inputCls, btnCls } from "@/components/ui"
 
 type Job = Tables<"job_applications">
+
+/** ISO → Wert für <input type="datetime-local"> in lokaler Zeit. */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 const STAGES: { id: string; label: string }[] = [
   { id: "discovered", label: "🔍 Entdeckt" },
@@ -435,6 +445,22 @@ function JobRow({ job }: { job: Job }) {
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <label
+          className="flex items-center gap-1 text-xs text-zinc-500"
+          title="Interview-Termin — landet automatisch im Kalender-Feed"
+        >
+          🎤
+          <input
+            type="datetime-local"
+            defaultValue={toLocalInput(job.interview_at)}
+            onChange={(e) =>
+              start(async () => {
+                await updateJobInterview(job.id, e.target.value || null)
+              })
+            }
+            className="rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-xs text-zinc-300"
+          />
+        </label>
         {job.stage === "discovered" && (
           <button
             onClick={() => start(() => updateJobStage(job.id, "applied"))}
