@@ -415,9 +415,18 @@
       .sort((a, b) => a.top - b.top)
 
     // Aufeinanderfolgende Duplikate/Systemzeilen ausdünnen.
+    // Reine Zeitstempel ("09:53", "10.07.2026, 13:33") als eigene Zeile OHNE
+    // Präfix durchreichen — egal ob zentriert oder an der Bubble ausgerichtet.
+    // Der Server-Parser (chatParse) macht daraus echte sent_at statt Schätzwerte.
+    const timeTxt = /^(?:\d{1,2}\.\d{1,2}\.(?:\d{2}|\d{4})[,\s]+)?\d{1,2}:\d{2}(?::\d{2})?$/
     const lines = []
     let last = ""
     for (const m of rows) {
+      if (timeTxt.test(m.text)) {
+        if (m.text !== last) lines.push(m.text)
+        last = m.text
+        continue
+      }
       if (m.dir === "sys") continue
       const line = `[${m.dir}] ${m.text}`
       if (line === last) continue
@@ -581,8 +590,14 @@
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || res.status)
       bump("synced")
+      // Zweite Selbsttest-Stufe: Server hat praktisch nichts erkannt —
+      // Profil-Capture vermutlich leer (DOM-Umbau oder Seite nicht fertig geladen).
+      const emptyWarn =
+        !domWarn && data.name === "Unbekannt" && !data.messageCount
+          ? `<p class="mox-err">⚠ Fast nichts erkannt (kein Name, keine Nachrichten) — Seite fertig geladen? Profiltext markieren und erneut scannen.</p>`
+          : ""
       out.innerHTML = `
-        ${domWarn}
+        ${domWarn}${emptyWarn}
         <p class="mox-ok">✓ ${esc(data.name)} ${data.isNew ? "angelegt" : "aktualisiert"}${
           data.messageCount ? ` · ${data.messageCount} Nachrichten` : ""
         }${data.stage ? ` · ${esc(data.stage)}` : ""}</p>
@@ -620,7 +635,8 @@
         // Kein Auto-Entwurf vom Server, aber letzte sichtbare Nachricht ist von der
         // Person → Vorschläge automatisch holen (kein extra Klick nötig).
         const chat = chatAnnotatedText()
-        const lastLine = chat.split("\n").filter(Boolean).pop() || ""
+        // Zeitstempel-Zeilen überspringen — die letzte NACHRICHT zählt
+        const lastLine = chat.split("\n").filter((l) => l.startsWith("[")).pop() || ""
         if (lastLine.startsWith("[them]")) replies(data.contactId, "")
       }
     } catch (e) {

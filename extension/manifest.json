@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MomentumOS Companion",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Liest Dating-Profile und Chats mit, legt Kontakte in MomentumOS an und liefert Antwortentwürfe. Sendet nie selbst.",
   "permissions": ["storage", "activeTab", "contextMenus"],
   "background": { "service_worker": "background.js" },
