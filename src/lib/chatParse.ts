@@ -12,7 +12,11 @@ export type ParsedChatMessage = {
   at: string | null // ISO-Zeitstempel, wenn im Text erkennbar
 }
 
-const CHAT_MARKER = /---\s*CHATVERLAUF\s*---/i
+// Toleriert Zusatztext im Marker: die Extension sendet
+// "--- CHATVERLAUF (Richtung erkannt: …) ---" — ein starres "--- CHATVERLAUF ---"
+// matchte nie, und der Parser fiel auf dem Extension-Pfad still aufs LLM zurück.
+const CHAT_MARKER = /---\s*CHATVERLAUF[^\n]*?---/i
+const TAIL_MARKER = /---\s*WEITERER\s+SEITENTEXT[^\n]*?---/i
 const PREFIX_RE = /^\[(me|them)\]\s?(.*)$/
 // "09:53", "10.07.2026, 13:33", "10.07.26 13:33:05" — als komplette Zeile
 const TIME_LINE_RE =
@@ -22,7 +26,15 @@ const TIME_LINE_RE =
 export function splitChatBlock(raw: string): { profile: string; chat: string | null } {
   const parts = raw.split(CHAT_MARKER)
   if (parts.length < 2) return { profile: raw, chat: null }
-  return { profile: parts[0].trim(), chat: parts.slice(1).join("\n").trim() || null }
+  // Hinter dem Chat hängt die Extension weiteren Seitentext an — der ist
+  // Profil-Kontext, nicht Chat. Ohne diesen Schnitt klebte er als
+  // Fortsetzungszeilen an der letzten Nachricht.
+  const [chatPart, ...tail] = parts.slice(1).join("\n").split(TAIL_MARKER)
+  const profile = [parts[0], ...tail]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n\n")
+  return { profile, chat: chatPart.trim() || null }
 }
 
 function parseTime(match: RegExpMatchArray, reference: Date): string | null {

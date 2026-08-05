@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { extractProfile } from "@/lib/ai/extractProfile"
+import { splitChatBlock } from "@/lib/chatParse"
 
 // Parst Freitext in Kontaktfelder — legt NICHTS an, liefert nur Vorschläge fürs Formular.
 export async function POST(req: Request) {
@@ -16,7 +17,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const p = await extractProfile(raw, "")
+    // Nur Kontaktfelder gefragt — Chatblock vorher abtrennen spart LLM-Tokens
+    const { profile } = splitChatBlock(raw)
+    const p = await extractProfile(profile || raw, "")
     return NextResponse.json({
       name: p.name,
       age: p.age,

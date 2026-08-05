@@ -16,6 +16,24 @@ describe("splitChatBlock", () => {
     expect(profile).toBe("nur Profiltext")
     expect(chat).toBeNull()
   })
+
+  it("Extension-Marker mit Zusatztext matcht (Regression: Parser fiel still aufs LLM zurück)", () => {
+    const raw =
+      "--- CHATVERLAUF (Richtung erkannt: [me]=ich, [them]=Person) ---\n[them] hi\n[me] hey"
+    const { chat } = splitChatBlock(raw)
+    expect(chat).toContain("[them] hi")
+  })
+
+  it("Seitentext hinter dem Chat wandert ins Profil, nicht in die letzte Nachricht", () => {
+    const raw =
+      "--- CHATVERLAUF (Richtung erkannt: [me]=ich, [them]=Person) ---\n[them] bis später\n\n--- WEITERER SEITENTEXT ---\nMika, 24, Wien, mag Konzerte"
+    const { profile, chat } = splitChatBlock(raw)
+    expect(chat).toBe("[them] bis später")
+    expect(profile).toContain("Mika, 24")
+    const msgs = parseChatLines(chat!, REF)
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].content).toBe("bis später")
+  })
 })
 
 describe("parseChatLines", () => {
@@ -53,5 +71,13 @@ describe("parseChatLines", () => {
 
   it("unbekanntes Format liefert [] (Caller fällt aufs LLM zurück)", () => {
     expect(parseChatLines("einfach irgendein Text ohne Präfixe", REF)).toEqual([])
+  })
+
+  it("Zeitzeile NACH der Nachricht stempelt die laufende Nachricht", () => {
+    // So liefert es die Extension: Zeit steht unter der Bubble
+    const msgs = parseChatLines("[them] na, wach?\n09:53\n[me] jetzt schon", REF)
+    expect(msgs).toHaveLength(2)
+    expect(new Date(msgs[0].at!).getHours()).toBe(9)
+    expect(msgs[1].at).toBeNull()
   })
 })

@@ -257,7 +257,9 @@ export async function POST(req: Request) {
           // Browser-DOM ist verlässlicher als DB-Chronologie (Scroll-Backfill).
           const tailLines =
             typeof chatTail === "string" ? chatTail.trim().split("\n").filter(Boolean) : []
-          const lastTail = tailLines[tailLines.length - 1] ?? ""
+          // Zeitstempel-Zeilen (ohne [me]/[them]-Präfix) ignorieren — sonst
+          // verdeckt ein "09:53" am Ende die letzte Nachricht der Person.
+          const lastTail = [...tailLines].reverse().find((l) => l.startsWith("[")) ?? ""
           const lastMsg = ctx.messages[ctx.messages.length - 1]
           const theirTurn = lastTail
             ? lastTail.startsWith("[them]")
