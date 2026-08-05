@@ -5,6 +5,7 @@ import { EventInviteManager } from "./EventInviteManager"
 import { EventBudget } from "./EventBudget"
 import { EventLineup } from "./EventLineup"
 import { EventAudience } from "./EventAudience"
+import { audienceMatch } from "@/lib/artists"
 
 export const dynamic = "force-dynamic"
 
@@ -12,12 +13,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  const [eventRes, invitesRes, contactsRes, gigsRes] = await Promise.all([
+  const [eventRes, invitesRes, contactsRes, gigsRes, artistsRes] = await Promise.all([
     supabase.from("events").select("*").eq("id", id).single(),
     supabase.from("event_invites").select("*, contacts(name, realm, platform, relationship_tags, language, contact_channels(channel, handle))").eq("event_id", id),
     // Beide Realms: Freunde UND Matches (Event-Leads) einladbar, Freunde zuerst
     supabase.from("contacts").select("id, name, realm, relationship_tags").order("realm", { ascending: false }).order("name"),
     supabase.from("gigs").select("id, artist_id, fee_cents, status, set_slot, artists(name)").eq("event_id", id),
+    supabase.from("artists").select("id, name, audience").not("audience", "is", null),
   ])
 
   const event = eventRes.data
@@ -51,6 +53,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   }))
   const ticketsSold = invites.filter((i) => ["ticket", "attended"].includes(i.status)).length
 
+  // Zielpublikum-Passung: welche Artists aus der Kartei passen zu diesem Event
+  const passung = (artistsRes.data ?? [])
+    .map((a) => ({ ...a, match: audienceMatch(event.audience, a.audience) }))
+    .filter((a): a is typeof a & { match: NonNullable<ReturnType<typeof audienceMatch>> } => a.match != null)
+    .sort((a, b) => b.match.score - a.match.score)
+    .slice(0, 6)
+
   return (
     <div className="space-y-4">
       <Card>
@@ -82,6 +91,39 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       />
 
       <EventLineup gigs={gigs} />
+
+      {event.audience && passung.length > 0 && (
+        <Card title="🎯 Artist-Passung zum Zielpublikum">
+          <div className="space-y-1.5">
+            {passung.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                <a href={`/book/artists/${a.id}`} className="text-zinc-200 hover:text-sky-300">
+                  {a.name}
+                </a>
+                <span className="flex items-center gap-2">
+                  <span className="hidden text-xs text-zinc-500 sm:inline">
+                    {a.match.gemeinsam.join(", ") || "keine Überschneidung"}
+                  </span>
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                      a.match.score >= 50
+                        ? "bg-emerald-950/60 text-emerald-300"
+                        : a.match.score >= 25
+                          ? "bg-amber-950/60 text-amber-300"
+                          : "bg-zinc-800 text-zinc-400"
+                    }`}
+                  >
+                    {a.match.score}%
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-zinc-600">
+            Aus den Zielpublikums-Feldern berechnet — je mehr gemeinsame Begriffe, desto höher
+          </p>
+        </Card>
+      )}
 
       {platformFunnel.length > 1 && (
         <Card title="📊 Funnel pro Plattform — wo kommen die Gäste her?">

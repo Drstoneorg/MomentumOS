@@ -135,6 +135,64 @@ export function slotsOverlap(
   return a.start < b.end && b.start < a.end
 }
 
+// --- Zielpublikum-Passung Event ↔ Artist -----------------------------------
+
+// Synonymgruppen: verschiedene Schreibweisen desselben Publikums zählen als
+// ein Token (erstes Wort der Gruppe ist der kanonische Name).
+const AUDIENCE_GROUPS: string[][] = [
+  ["goth", "gothic", "darkwave", "dark"],
+  ["alt", "alternative", "punk", "emo", "grunge"],
+  ["aesthetic", "asthetisch", "fashion", "editorial"],
+  ["techno", "hypertechno", "rave", "schranz"],
+  ["edm", "trance", "hardstyle", "festival"],
+  ["metal", "industrial", "ebm", "wave"],
+  ["queer", "lgbt", "lgbtq", "inclusive", "divers"],
+  ["mainstream", "charts", "hits", "pop", "kommerziell"],
+]
+
+// Füllwörter, die in Publikums-Beschreibungen nichts unterscheiden — ohne
+// diese Liste drückt "…-Publikum" oder "crowd" den Score künstlich runter.
+const AUDIENCE_STOPWORDS = new Set([
+  "und", "and", "the", "mit", "fur", "fuer", "von", "bis", "oder",
+  "publikum", "zielgruppe", "audience", "crowd", "leute", "szene", "fans", "gaeste",
+])
+
+function audienceTokens(text: string): Set<string> {
+  const umlautfrei = text
+    .toLowerCase()
+    .replace(/[äöüß]/g, (c) => (({ "ä": "a", "ö": "o", "ü": "u", "ß": "ss" }) as Record<string, string>)[c] ?? c)
+  const out = new Set<string>()
+  for (const w of umlautfrei.split(/[^a-z0-9]+/)) {
+    if (w.length < 3) continue // Zahlen/Altersspannen wie "18-30" bewusst raus
+    if (AUDIENCE_STOPWORDS.has(w)) continue
+    const gruppe = AUDIENCE_GROUPS.find((g) => g.includes(w))
+    out.add(gruppe ? gruppe[0] : w)
+  }
+  return out
+}
+
+/**
+ * Wie gut passt ein Artist-Publikum zu einem Event-Publikum? Overlap-Koeffizient
+ * (Schnittmenge / kleinere Menge) über synonym-normalisierte Tokens, 0–100 —
+ * bewusst kein Jaccard: ein ausführlich beschriebenes Event soll einen knapp
+ * beschriebenen, voll passenden Artist nicht abwerten. null = keine Aussage
+ * möglich (ein Feld leer) — unterschieden von "0 = passt nicht".
+ */
+export function audienceMatch(
+  a: string | null | undefined,
+  b: string | null | undefined
+): { score: number; gemeinsam: string[] } | null {
+  if (!a?.trim() || !b?.trim()) return null
+  const ta = audienceTokens(a)
+  const tb = audienceTokens(b)
+  if (!ta.size || !tb.size) return null
+  const gemeinsam = [...ta].filter((t) => tb.has(t)).sort()
+  return {
+    score: Math.round((gemeinsam.length / Math.min(ta.size, tb.size)) * 100),
+    gemeinsam,
+  }
+}
+
 // Gagen-Summen für die Übersicht: fix = confirmed/contracted/played,
 // offen = inquired/negotiating (Ideen und Absagen zählen nicht).
 export function gigFeeTotals(
