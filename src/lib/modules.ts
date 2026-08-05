@@ -8,7 +8,7 @@
  * hing das Dashboard an MatchOS — dadurch stand auf der Startseite der Name
  * des Dating-Moduls über allem.
  */
-export type ModuleId = "match" | "moments" | "jobs" | "book" | "trading"
+export type ModuleId = "match" | "moments" | "jobs" | "book" | "recruit" | "trading"
 export type SignalModule = ModuleId | "system"
 
 export type ModuleDef = {
@@ -97,6 +97,23 @@ export const MODULES: ModuleDef[] = [
       { href: "/book/bookings", label: "Meine Buchungen" },
       { href: "/book/artists", label: "🎧 Artists" },
       { href: "/provider", label: "Anbieter" },
+    ],
+  },
+  {
+    id: "recruit",
+    label: "RecruitOS",
+    tagline: "Model-Scouting & TFP-Shootings",
+    home: "/recruit",
+    text: "text-fuchsia-400",
+    bg: "bg-fuchsia-950/40",
+    border: "border-fuchsia-800/60",
+    dot: "bg-fuchsia-400",
+    hex: "#e879f9",
+    match: (p) => p.startsWith("/recruit"),
+    links: [
+      { href: "/recruit", label: "Pipeline" },
+      { href: "/recruit/bewerbungen", label: "Bewerbungen" },
+      { href: "/model", label: "Landing-Seite ↗" },
     ],
   },
   {

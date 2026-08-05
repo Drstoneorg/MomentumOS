@@ -30,7 +30,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isLogin = request.nextUrl.pathname.startsWith("/login")
-  if (!user && !isLogin) {
+  // /model ist die öffentliche RecruitOS-Landing-Page (TFP-Bewerbungsformular) —
+  // bewusst ohne Login erreichbar; das Formular schreibt über /api/apply.
+  const isPublic = isLogin || request.nextUrl.pathname === "/model"
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
