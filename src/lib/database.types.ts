@@ -308,6 +308,36 @@ export type Database = {
         }
         Relationships: []
       }
+      client_errors: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          path: string | null
+          source: string
+          stack: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          path?: string | null
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          path?: string | null
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       contact_channels: {
         Row: {
           channel: string
@@ -369,6 +399,7 @@ export type Database = {
           platform: string
           priority: Database["public"]["Enums"]["priority_level"]
           realm: string
+          recruit_stage: string | null
           relationship_tags: string[]
           tone_offset: string | null
           updated_at: string
@@ -398,6 +429,7 @@ export type Database = {
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           realm?: string
+          recruit_stage?: string | null
           relationship_tags?: string[]
           tone_offset?: string | null
           updated_at?: string
@@ -427,6 +459,7 @@ export type Database = {
           platform?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           realm?: string
+          recruit_stage?: string | null
           relationship_tags?: string[]
           tone_offset?: string | null
           updated_at?: string
@@ -705,6 +738,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          interview_at: string | null
           interview_prep: Json | null
           match_reasons: Json | null
           match_score: number | null
@@ -728,6 +762,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          interview_at?: string | null
           interview_prep?: Json | null
           match_reasons?: Json | null
           match_score?: number | null
@@ -751,6 +786,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          interview_at?: string | null
           interview_prep?: Json | null
           match_reasons?: Json | null
           match_score?: number | null
@@ -1152,6 +1188,59 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      recruit_applications: {
+        Row: {
+          age_confirmed: boolean
+          city: string | null
+          consent: boolean
+          contact_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          instagram: string | null
+          message: string | null
+          name: string
+          status: string
+          style: string | null
+        }
+        Insert: {
+          age_confirmed?: boolean
+          city?: string | null
+          consent?: boolean
+          contact_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          message?: string | null
+          name: string
+          status?: string
+          style?: string | null
+        }
+        Update: {
+          age_confirmed?: boolean
+          city?: string | null
+          consent?: boolean
+          contact_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          message?: string | null
+          name?: string
+          status?: string
+          style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_applications_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reply_feedback: {
         Row: {
