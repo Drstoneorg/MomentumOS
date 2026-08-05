@@ -72,10 +72,36 @@ export async function GET(req: Request) {
   } catch {
     /* keine/kaputte Config */
   }
-  if (!terms.length) {
-    return NextResponse.json({ skipped: "keine Suchbegriffe — auf /jobs unter Auto-Suche speichern" })
-  }
   const cv = (cvRow?.value as CvProfile | null) ?? null
+
+  // Selbstheilung: der Scan lief monatelang nie, weil nie Suchbegriffe gespeichert
+  // wurden und dieser Guard still aussprang (Heartbeat grün, Feature tot).
+  // Ohne Begriffe, aber mit CV: einmalig 2-3 Begriffe ableiten und speichern —
+  // auf /jobs bleiben sie sicht- und änderbar.
+  if (!terms.length && cv) {
+    try {
+      const out = await chatJSON(
+        `Aus einem CV-Profil Suchbegriffe für Jobportale ableiten: 2-3 kurze, gängige Stellenbezeichnungen (je 1-3 Wörter, Sprache wie im CV üblich, keine Firmennamen). Antworte NUR als JSON: {"terms":["..."]}`,
+        JSON.stringify(cv).slice(0, 4000),
+        "job_terms"
+      )
+      const parsed = (JSON.parse(out) as { terms?: unknown }).terms
+      terms = (Array.isArray(parsed) ? parsed : [])
+        .filter((t): t is string => typeof t === "string" && !!t.trim())
+        .map((t) => t.trim())
+        .slice(0, 3)
+      if (terms.length) {
+        await supabase
+          .from("settings")
+          .upsert({ key: "job_auto_search", value: JSON.stringify({ terms }) }, { onConflict: "key" })
+      }
+    } catch {
+      /* Ableitung optional — Signal auf dem Dashboard übernimmt die Warnung */
+    }
+  }
+  if (!terms.length) {
+    return NextResponse.json({ skipped: "keine Suchbegriffe und kein CV-Profil — auf /jobs pflegen" })
+  }
 
   const knownUrls = new Set(
     (existing ?? []).map((j) => normalizeJobUrl(j.url)).filter(Boolean)
