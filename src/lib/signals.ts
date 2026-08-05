@@ -38,7 +38,7 @@ export const PRIO_LABELS: Record<0 | 1 | 2, string> = {
   2: "🔭 Demnächst",
 }
 
-const MODULE_ORDER: SignalModule[] = ["system", "match", "moments", "jobs", "book", "trading"]
+const MODULE_ORDER: SignalModule[] = ["system", "match", "moments", "jobs", "book", "recruit", "trading"]
 
 export function sortSignals(list: Signal[]): Signal[] {
   return [...list].sort(
@@ -90,9 +90,12 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
     gigsRes,
     jobsFollowRes,
     jobsNewRes,
+    jobsInterviewRes,
     datesRes,
     eventsRes,
     snoozesRes,
+    recruitAppsRes,
+    errorsRes,
   ] = await Promise.all([
     supabase
       .from("contacts")
@@ -133,6 +136,14 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .gte("created_at", dayAgo)
       .limit(10),
     supabase
+      .from("job_applications")
+      .select("id, company, title, interview_at")
+      .not("interview_at", "is", null)
+      .gte("interview_at", nowIso)
+      .lte("interview_at", in7d)
+      .order("interview_at")
+      .limit(5),
+    supabase
       .from("dates")
       .select("id, contact_id, starts_at, place, contacts(name)")
       .gte("starts_at", nowIso)
@@ -147,6 +158,16 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .order("starts_at")
       .limit(3),
     supabase.from("signal_snoozes").select("key, until").gte("until", nowIso),
+    supabase
+      .from("recruit_applications")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "new"),
+    supabase
+      .from("client_errors")
+      .select("message, created_at")
+      .gte("created_at", dayAgo)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ])
 
   const signals: Signal[] = []
@@ -163,6 +184,34 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       title: `Cron „${p.name}" läuft nicht`,
       detail: `${p.info} — bei cron-job.org anlegen: /api/cron/${p.name} mit Bearer CRON_SECRET`,
       href: "/",
+      prio: 0,
+    })
+  }
+  // Frische Laufzeitfehler aus der Fehler-Telemetrie (letzte 24h)
+  const fehler = errorsRes.data ?? []
+  if (fehler.length > 0) {
+    signals.push({
+      key: "client-errors",
+      module: "system",
+      icon: "🐞",
+      title: `${fehler.length}× Laufzeitfehler in 24h`,
+      detail: `zuletzt: ${fehler[0].message.slice(0, 90)}`,
+      href: "/",
+      prio: 0,
+    })
+  }
+
+  // Jobscan-Totalausfall: Cron piepst, aber es gab noch NIE einen Scan-Lauf
+  // (fehlende Suchbegriffe/CV) — scanWarnings greift erst ab 3 Läufen.
+  if (!(scanRunsRes.data ?? []).length && beats.has("jobscan")) {
+    signals.push({
+      key: "jobscan-nie",
+      module: "system",
+      icon: "🕸",
+      title: "Auto-Jobscan hat noch nie gescannt",
+      detail:
+        "Cron läuft, aber ohne Suchbegriffe kein Scan — er leitet sie beim nächsten Lauf aus dem CV ab; auf /jobs prüfbar",
+      href: "/jobs",
       prio: 0,
     })
   }
@@ -342,6 +391,23 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       jobHasLetter: !!j.cover_letter?.trim(),
     })
   }
+  for (const j of jobsInterviewRes.data ?? []) {
+    if (!j.interview_at) continue
+    const inDays = Math.floor((new Date(j.interview_at).getTime() - now.getTime()) / 86400_000)
+    signals.push({
+      key: `job-iv-${j.id}`,
+      module: "jobs",
+      icon: "🎤",
+      title: `Interview ${j.company} ${inDays === 0 ? "heute" : `in ${inDays}d`}`,
+      detail: new Date(j.interview_at).toLocaleString("de-DE", {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      href: "/jobs",
+      prio: inDays <= 1 ? 1 : 2,
+    })
+  }
   for (const j of jobsFollowRes.data ?? []) {
     const days = j.applied_at
       ? Math.round((now.getTime() - new Date(j.applied_at).getTime()) / 86400_000)
@@ -353,6 +419,20 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       title: `${j.company}: Bewerbung nachfassen`,
       detail: days != null ? `seit ${days} Tagen ohne Antwort` : undefined,
       href: "/jobs",
+      prio: 1,
+    })
+  }
+
+  // --- RecruitOS ---
+  const newApps = recruitAppsRes.count ?? 0
+  if (newApps > 0) {
+    signals.push({
+      key: "recruit-apps",
+      module: "recruit",
+      icon: "📸",
+      title: `${newApps} ${plural(newApps, "neue Model-Bewerbung", "neue Model-Bewerbungen")}`,
+      detail: "über die Landing-Page eingegangen — sichten und übernehmen",
+      href: "/recruit/bewerbungen",
       prio: 1,
     })
   }
