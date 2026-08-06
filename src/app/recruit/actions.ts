@@ -118,3 +118,12 @@ export async function rejectApplication(id: string): Promise<{ error?: string }>
   revalidatePath("/recruit/bewerbungen")
   return {}
 }
+
+/** Fotograf:in-Block für die TFP-Vereinbarung (Settings, ein Wert für alle Verträge). */
+export async function saveTfpPhotographer(text: string): Promise<void> {
+  const supabase = await authedClient()
+  if (!supabase) return
+  await supabase
+    .from("settings")
+    .upsert({ key: "tfp_photographer", value: text }, { onConflict: "key" })
+}

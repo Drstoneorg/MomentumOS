@@ -67,6 +67,13 @@ export function RecruitBoard({ models }: { models: Model[] }) {
                           → {RECRUIT_NEXT_HINT[stage as RecruitStage]}
                         </p>
                       )}
+                      <Link
+                        href={`/recruit/${m.id}/tfp`}
+                        className="mt-1 inline-block text-[11px] text-zinc-500 hover:text-fuchsia-300"
+                        title="TFP-Vereinbarung (DE/EN) zum Drucken"
+                      >
+                        📄 TFP-Vertrag
+                      </Link>
                       <select
                         aria-label="Stufe ändern"
                         className="mt-2 w-full rounded-md border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-zinc-300"
