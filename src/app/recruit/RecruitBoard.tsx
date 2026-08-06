@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 import { RECRUIT_STAGES, RECRUIT_STAGE_LABELS, RECRUIT_NEXT_HINT, type RecruitStage } from "@/lib/recruit"
 import { setRecruitStage } from "./actions"
+import { Avatar } from "@/components/Avatar"
 
 type Model = {
   id: string
@@ -13,6 +14,7 @@ type Model = {
   platform: string
   external_id: string | null
   recruit_stage: string | null
+  avatar_url: string | null
 }
 
 export function RecruitBoard({ models }: { models: Model[] }) {
@@ -48,7 +50,8 @@ export function RecruitBoard({ models }: { models: Model[] }) {
                 <div className="space-y-2">
                   {inStage.map((m) => (
                     <div key={m.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                      <Link href={`/contacts/${m.id}`} className="text-sm font-medium hover:text-fuchsia-300">
+                      <Link href={`/contacts/${m.id}`} className="flex items-center gap-2 text-sm font-medium hover:text-fuchsia-300">
+                        <Avatar name={m.name} url={m.avatar_url} size="sm" />
                         {m.name}
                       </Link>
                       <p className="mt-0.5 text-xs text-zinc-500">

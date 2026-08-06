@@ -2,6 +2,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PIPELINE_STAGES, STAGE_LABELS } from "@/lib/dbLabels"
 import { PriorityDot } from "@/components/ui"
+import { Avatar } from "@/components/Avatar"
 
 export const dynamic = "force-dynamic"
 
@@ -33,7 +34,7 @@ export default async function PipelinePage() {
                       className="block rounded-lg border border-zinc-800 bg-zinc-950 p-2 hover:border-zinc-600"
                     >
                       <p className="flex items-center gap-2 text-sm font-medium text-white">
-                        <PriorityDot priority={c.priority} /> {c.name}
+                        <Avatar name={c.name} url={c.avatar_url} size="sm" /> <PriorityDot priority={c.priority} /> {c.name}
                       </p>
                       <p className="text-xs text-zinc-500">{c.platform}</p>
                       {c.next_step && (

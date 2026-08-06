@@ -7,6 +7,7 @@ import { bulkAddTags, bulkDeleteContacts } from "@/lib/actions"
 import { connectionScore, daysUntilBirthday, scoreColor } from "@/lib/moments"
 import type { MatchScore } from "@/lib/scoring"
 import { StageBadge, PriorityDot, inputCls, btnCls } from "@/components/ui"
+import { Avatar } from "@/components/Avatar"
 import type { Tables } from "@/lib/database.types"
 
 type SortKey = "name" | "platform" | "location" | "birthday" | "last_contact" | "score" | "match" | "stage"
@@ -161,6 +162,7 @@ export function ContactsTable({
                   </td>
                   <td className="px-3 py-2">
                     <Link href={`/contacts/${c.id}`} className="flex items-center gap-2 font-medium text-white">
+                      <Avatar name={c.name} url={c.avatar_url} size="sm" />
                       <PriorityDot priority={c.priority} />
                       {c.name}
                       {c.age ? <span className="text-zinc-500">{c.age}</span> : null}

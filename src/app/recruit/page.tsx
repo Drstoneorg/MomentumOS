@@ -10,7 +10,7 @@ export default async function RecruitPage() {
   const [modelsRes, appsRes] = await Promise.all([
     supabase
       .from("contacts")
-      .select("id, name, location, platform, external_id, recruit_stage, created_at")
+      .select("id, name, location, platform, external_id, recruit_stage, avatar_url, created_at")
       .eq("realm", "recruit")
       .order("created_at", { ascending: false }),
     supabase

@@ -7,6 +7,7 @@ import { PIPELINE_STAGES, STAGE_LABELS, INTENT_LABELS } from "@/lib/dbLabels"
 import type { Tables } from "@/lib/database.types"
 import { inputCls, btnGhostCls, PriorityDot } from "@/components/ui"
 import { InlineField } from "@/components/InlineField"
+import { AvatarUpload } from "./AvatarUpload"
 
 export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
   const router = useRouter()
@@ -56,6 +57,7 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
       <div className="flex flex-wrap items-center gap-3">
+        <AvatarUpload contactId={contact.id} name={contact.name} url={contact.avatar_url} />
         <PriorityDot priority={contact.priority} />
         <span
           className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${

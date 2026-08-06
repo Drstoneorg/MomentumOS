@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { maybeCreatePromiseFollowup } from "@/lib/promiseFollowup"
+import { removeStorageObjectByUrl } from "@/lib/storage"
 import type { Enums, TablesInsert, TablesUpdate } from "@/lib/database.types"
 
 async function db() {
@@ -76,8 +77,51 @@ export async function setContactIntent(id: string, intent: "date" | "event_lead"
 
 export async function deleteContact(id: string) {
   const supabase = await db()
+  const { data: alt } = await supabase.from("contacts").select("avatar_url").eq("id", id).maybeSingle()
   const { error } = await supabase.from("contacts").delete().eq("id", id)
   if (error) throw new Error(error.message)
+  await removeStorageObjectByUrl(alt?.avatar_url)
+  revalidatePath("/contacts")
+}
+
+/**
+ * Kontakt-Avatar: kommt als kleines JPEG (Client verkleinert auf 512px) und
+ * landet im öffentlichen avatars-Bucket. Pfad enthält eine UUID — nicht
+ * erratbar, und der Bucket braucht so keine Storage-Policies (Upload läuft
+ * über den Service-Role-Client, nachdem db() die Sitzung geprüft hat).
+ */
+export async function uploadContactAvatar(contactId: string, dataUrl: string) {
+  const supabase = await db()
+  const m = /^data:image\/jpeg;base64,(.+)$/.exec(dataUrl)
+  if (!m) throw new Error("Unerwartetes Bildformat — bitte erneut wählen")
+  const bytes = Buffer.from(m[1], "base64")
+  if (bytes.length > 1_500_000) throw new Error("Bild ist auch verkleinert zu groß")
+
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const admin = createAdminClient()
+  const path = `${contactId}/${crypto.randomUUID()}.jpg`
+  const { error: upErr } = await admin.storage
+    .from("avatars")
+    .upload(path, bytes, { contentType: "image/jpeg" })
+  if (upErr) throw new Error(upErr.message)
+  const url = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl
+
+  const { data: alt } = await supabase.from("contacts").select("avatar_url").eq("id", contactId).maybeSingle()
+  const { error } = await supabase.from("contacts").update({ avatar_url: url }).eq("id", contactId)
+  if (error) throw new Error(error.message)
+  await removeStorageObjectByUrl(alt?.avatar_url)
+  revalidatePath(`/contacts/${contactId}`)
+  revalidatePath("/contacts")
+  revalidatePath("/pipeline")
+}
+
+export async function removeContactAvatar(contactId: string) {
+  const supabase = await db()
+  const { data: alt } = await supabase.from("contacts").select("avatar_url").eq("id", contactId).maybeSingle()
+  const { error } = await supabase.from("contacts").update({ avatar_url: null }).eq("id", contactId)
+  if (error) throw new Error(error.message)
+  await removeStorageObjectByUrl(alt?.avatar_url)
+  revalidatePath(`/contacts/${contactId}`)
   revalidatePath("/contacts")
 }
 
