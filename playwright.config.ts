@@ -13,6 +13,9 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 45_000,
   retries: 0,
+  // Fehler-Screenshots zeigen echte Kontaktdaten und das Repo ist öffentlich —
+  // Artefakte bleiben im gitignorierten .pwtmp, nie im Arbeitsverzeichnis-Root.
+  outputDir: ".pwtmp/results",
   use: {
     baseURL,
     screenshot: "only-on-failure",

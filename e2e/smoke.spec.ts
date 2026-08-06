@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { login } from "./helpers"
 
 /**
  * Smoke-Test: fängt kaputte Deploys (Login rendert, Kernseiten antworten ohne
@@ -26,11 +27,7 @@ test.describe("eingeloggt", () => {
   test.skip(!email || !password, "E2E_EMAIL/E2E_PASSWORD fehlen in .env.local")
 
   test("Dashboard und Kernseiten rendern", async ({ page }) => {
-    await page.goto("/login")
-    await page.locator('input[type="email"]').fill(email!)
-    await page.locator('input[type="password"]').fill(password!)
-    await page.locator('form button[type="submit"], form button').first().click()
-    await page.waitForURL((u) => !u.pathname.includes("login"), { timeout: 20_000 })
+    await login(page, email!, password!)
 
     await page.goto("/")
     await expect(page.getByText(/Heute dran/i)).toBeVisible()
@@ -43,11 +40,7 @@ test.describe("eingeloggt", () => {
   })
 
   test("Artist-Booking: Artist anlegen und wieder löschen", async ({ page }) => {
-    await page.goto("/login")
-    await page.locator('input[type="email"]').fill(email!)
-    await page.locator('input[type="password"]').fill(password!)
-    await page.locator('form button[type="submit"], form button').first().click()
-    await page.waitForURL((u) => !u.pathname.includes("login"), { timeout: 20_000 })
+    await login(page, email!, password!)
 
     await page.goto("/book/artists")
     await page.getByRole("button", { name: "+ Artist" }).click()
