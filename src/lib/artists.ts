@@ -210,3 +210,56 @@ export function gigFeeTotals(
   }
   return { fixedCents, pendingCents }
 }
+
+// ---------- Verfügbarkeitskalender ----------
+
+/** Belegt zählt alles außer Absage und loser Idee — angefragt blockt schon. */
+export function blocktTermin(status: string): boolean {
+  return status !== "cancelled" && status !== "idea"
+}
+
+/**
+ * Monatsraster als Wochenzeilen (Montag zuerst), Einträge sind ISO-Daten
+ * oder null als Füllung vor dem 1. / nach dem letzten Tag.
+ */
+export function kalenderWochen(jahr: number, monat: number): (string | null)[][] {
+  const erster = new Date(Date.UTC(jahr, monat - 1, 1))
+  const tage = new Date(Date.UTC(jahr, monat, 0)).getUTCDate()
+  const offset = (erster.getUTCDay() + 6) % 7 // So=0 → Mo-Start
+  const zellen: (string | null)[] = Array(offset).fill(null)
+  for (let t = 1; t <= tage; t++) {
+    zellen.push(`${jahr}-${String(monat).padStart(2, "0")}-${String(t).padStart(2, "0")}`)
+  }
+  while (zellen.length % 7 !== 0) zellen.push(null)
+  const wochen: (string | null)[][] = []
+  for (let i = 0; i < zellen.length; i += 7) wochen.push(zellen.slice(i, i + 7))
+  return wochen
+}
+
+/**
+ * Nächste freie Wochenenden (Fr+Sa beide ohne Gig) ab einem Datum.
+ * Fr/Sa statt Sa/So, weil Club-Nächte auf diese Abende fallen.
+ */
+export function freieWochenenden(
+  belegt: Set<string>,
+  abIso: string,
+  anzahl = 6
+): { freitag: string; samstag: string }[] {
+  const start = new Date(`${abIso}T00:00:00Z`)
+  // Zum nächsten Freitag vorspulen
+  const tag = start.getUTCDay()
+  const bisFreitag = (5 - tag + 7) % 7
+  start.setUTCDate(start.getUTCDate() + bisFreitag)
+
+  const out: { freitag: string; samstag: string }[] = []
+  for (let woche = 0; woche < 26 && out.length < anzahl; woche++) {
+    const fr = new Date(start)
+    fr.setUTCDate(start.getUTCDate() + woche * 7)
+    const sa = new Date(fr)
+    sa.setUTCDate(fr.getUTCDate() + 1)
+    const frIso = fr.toISOString().slice(0, 10)
+    const saIso = sa.toISOString().slice(0, 10)
+    if (!belegt.has(frIso) && !belegt.has(saIso)) out.push({ freitag: frIso, samstag: saIso })
+  }
+  return out
+}

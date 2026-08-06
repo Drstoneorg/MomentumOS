@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest"
 import {
+  kalenderWochen,
+  freieWochenenden,
+  blocktTermin,
   nextGigStatus,
   formatEuro,
   formatFeeRange,
@@ -88,5 +91,37 @@ describe("gigFeeTotals", () => {
     ])
     expect(fixedCents).toBe(60000)
     expect(pendingCents).toBe(45000)
+  })
+})
+
+describe("Verfügbarkeitskalender", () => {
+  it("kalenderWochen: August 2026 startet Samstag, 31 Tage, Mo-Start", () => {
+    const wochen = kalenderWochen(2026, 8)
+    // 1.8.2026 ist ein Samstag → 5 Füll-Nullen davor
+    expect(wochen[0].slice(0, 5)).toEqual([null, null, null, null, null])
+    expect(wochen[0][5]).toBe("2026-08-01")
+    const tage = wochen.flat().filter(Boolean)
+    expect(tage.length).toBe(31)
+    expect(tage[30]).toBe("2026-08-31")
+    for (const w of wochen) expect(w.length).toBe(7)
+  })
+
+  it("freieWochenenden überspringt belegte Freitage/Samstage", () => {
+    // 7.8.2026 ist ein Freitag
+    const frei = freieWochenenden(new Set(["2026-08-07"]), "2026-08-03", 2)
+    expect(frei[0]).toEqual({ freitag: "2026-08-14", samstag: "2026-08-15" })
+    expect(frei[1]).toEqual({ freitag: "2026-08-21", samstag: "2026-08-22" })
+  })
+
+  it("freieWochenenden startet am selben Tag, wenn der ein Freitag ist", () => {
+    const frei = freieWochenenden(new Set(), "2026-08-07", 1)
+    expect(frei[0].freitag).toBe("2026-08-07")
+  })
+
+  it("blocktTermin: Absage und Idee blocken nicht", () => {
+    expect(blocktTermin("cancelled")).toBe(false)
+    expect(blocktTermin("idea")).toBe(false)
+    expect(blocktTermin("inquired")).toBe(true)
+    expect(blocktTermin("contracted")).toBe(true)
   })
 })

@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { ArtistDetail } from "./ArtistDetail"
+import { ArtistAvailability } from "./ArtistAvailability"
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +35,7 @@ export default async function ArtistPage({
         ← Artist-Booking
       </Link>
       <ArtistDetail artist={artist} gigs={gigs ?? []} events={events ?? []} />
+      <ArtistAvailability gigs={gigs ?? []} />
     </div>
   )
 }
