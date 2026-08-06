@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { updateMeetup, setMeetupParticipantRsvp, finishMeetup, deleteMeetup } from "@/lib/momentsActions"
-import { MEETUP_STATUS_LABELS, RSVP_LABELS, type Tables, type Enums, type Json } from "@/lib/database.types"
+import { MEETUP_STATUS_LABELS, RSVP_LABELS } from "@/lib/dbLabels"
+import type { Tables, Enums, Json } from "@/lib/database.types"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
 
 type Slot = { when: string; place: string }

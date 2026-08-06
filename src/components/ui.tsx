@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { Enums } from "@/lib/database.types"
-import { STAGE_LABELS } from "@/lib/database.types"
+import { STAGE_LABELS } from "@/lib/dbLabels"
 import { moduleStyle, type SignalModule } from "@/lib/modules"
 
 export function Card({

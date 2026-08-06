@@ -377,6 +377,7 @@ export type Database = {
         Row: {
           age: number | null
           auto_mode: boolean
+          avatar_url: string | null
           bio: string | null
           birthday: string | null
           contact_frequency_days: number | null
@@ -407,6 +408,7 @@ export type Database = {
         Insert: {
           age?: number | null
           auto_mode?: boolean
+          avatar_url?: string | null
           bio?: string | null
           birthday?: string | null
           contact_frequency_days?: number | null
@@ -437,6 +439,7 @@ export type Database = {
         Update: {
           age?: number | null
           auto_mode?: boolean
+          avatar_url?: string | null
           bio?: string | null
           birthday?: string | null
           contact_frequency_days?: number | null
@@ -584,6 +587,44 @@ export type Database = {
           },
         ]
       }
+      event_promo_tasks: {
+        Row: {
+          created_at: string
+          done: boolean
+          done_at: string | null
+          due_at: string
+          event_id: string
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          due_at: string
+          event_id: string
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          due_at?: string
+          event_id?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_promo_tasks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           audience: string | null
@@ -594,8 +635,11 @@ export type Database = {
           image_prompt: string | null
           location: string | null
           other_costs_cents: number | null
+          shrine_event_id: string | null
+          shrine_published_at: string | null
           starts_at: string | null
           ticket_price_cents: number | null
+          ticket_url: string | null
           title: string
         }
         Insert: {
@@ -607,8 +651,11 @@ export type Database = {
           image_prompt?: string | null
           location?: string | null
           other_costs_cents?: number | null
+          shrine_event_id?: string | null
+          shrine_published_at?: string | null
           starts_at?: string | null
           ticket_price_cents?: number | null
+          ticket_url?: string | null
           title: string
         }
         Update: {
@@ -620,8 +667,11 @@ export type Database = {
           image_prompt?: string | null
           location?: string | null
           other_costs_cents?: number | null
+          shrine_event_id?: string | null
+          shrine_published_at?: string | null
           starts_at?: string | null
           ticket_price_cents?: number | null
+          ticket_url?: string | null
           title?: string
         }
         Relationships: []
@@ -1325,24 +1375,6 @@ export type Database = {
           },
         ]
       }
-      signal_snoozes: {
-        Row: {
-          created_at: string
-          key: string
-          until: string
-        }
-        Insert: {
-          created_at?: string
-          key: string
-          until: string
-        }
-        Update: {
-          created_at?: string
-          key?: string
-          until?: string
-        }
-        Relationships: []
-      }
       settings: {
         Row: {
           key: string
@@ -1358,6 +1390,24 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: Json
+        }
+        Relationships: []
+      }
+      signal_snoozes: {
+        Row: {
+          created_at: string
+          key: string
+          until: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          until: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          until?: string
         }
         Relationships: []
       }
@@ -1459,6 +1509,33 @@ export type Database = {
           digest?: string
           id?: string
           picks?: Json | null
+        }
+        Relationships: []
+      }
+      trading_snapshots: {
+        Row: {
+          bench_invested_eur: number
+          bench_value_eur: number
+          created_at: string
+          day: string
+          ki_invested_eur: number
+          ki_value_eur: number
+        }
+        Insert: {
+          bench_invested_eur: number
+          bench_value_eur: number
+          created_at?: string
+          day: string
+          ki_invested_eur: number
+          ki_value_eur: number
+        }
+        Update: {
+          bench_invested_eur?: number
+          bench_value_eur?: number
+          created_at?: string
+          day?: string
+          ki_invested_eur?: number
+          ki_value_eur?: number
         }
         Relationships: []
       }
@@ -1715,6 +1792,21 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      find_duplicate_contacts: {
+        Args: never
+        Returns: {
+          a_id: string
+          a_name: string
+          a_platform: string
+          a_realm: string
+          b_id: string
+          b_name: string
+          b_platform: string
+          b_realm: string
+          grund: string
+          score: number
+        }[]
+      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -2486,7 +2578,13 @@ export type Database = {
         | "completed"
         | "cancelled"
       date_status: "proposed" | "confirmed"
-      event_invite_status: "invited" | "yes" | "no" | "no_reply" | "ticket" | "attended"
+      event_invite_status:
+        | "invited"
+        | "yes"
+        | "no"
+        | "no_reply"
+        | "ticket"
+        | "attended"
       gig_status:
         | "idea"
         | "inquired"
@@ -2674,7 +2772,14 @@ export const Constants = {
         "cancelled",
       ],
       date_status: ["proposed", "confirmed"],
-      event_invite_status: ["invited", "yes", "no", "no_reply", "ticket", "attended"],
+      event_invite_status: [
+        "invited",
+        "yes",
+        "no",
+        "no_reply",
+        "ticket",
+        "attended",
+      ],
       gig_status: [
         "idea",
         "inquired",
@@ -2716,80 +2821,3 @@ export const Constants = {
     },
   },
 } as const
-
-// ---------- Manuelle Zusätze (Labels/Konstanten) — bei Types-Regeneration unten wieder anhängen ----------
-export const PIPELINE_STAGES: Enums<"pipeline_stage">[] = [
-  "new_match",
-  "first_message_pending",
-  "chatting",
-  "interest_visible",
-  "platform_switch",
-  "on_messenger",
-  "date_idea",
-  "date_proposed",
-  "scheduling",
-  "date_planned",
-  "calendar_created",
-  "archived",
-]
-
-export const STAGE_LABELS: Record<Enums<"pipeline_stage">, string> = {
-  new_match: "Neues Match",
-  first_message_pending: "Erste Nachricht offen",
-  chatting: "Gespräch läuft",
-  interest_visible: "Interesse erkennbar",
-  platform_switch: "Plattformwechsel",
-  on_messenger: "Auf Messenger",
-  date_idea: "Date-Idee möglich",
-  date_proposed: "Date vorgeschlagen",
-  scheduling: "Termin-Abstimmung",
-  date_planned: "Date geplant",
-  calendar_created: "Kalender erstellt",
-  archived: "Archiviert",
-}
-
-export const MEETUP_STATUS_LABELS: Record<Enums<"meetup_status">, string> = {
-  idea: "Idee",
-  proposed: "Vorgeschlagen",
-  confirmed: "Bestätigt",
-  happened: "Stattgefunden",
-  cancelled: "Abgesagt",
-}
-
-export const RSVP_LABELS: Record<Enums<"event_invite_status">, string> = {
-  invited: "Eingeladen",
-  yes: "Zugesagt",
-  no: "Abgesagt",
-  no_reply: "Keine Antwort",
-  ticket: "🎟 Ticket gekauft",
-  attended: "✔ War da",
-}
-
-// Kontakt-Intent: wozu pflege ich diesen Kontakt (nur MatchOS-Realm relevant)
-export const INTENT_LABELS: Record<string, string> = {
-  date: "💘 Date",
-  event_lead: "🎟 Event-Lead",
-  both: "💘🎟 Beides",
-}
-
-export const BOOKING_STATUS_LABELS: Record<Enums<"booking_status">, string> = {
-  requested: "Angefragt",
-  accepted: "Angenommen",
-  en_route: "Auf dem Weg",
-  arrived: "Angekommen",
-  in_progress: "Läuft",
-  completed: "Abgeschlossen",
-  cancelled: "Storniert",
-}
-
-// Reihenfolge der aktiven Status für Fortschrittsanzeige
-export const BOOKING_FLOW: Enums<"booking_status">[] = [
-  "requested",
-  "accepted",
-  "en_route",
-  "arrived",
-  "in_progress",
-  "completed",
-]
-
-// (BookOS-RPCs manuell ergänzt — nicht in Functions-Block der Row-Typen)

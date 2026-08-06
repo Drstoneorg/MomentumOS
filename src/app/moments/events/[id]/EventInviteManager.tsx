@@ -4,7 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { inviteToEvent, setInviteStatus, removeInvite, setInvitePromoCode } from "@/lib/momentsActions"
 import { channelDeepLink } from "@/lib/channels"
-import { RSVP_LABELS, type Enums } from "@/lib/database.types"
+import { RSVP_LABELS } from "@/lib/dbLabels"
+import type { Enums } from "@/lib/database.types"
 import { Card, inputCls, btnCls, btnGhostCls } from "@/components/ui"
 
 type Invite = {

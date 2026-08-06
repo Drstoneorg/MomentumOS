@@ -7,7 +7,8 @@ import {
   setProviderOnline, updateProviderLocation, acceptOffer, declineOffer, advanceBooking,
 } from "@/lib/bookingActions"
 import { formatPrice, etaMinutes } from "@/lib/bookos"
-import { BOOKING_STATUS_LABELS, type Tables } from "@/lib/database.types"
+import { BOOKING_STATUS_LABELS } from "@/lib/dbLabels"
+import type { Tables } from "@/lib/database.types"
 import { btnCls, btnGhostCls } from "@/components/ui"
 
 type OfferRow = {

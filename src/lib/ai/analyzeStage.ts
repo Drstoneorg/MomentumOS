@@ -1,6 +1,7 @@
 import { chatJSON } from "./deepseek"
 import { contextToPrompt, type ContactContext } from "./context"
-import { PIPELINE_STAGES, type Enums } from "@/lib/database.types"
+import { PIPELINE_STAGES } from "@/lib/dbLabels"
+import type { Enums } from "@/lib/database.types"
 
 export type StageAnalysis = {
   stage: Enums<"pipeline_stage">

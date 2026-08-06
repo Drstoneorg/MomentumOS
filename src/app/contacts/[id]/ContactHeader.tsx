@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { updateContact, deleteContact, setContactRealm, setContactIntent } from "@/lib/actions"
-import { PIPELINE_STAGES, STAGE_LABELS, INTENT_LABELS, type Tables } from "@/lib/database.types"
+import { PIPELINE_STAGES, STAGE_LABELS, INTENT_LABELS } from "@/lib/dbLabels"
+import type { Tables } from "@/lib/database.types"
 import { inputCls, btnGhostCls, PriorityDot } from "@/components/ui"
 import { InlineField } from "@/components/InlineField"
 

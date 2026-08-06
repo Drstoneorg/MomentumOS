@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { Card } from "@/components/ui"
-import { MEETUP_STATUS_LABELS } from "@/lib/database.types"
+import { MEETUP_STATUS_LABELS } from "@/lib/dbLabels"
 import { NewMeetupButton } from "./NewMeetupButton"
 
 export const dynamic = "force-dynamic"

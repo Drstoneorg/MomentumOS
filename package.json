@@ -13,6 +13,7 @@
     "worker:daemon:status": "bash scripts/worker-launchd.sh status",
     "telegram:login": "tsx worker/telegram-login.ts",
     "test": "vitest run",
+    "types:gen": "node scripts/gen-types.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

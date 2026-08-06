@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { PIPELINE_STAGES, STAGE_LABELS } from "@/lib/database.types"
+import { PIPELINE_STAGES, STAGE_LABELS } from "@/lib/dbLabels"
 import { PriorityDot } from "@/components/ui"
 
 export const dynamic = "force-dynamic"

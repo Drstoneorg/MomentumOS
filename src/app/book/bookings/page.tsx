@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { BOOKING_STATUS_LABELS } from "@/lib/database.types"
+import { BOOKING_STATUS_LABELS } from "@/lib/dbLabels"
 import { formatPrice, totalCents, STATUS_COLOR } from "@/lib/bookos"
 
 export const dynamic = "force-dynamic"
