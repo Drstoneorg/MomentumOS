@@ -1514,27 +1514,27 @@ export type Database = {
       }
       trading_snapshots: {
         Row: {
-          bench_invested_eur: number
+          bench_invested_eur: number | null
           bench_value_eur: number
           created_at: string
           day: string
-          ki_invested_eur: number
+          ki_invested_eur: number | null
           ki_value_eur: number
         }
         Insert: {
-          bench_invested_eur: number
+          bench_invested_eur?: number | null
           bench_value_eur: number
           created_at?: string
           day: string
-          ki_invested_eur: number
+          ki_invested_eur?: number | null
           ki_value_eur: number
         }
         Update: {
-          bench_invested_eur?: number
+          bench_invested_eur?: number | null
           bench_value_eur?: number
           created_at?: string
           day?: string
-          ki_invested_eur?: number
+          ki_invested_eur?: number | null
           ki_value_eur?: number
         }
         Relationships: []

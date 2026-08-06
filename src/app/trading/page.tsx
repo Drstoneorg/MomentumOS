@@ -11,6 +11,7 @@ import {
   verdictStats,
 } from "@/lib/trading"
 import { RunNowButton } from "./RunNowButton"
+import { EquityChart } from "./EquityChart"
 import type { TradingPick } from "@/lib/ai/trading"
 
 export const dynamic = "force-dynamic"
@@ -20,10 +21,15 @@ const eur = (n: number) =>
 
 export default async function TradingPage() {
   const supabase = await createClient()
-  const [tradesRes, digestsRes, lessonsRes] = await Promise.all([
+  const [tradesRes, digestsRes, lessonsRes, snapshotsRes] = await Promise.all([
     supabase.from("paper_trades").select("*").order("traded_at", { ascending: false }),
     supabase.from("trading_digests").select("*").order("day", { ascending: false }).limit(7),
     supabase.from("settings").select("value").eq("key", "trading_learnings").maybeSingle(),
+    supabase
+      .from("trading_snapshots")
+      .select("day, ki_value_eur, bench_value_eur")
+      .order("day")
+      .limit(400),
   ])
 
   let lessons: string[] = []
@@ -122,6 +128,8 @@ export default async function TradingPage() {
           )}
         </Card>
       </div>
+
+      <EquityChart snapshots={snapshotsRes.data ?? []} />
 
       {(stats.right + stats.wrong > 0 || lessons.length > 0) && (
         <Card title="🧠 Selbstkritik — Picks nach 7 Tagen am Benchmark gemessen">

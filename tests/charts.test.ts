@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { dailyCounts, sparklinePoints, lastPoint } from "../src/lib/charts"
+import { dailyCounts, sparklinePoints, lastPoint, scaledPoints } from "../src/lib/charts"
 
 const now = new Date("2026-07-18T12:00:00Z")
 
@@ -40,5 +40,21 @@ describe("lastPoint", () => {
   })
   it("leer → null", () => {
     expect(lastPoint("")).toBeNull()
+  })
+})
+
+describe("scaledPoints", () => {
+  it("nutzt die übergebene Skala statt der Serien-Extrema", () => {
+    // Serie 5..10 auf Skala 0..20: y von 10 liegt bei der Hälfte
+    const pts = scaledPoints([0, 10, 20], 0, 20, 100, 44, 2)
+    const ys = pts.split(" ").map((p) => Number(p.split(",")[1]))
+    expect(ys[0]).toBe(42) // min → unten
+    expect(ys[2]).toBe(2) // max → oben
+    expect(ys[1]).toBe(22) // Mitte
+  })
+
+  it("flache Serie liegt auf der Mittellinie", () => {
+    const pts = scaledPoints([5, 5], 5, 5, 100, 40, 2)
+    for (const p of pts.split(" ")) expect(Number(p.split(",")[1])).toBe(20)
   })
 })

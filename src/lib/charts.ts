@@ -54,3 +54,28 @@ export function lastPoint(points: string): { x: number; y: number } | null {
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10
+
+/**
+ * Punktliste mit vorgegebener Skala — für mehrere Serien im selben Diagramm,
+ * die eine gemeinsame y-Achse brauchen (sparklinePoints skaliert je Serie).
+ */
+export function scaledPoints(
+  values: number[],
+  min: number,
+  max: number,
+  w = 100,
+  h = 40,
+  pad = 2
+): string {
+  if (values.length === 0) return ""
+  const span = max - min
+  const innerH = h - pad * 2
+  const step = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0
+  return values
+    .map((v, i) => {
+      const x = pad + i * step
+      const y = span === 0 ? h / 2 : pad + innerH - ((v - min) / span) * innerH
+      return `${round1(x)},${round1(y)}`
+    })
+    .join(" ")
+}

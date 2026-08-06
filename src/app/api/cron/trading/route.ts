@@ -204,6 +204,25 @@ async function runTradingDay(supabase: SupabaseClient<Database>) {
     await supabase
       .from("settings")
       .upsert({ key: "trading_equity", value: JSON.stringify(hist) }, { onConflict: "key" })
+
+    // Dauerhafte Tageszeile für die Equity-Kurve auf /trading (unbegrenzte
+    // Historie, mit Invest-Summen für die Renditerechnung)
+    let kiInvested = 0
+    let benchInvested = 0
+    for (const h of holdingsNow) {
+      if (h.isBenchmark) benchInvested += h.investedEur
+      else kiInvested += h.investedEur
+    }
+    await supabase.from("trading_snapshots").upsert(
+      {
+        day,
+        ki_value_eur: Math.round(kiValue * 100) / 100,
+        ki_invested_eur: Math.round(kiInvested * 100) / 100,
+        bench_value_eur: Math.round(benchValue * 100) / 100,
+        bench_invested_eur: Math.round(benchInvested * 100) / 100,
+      },
+      { onConflict: "day" }
+    )
   } catch {
     /* Snapshot optional — Lauf gilt trotzdem */
   }
