@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimitOk } from "@/lib/rateLimit"
-import { ask, type AskMessage } from "@/lib/ai/ask"
+import { askStream, type AskEvent, type AskMessage } from "@/lib/ai/ask"
 
 /**
  * Frage-Chat über die eigenen Daten. Der Supabase-Client stammt aus der
@@ -54,11 +54,24 @@ export async function POST(req: Request) {
         .slice(-10)
     : []
 
-  try {
-    const res = await ask(supabase, frage, historie)
-    return NextResponse.json(res)
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
-  }
+  // NDJSON-Stream: status/reset/delta/done-Ereignisse, eine Zeile pro Ereignis.
+  // Die Antwort tröpfelt so sofort in den Chat, statt sekundenlang zu stehen.
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      const write = (e: AskEvent) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"))
+      try {
+        await askStream(supabase, frage, historie, write)
+      } catch (e) {
+        write({ t: "error", text: e instanceof Error ? e.message : String(e) })
+      }
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  })
 }

@@ -14,6 +14,7 @@ type Nachricht = {
   content: string
   schritte?: { werkzeug: string }[]
   fehler?: boolean
+  status?: string | null
 }
 
 const BEISPIELE = [
@@ -100,6 +101,17 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
     setLaeuft(true)
     setTimeout(() => endeRef.current?.scrollIntoView({ behavior: "smooth" }), 50)
 
+    // Antwort kommt als NDJSON-Stream (status/reset/delta/done) und wird
+    // tröpfelnd in die letzte Assistenten-Nachricht geschrieben.
+    const setLetzte = (patch: Partial<Nachricht> | ((m: Nachricht) => Partial<Nachricht>)) =>
+      setVerlauf((v) => {
+        const kopie = [...v]
+        const letzte = kopie[kopie.length - 1]
+        if (!letzte || letzte.role !== "assistant") return v
+        kopie[kopie.length - 1] = { ...letzte, ...(typeof patch === "function" ? patch(letzte) : patch) }
+        return kopie
+      })
+
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -109,21 +121,50 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
           historie: neu.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
         }),
       })
-      // Ein Serverfehler kann mit leerem Body kommen — dann darf hier kein
-      // JSON-Parsefehler die eigentliche Ursache verdecken.
-      const roh = await res.text()
-      let data: { antwort?: string; schritte?: { werkzeug: string }[]; error?: string } = {}
-      try {
-        data = roh ? JSON.parse(roh) : {}
-      } catch {
-        data = { error: `Server antwortete mit ${res.status} ohne verwertbaren Inhalt` }
+
+      if (!res.ok || !res.body) {
+        // Fehlerpfade (401/429/…) antworten weiter als JSON
+        const roh = await res.text()
+        let fehler = `Fehler ${res.status}`
+        try {
+          fehler = (JSON.parse(roh) as { error?: string }).error || fehler
+        } catch {
+          /* leerer Body */
+        }
+        setVerlauf([...neu, { role: "assistant", content: fehler, fehler: true }])
+        return
       }
-      setVerlauf([
-        ...neu,
-        res.ok && data.antwort
-          ? { role: "assistant", content: data.antwort, schritte: data.schritte }
-          : { role: "assistant", content: data.error || `Fehler ${res.status}`, fehler: true },
-      ])
+
+      setVerlauf([...neu, { role: "assistant", content: "", status: "denkt nach …" }])
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let puffer = ""
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        puffer += decoder.decode(value, { stream: true })
+        const zeilen = puffer.split("\n")
+        puffer = zeilen.pop() ?? ""
+        for (const zeile of zeilen) {
+          if (!zeile.trim()) continue
+          let ev: { t: string; text?: string; schritte?: { werkzeug: string }[] }
+          try {
+            ev = JSON.parse(zeile)
+          } catch {
+            continue
+          }
+          if (ev.t === "status") setLetzte({ status: ev.text ?? null })
+          else if (ev.t === "reset") setLetzte({ content: "", status: null })
+          else if (ev.t === "delta")
+            setLetzte((m) => ({ content: m.content + (ev.text ?? ""), status: null }))
+          else if (ev.t === "done") setLetzte({ schritte: ev.schritte, status: null })
+          else if (ev.t === "error")
+            setLetzte({ content: ev.text || "Fehler", fehler: true, status: null })
+        }
+        endeRef.current?.scrollIntoView({ behavior: "smooth" })
+      }
+      // Falls der Stream ohne done-Ereignis riss
+      setLetzte((m) => (m.content ? {} : { content: "Verbindung abgerissen", fehler: true, status: null }))
     } catch (e) {
       setVerlauf([
         ...neu,
@@ -167,6 +208,9 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
                 }
               >
                 {renderText(m.content)}
+                {m.status && (
+                  <span className="block animate-pulse text-xs text-zinc-500">⚙ {m.status}</span>
+                )}
                 {!!m.schritte?.length && (
                   <div className="mt-2 flex flex-wrap gap-1 border-t border-zinc-800 pt-2">
                     {[...new Set(m.schritte.map((s) => s.werkzeug))].map((w) => (
@@ -179,7 +223,6 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
               </div>
             </div>
           ))}
-          {laeuft && <div className="px-3 text-sm text-zinc-500">denkt nach …</div>}
           <div ref={endeRef} />
         </div>
       </div>

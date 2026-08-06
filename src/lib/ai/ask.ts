@@ -10,16 +10,35 @@ import { ASK_TOOL_BY_NAME, toolSchemas, werkzeugeFuerFrage } from "@/lib/ai/askT
  * Das Modell bekommt nie SQL und nie das Schema — nur die Werkzeugliste aus
  * askTools.ts und deren Rückgaben. Jeder Durchlauf wird für die Kostenrechnung
  * protokolliert, das Monatsbudget bremst wie überall sonst auch.
+ *
+ * Alles läuft als Stream: Antwort-Tokens gehen sofort per emit() raus, damit
+ * die Antwort im Chat tröpfelt statt am Stück zu erscheinen. Werkzeug-Runden
+ * melden sich als status-Ereignis; angefangener Text vor einem Werkzeugaufruf
+ * wird per reset verworfen (das war Vorgeplänkel, nicht die Antwort).
  */
 
 export type AskMessage = { role: "user" | "assistant"; content: string }
 export type AskStep = { werkzeug: string; args: Record<string, unknown> }
 export type AskResult = { antwort: string; schritte: AskStep[] }
 
+export type AskEvent =
+  | { t: "status"; text: string }
+  | { t: "reset" }
+  | { t: "delta"; text: string }
+  | { t: "done"; schritte: AskStep[] }
+  | { t: "error"; text: string }
+
 /** Obergrenze gegen Endlosschleifen — mehr als vier Werkzeugrunden braucht keine Frage. */
 const MAX_RUNDEN = 4
 /** Wie viel Verlauf mitgeschickt wird. Ältere Fragen sind selten noch relevant. */
 const HISTORIE_MAX = 6
+
+const STATUS_LABELS: Record<string, string> = {
+  finde_kontakt: "suche Kontakt",
+  nachrichten_suchen: "durchsuche Nachrichten",
+  gedaechtnis_suchen: "durchsuche Gedächtnis",
+  kommende_termine: "prüfe Termine",
+}
 
 function systemPrompt(): string {
   const heute = new Date().toLocaleDateString("de-AT", {
@@ -50,10 +69,11 @@ Regeln:
 8. Antworte auf Deutsch.`
 }
 
-export async function ask(
+export async function askStream(
   db: SupabaseClient<Database>,
   frage: string,
-  historie: AskMessage[] = []
+  historie: AskMessage[],
+  emit: (e: AskEvent) => void
 ): Promise<AskResult> {
   await assertBudget()
   const client = deepseek()
@@ -71,45 +91,83 @@ export async function ask(
   const angebot = werkzeugeFuerFrage([...historie.map((m) => m.content), frage].join(" "))
 
   for (let runde = 0; runde < MAX_RUNDEN; runde++) {
-    const res = await client.chat.completions.create({
+    const stream = await client.chat.completions.create({
       model: "deepseek-chat",
       messages,
       tools: toolSchemas(angebot),
       tool_choice: "auto",
       temperature: 0.2,
-    })
-    await logUsage({
-      provider: "deepseek",
-      model: "deepseek-chat",
-      feature: "ask",
-      tokensIn: res.usage?.prompt_tokens,
-      tokensOut: res.usage?.completion_tokens,
+      stream: true,
+      stream_options: { include_usage: true },
     })
 
-    const msg = res.choices[0]?.message
-    if (!msg) return { antwort: "Keine Antwort erhalten.", schritte }
+    let content = ""
+    let gestreamt = false
+    const calls: { id: string; name: string; args: string }[] = []
 
-    const calls = msg.tool_calls ?? []
-    if (!calls.length) {
-      return { antwort: msg.content?.trim() || "Keine Antwort erhalten.", schritte }
+    for await (const chunk of stream) {
+      if (chunk.usage) {
+        await logUsage({
+          provider: "deepseek",
+          model: "deepseek-chat",
+          feature: "ask",
+          tokensIn: chunk.usage.prompt_tokens,
+          tokensOut: chunk.usage.completion_tokens,
+        })
+      }
+      const delta = chunk.choices[0]?.delta
+      if (!delta) continue
+      if (delta.content) {
+        content += delta.content
+        // Solange keine Werkzeugwahl sichtbar ist, direkt durchreichen
+        if (!calls.length) {
+          gestreamt = true
+          emit({ t: "delta", text: delta.content })
+        }
+      }
+      for (const tc of delta.tool_calls ?? []) {
+        const i = tc.index ?? 0
+        calls[i] ??= { id: "", name: "", args: "" }
+        if (tc.id) calls[i].id = tc.id
+        if (tc.function?.name) calls[i].name += tc.function.name
+        if (tc.function?.arguments) calls[i].args += tc.function.arguments
+      }
     }
 
-    messages.push(msg)
+    if (!calls.length) {
+      const antwort = content.trim() || "Keine Antwort erhalten."
+      if (!gestreamt) emit({ t: "delta", text: antwort })
+      emit({ t: "done", schritte })
+      return { antwort, schritte }
+    }
+
+    // Werkzeugrunde: eventuell schon gestreamtes Vorgeplänkel zurücknehmen
+    if (gestreamt) emit({ t: "reset" })
+
+    messages.push({
+      role: "assistant",
+      content: content || null,
+      tool_calls: calls.map((c) => ({
+        id: c.id,
+        type: "function" as const,
+        function: { name: c.name, arguments: c.args || "{}" },
+      })),
+    })
 
     for (const call of calls) {
-      if (call.type !== "function") continue
-      const tool = ASK_TOOL_BY_NAME.get(call.function.name)
+      const tool = ASK_TOOL_BY_NAME.get(call.name)
       let ergebnis: unknown
       if (!tool) {
-        ergebnis = { fehler: `Unbekanntes Werkzeug: ${call.function.name}` }
+        ergebnis = { fehler: `Unbekanntes Werkzeug: ${call.name}` }
       } else {
         let args: Record<string, unknown> = {}
         try {
-          args = JSON.parse(call.function.arguments || "{}")
+          args = JSON.parse(call.args || "{}")
         } catch {
           args = {}
         }
         schritte.push({ werkzeug: tool.name, args })
+        emit({ t: "status", text: STATUS_LABELS[tool.name] ?? `frage ${tool.name} ab` })
         try {
           ergebnis = await tool.run(db, args)
         } catch (e) {
@@ -126,9 +184,18 @@ export async function ask(
     }
   }
 
-  return {
-    antwort:
-      "Die Frage brauchte zu viele Schritte. Formuliere sie enger, zum Beispiel mit einem konkreten Namen.",
-    schritte,
-  }
+  const antwort =
+    "Die Frage brauchte zu viele Schritte. Formuliere sie enger, zum Beispiel mit einem konkreten Namen."
+  emit({ t: "delta", text: antwort })
+  emit({ t: "done", schritte })
+  return { antwort, schritte }
+}
+
+/** Nicht-streamende Variante (Telegram-Bot, Tests): sammelt den Stream ein. */
+export async function ask(
+  db: SupabaseClient<Database>,
+  frage: string,
+  historie: AskMessage[] = []
+): Promise<AskResult> {
+  return askStream(db, frage, historie, () => {})
 }
