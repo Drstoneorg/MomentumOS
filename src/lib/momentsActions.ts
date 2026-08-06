@@ -308,3 +308,33 @@ export async function logAssetSend(input: {
   if (error) throw new Error(error.message)
   revalidatePath("/moments/archive")
 }
+
+// ---------- Promo-Checkliste ----------
+
+export async function createPromoChecklist(eventId: string) {
+  const supabase = await db()
+  const [{ data: event }, { count }] = await Promise.all([
+    supabase.from("events").select("starts_at").eq("id", eventId).maybeSingle(),
+    supabase
+      .from("event_promo_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId),
+  ])
+  if (!event?.starts_at) throw new Error("Event braucht erst ein Datum")
+  if (count) return // schon angelegt — nichts doppeln
+  const { promoAufgaben } = await import("@/lib/promo")
+  const rows = promoAufgaben(event.starts_at).map((t) => ({ ...t, event_id: eventId }))
+  const { error } = await supabase.from("event_promo_tasks").insert(rows)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/moments/events/${eventId}`)
+}
+
+export async function togglePromoTask(id: string, eventId: string, done: boolean) {
+  const supabase = await db()
+  const { error } = await supabase
+    .from("event_promo_tasks")
+    .update({ done, done_at: done ? new Date().toISOString() : null })
+    .eq("id", id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/moments/events/${eventId}`)
+}

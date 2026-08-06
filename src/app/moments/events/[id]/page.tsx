@@ -5,6 +5,7 @@ import { EventInviteManager } from "./EventInviteManager"
 import { EventBudget } from "./EventBudget"
 import { EventLineup } from "./EventLineup"
 import { EventAudience } from "./EventAudience"
+import { EventPromoChecklist } from "./EventPromoChecklist"
 import { audienceMatch } from "@/lib/artists"
 
 export const dynamic = "force-dynamic"
@@ -13,13 +14,18 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  const [eventRes, invitesRes, contactsRes, gigsRes, artistsRes] = await Promise.all([
+  const [eventRes, invitesRes, contactsRes, gigsRes, artistsRes, promoRes] = await Promise.all([
     supabase.from("events").select("*").eq("id", id).single(),
     supabase.from("event_invites").select("*, contacts(name, realm, platform, relationship_tags, language, contact_channels(channel, handle))").eq("event_id", id),
     // Beide Realms: Freunde UND Matches (Event-Leads) einladbar, Freunde zuerst
     supabase.from("contacts").select("id, name, realm, relationship_tags").order("realm", { ascending: false }).order("name"),
     supabase.from("gigs").select("id, artist_id, fee_cents, status, set_slot, artists(name)").eq("event_id", id),
     supabase.from("artists").select("id, name, audience").not("audience", "is", null),
+    supabase
+      .from("event_promo_tasks")
+      .select("id, title, due_at, done")
+      .eq("event_id", id)
+      .order("due_at"),
   ])
 
   const event = eventRes.data
@@ -91,6 +97,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       />
 
       <EventLineup gigs={gigs} />
+
+      <EventPromoChecklist eventId={id} hatDatum={!!event.starts_at} tasks={promoRes.data ?? []} />
 
       {event.audience && passung.length > 0 && (
         <Card title="🎯 Artist-Passung zum Zielpublikum">
