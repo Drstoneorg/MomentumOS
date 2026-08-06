@@ -6,6 +6,8 @@ import { EventBudget } from "./EventBudget"
 import { EventLineup } from "./EventLineup"
 import { EventAudience } from "./EventAudience"
 import { EventPromoChecklist } from "./EventPromoChecklist"
+import { EventShrineCard } from "./EventShrineCard"
+import { listShrineProfiles, shrineKonfiguriert, type ShrineProfil } from "@/lib/shrinePublish"
 import { audienceMatch } from "@/lib/artists"
 
 export const dynamic = "force-dynamic"
@@ -30,6 +32,23 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   const event = eventRes.data
   if (!event) notFound()
+
+  // Shrine-Anbindung: Profile nur laden, wenn der Key da ist — sonst Hinweis-Karte
+  const konfiguriert = shrineKonfiguriert()
+  let shrineProfile: ShrineProfil[] = []
+  if (konfiguriert) {
+    try {
+      shrineProfile = await listShrineProfiles()
+    } catch {
+      /* Shrine nicht erreichbar — Karte zeigt leeres Dropdown */
+    }
+  }
+  const { data: profilRow } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "shrine_publish_profile")
+    .maybeSingle()
+  const gewaehltesProfil = typeof profilRow?.value === "string" ? profilRow.value : ""
 
   // Funnel pro Herkunftsplattform: welche App liefert Zusagen und Tickets.
   const invites = invitesRes.data ?? []
@@ -99,6 +118,16 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       <EventLineup gigs={gigs} />
 
       <EventPromoChecklist eventId={id} hatDatum={!!event.starts_at} tasks={promoRes.data ?? []} />
+
+      <EventShrineCard
+        eventId={id}
+        konfiguriert={konfiguriert}
+        profile={shrineProfile}
+        gewaehltesProfil={gewaehltesProfil}
+        shrinePublishedAt={event.shrine_published_at}
+        ticketUrl={event.ticket_url}
+        hatDatum={!!event.starts_at}
+      />
 
       {event.audience && passung.length > 0 && (
         <Card title="🎯 Artist-Passung zum Zielpublikum">
