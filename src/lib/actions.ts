@@ -115,6 +115,30 @@ export async function uploadContactAvatar(contactId: string, dataUrl: string) {
   revalidatePath("/pipeline")
 }
 
+/**
+ * Dubletten-Merge: alles (Nachrichten, Gedächtnis, Einladungen, Kanäle …)
+ * wandert zum Hauptkontakt, Lücken werden aufgefüllt, der Zweitkontakt fällt weg.
+ * Läuft als eine Transaktion in der DB-Funktion merge_contacts.
+ */
+export async function mergeContacts(keepId: string, dropId: string) {
+  const supabase = await db()
+  const { data: beide } = await supabase
+    .from("contacts")
+    .select("id, avatar_url")
+    .in("id", [keepId, dropId])
+  const keepAvatar = beide?.find((c) => c.id === keepId)?.avatar_url ?? null
+  const dropAvatar = beide?.find((c) => c.id === dropId)?.avatar_url ?? null
+
+  const { error } = await supabase.rpc("merge_contacts", { keep_id: keepId, drop_id: dropId })
+  if (error) throw new Error(error.message)
+
+  // Behielt der Hauptkontakt sein eigenes Foto, ist das des Zweitkontakts verwaist
+  if (dropAvatar && keepAvatar) await removeStorageObjectByUrl(dropAvatar)
+  revalidatePath("/contacts")
+  revalidatePath(`/contacts/${keepId}`)
+  revalidatePath("/pipeline")
+}
+
 export async function removeContactAvatar(contactId: string) {
   const supabase = await db()
   const { data: alt } = await supabase.from("contacts").select("avatar_url").eq("id", contactId).maybeSingle()

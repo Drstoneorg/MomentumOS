@@ -59,6 +59,13 @@ export default async function ContactsPage({
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Matchbox</h1>
         <div className="flex gap-2">
+          <Link
+            href="/contacts/dubletten"
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+            title="Gleiche Person auf zwei Plattformen finden und zusammenführen"
+          >
+            🔀 Dubletten
+          </Link>
           <FileImportButton />
           <SmartImportButton />
           <NewContactButton />

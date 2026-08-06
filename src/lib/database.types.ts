@@ -1907,6 +1907,10 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      merge_contacts: {
+        Args: { drop_id: string; keep_id: string }
+        Returns: undefined
+      }
       nearby_providers: {
         Args: { p_lat: number; p_limit?: number; p_lng: number }
         Returns: {
