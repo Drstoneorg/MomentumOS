@@ -32,7 +32,11 @@ export async function middleware(request: NextRequest) {
   const isLogin = request.nextUrl.pathname.startsWith("/login")
   // /model ist die öffentliche RecruitOS-Landing-Page (TFP-Bewerbungsformular) —
   // bewusst ohne Login erreichbar; das Formular schreibt über /api/apply.
-  const isPublic = isLogin || request.nextUrl.pathname === "/model"
+  const isPublic =
+    isLogin ||
+    request.nextUrl.pathname === "/model" ||
+    // Persönliche Einladungs-Links: Gäste haben keinen Login
+    request.nextUrl.pathname.startsWith("/einladung")
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"

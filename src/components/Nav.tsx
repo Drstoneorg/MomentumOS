@@ -39,7 +39,7 @@ export function Nav() {
   }
 
   // /model ist die öffentliche Landing-Page — dort keine App-Navigation zeigen
-  if (pathname.startsWith("/login") || pathname === "/model") return null
+  if (pathname.startsWith("/login") || pathname === "/model" || pathname.startsWith("/einladung")) return null
 
   const active = sectionForPath(pathname)
 
