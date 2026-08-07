@@ -155,6 +155,45 @@ export default async function ContactPage({
           <MemoryPanel contactId={id} memories={memoriesRes.data ?? []} />
           <ChannelPanel contactId={id} channels={channelsRes.data ?? []} />
           <DatePanel contactId={id} dates={datesRes.data ?? []} />
+
+          {(invitesRes.data ?? []).length > 0 && (
+            <Card title="🎟 Event-Historie">
+              <ul className="space-y-1 text-sm">
+                {(invitesRes.data ?? [])
+                  .slice()
+                  .sort((a, b) => ((a.events?.starts_at ?? a.created_at) < (b.events?.starts_at ?? b.created_at) ? 1 : -1))
+                  .slice(0, 8)
+                  .map((i, n) => (
+                    <li key={n} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-zinc-300">{i.events?.title ?? "Event"}</span>
+                      <span
+                        className={`shrink-0 text-xs ${
+                          i.status === "attended"
+                            ? "text-emerald-400"
+                            : ["yes", "ticket"].includes(i.status)
+                              ? "text-emerald-300/80"
+                              : i.status === "no"
+                                ? "text-zinc-500"
+                                : "text-amber-400/80"
+                        }`}
+                      >
+                        {i.status === "attended" ? "✔ da" : i.status === "ticket" ? "🎟" : i.status === "yes" ? "zugesagt" : i.status === "no" ? "abgesagt" : "offen"}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+              {(() => {
+                const alle = invitesRes.data ?? []
+                const reagiert = alle.filter((i) => ["yes", "no", "ticket", "attended"].includes(i.status)).length
+                return (
+                  <p className="mt-2 text-xs text-zinc-600">
+                    {alle.length} Einladungen · {reagiert} reagiert
+                    {alle.length >= 2 && reagiert === 0 && " — im Assistenten abgestuft"}
+                  </p>
+                )
+              })()}
+            </Card>
+          )}
         </div>
       </div>
     </div>

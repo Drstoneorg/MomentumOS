@@ -96,13 +96,25 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         </p>
         {event.description && <p className="mt-2 text-sm text-zinc-300">{event.description}</p>}
         <EventAudience eventId={id} audience={event.audience} />
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a
+            href={`/moments/events/${id}/einladen`}
+            className="inline-block rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+          >
+            ✉️ Einladen (Assistent)
+          </a>
+          <a
+            href={`/moments/events/${id}/tuer`}
+            className="inline-block rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+          >
+            🚪 Tür-Modus
+          </a>
           <a
             href={`/api/events/${id}/guestlist`}
             className="inline-block rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
             download
           >
-            📋 Gästeliste als CSV (Türliste mit Promo-Codes)
+            📋 Gästeliste als CSV
           </a>
         </div>
       </Card>

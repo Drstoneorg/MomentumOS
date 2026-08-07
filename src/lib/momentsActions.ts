@@ -338,3 +338,126 @@ export async function togglePromoTask(id: string, eventId: string, done: boolean
   if (error) throw new Error(error.message)
   revalidatePath(`/moments/events/${eventId}`)
 }
+
+// ---------- Einladungs-Assistent (R30) ----------
+
+/**
+ * Welle einladen, optional gleich personalisierte Entwürfe in die Queue legen.
+ * Entwürfe sind deterministisch (Vorlage + RSVP-Link) — gesendet wird wie
+ * überall nur von Hand bzw. per Einzelfreigabe in der Queue.
+ */
+export async function inviteWaveWithDrafts(
+  eventId: string,
+  contactIds: string[],
+  wave: number,
+  mitEntwuerfen: boolean
+): Promise<{ invited: number; drafts: number }> {
+  if (!contactIds.length) return { invited: 0, drafts: 0 }
+  const supabase = await db()
+
+  const { error } = await supabase.from("event_invites").insert(
+    contactIds.map((contact_id) => ({
+      event_id: eventId,
+      contact_id,
+      wave: Math.min(9, Math.max(1, Math.round(wave))),
+    }))
+  )
+  if (error) throw new Error(error.message)
+
+  let drafts = 0
+  if (mitEntwuerfen) {
+    const [{ data: event }, { data: invites }] = await Promise.all([
+      supabase.from("events").select("title, starts_at, location").eq("id", eventId).single(),
+      supabase
+        .from("event_invites")
+        .select("rsvp_token, contact_id, contacts(name, language)")
+        .eq("event_id", eventId)
+        .in("contact_id", contactIds),
+    ])
+    if (event && invites?.length) {
+      const { buildInviteMessage } = await import("@/lib/inviteTemplates")
+      const { SITE_URL } = await import("@/lib/siteUrl")
+      const rows = invites
+        .filter((i) => i.contacts)
+        .map((i) => ({
+          contact_id: i.contact_id,
+          situation: `Event-Einladung: ${event.title}`,
+          channel: "manual",
+          status: "draft" as const,
+          variants: {
+            einladung: buildInviteMessage(
+              { name: i.contacts!.name, language: i.contacts!.language },
+              event,
+              "einladung",
+              `${SITE_URL}/einladung/${i.rsvp_token}`
+            ),
+          },
+        }))
+      if (rows.length) {
+        const { error: sErr } = await supabase.from("suggestions").insert(rows)
+        if (!sErr) drafts = rows.length
+      }
+    }
+  }
+
+  revalidatePath(`/moments/events/${eventId}`)
+  revalidatePath("/queue")
+  return { invited: contactIds.length, drafts }
+}
+
+/**
+ * Nachfass-Entwürfe für alle, die seit mindestens 3 Tagen nicht geantwortet
+ * haben. last_nudge_at verhindert, dass derselbe Gast mehrfach hintereinander
+ * einen Reminder-Entwurf bekommt.
+ */
+export async function nudgeUnanswered(eventId: string): Promise<{ drafts: number }> {
+  const supabase = await db()
+  const grenze = new Date(Date.now() - 3 * 86400_000).toISOString()
+  const nudgeSperre = new Date(Date.now() - 4 * 86400_000).toISOString()
+
+  const [{ data: event }, { data: invites }] = await Promise.all([
+    supabase.from("events").select("title, starts_at, location").eq("id", eventId).single(),
+    supabase
+      .from("event_invites")
+      .select("id, rsvp_token, contact_id, created_at, last_nudge_at, contacts(name, language)")
+      .eq("event_id", eventId)
+      .in("status", ["invited", "no_reply"])
+      .lt("created_at", grenze),
+  ])
+  if (!event) throw new Error("Event nicht gefunden")
+
+  const faellig = (invites ?? []).filter(
+    (i) => i.contacts && (!i.last_nudge_at || i.last_nudge_at < nudgeSperre)
+  )
+  if (!faellig.length) return { drafts: 0 }
+
+  const { buildInviteMessage } = await import("@/lib/inviteTemplates")
+  const { SITE_URL } = await import("@/lib/siteUrl")
+  const { error } = await supabase.from("suggestions").insert(
+    faellig.map((i) => ({
+      contact_id: i.contact_id,
+      situation: `Event-Nachfass: ${event.title}`,
+      channel: "manual",
+      status: "draft" as const,
+      variants: {
+        nachfass: buildInviteMessage(
+          { name: i.contacts!.name, language: i.contacts!.language },
+          event,
+          "nachfass",
+          `${SITE_URL}/einladung/${i.rsvp_token}`
+        ),
+      },
+    }))
+  )
+  if (error) throw new Error(error.message)
+
+  const jetzt = new Date().toISOString()
+  await supabase
+    .from("event_invites")
+    .update({ last_nudge_at: jetzt })
+    .in("id", faellig.map((i) => i.id))
+
+  revalidatePath(`/moments/events/${eventId}`)
+  revalidatePath("/queue")
+  return { drafts: faellig.length }
+}
