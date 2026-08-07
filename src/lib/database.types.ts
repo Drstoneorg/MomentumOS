@@ -549,8 +549,12 @@ export type Database = {
           event_id: string
           id: string
           invite_text: string | null
+          last_nudge_at: string | null
+          plus_ones: number
           promo_code: string | null
+          rsvp_token: string
           status: Database["public"]["Enums"]["event_invite_status"]
+          wave: number
         }
         Insert: {
           contact_id: string
@@ -558,8 +562,12 @@ export type Database = {
           event_id: string
           id?: string
           invite_text?: string | null
+          last_nudge_at?: string | null
+          plus_ones?: number
           promo_code?: string | null
+          rsvp_token?: string
           status?: Database["public"]["Enums"]["event_invite_status"]
+          wave?: number
         }
         Update: {
           contact_id?: string
@@ -567,8 +575,12 @@ export type Database = {
           event_id?: string
           id?: string
           invite_text?: string | null
+          last_nudge_at?: string | null
+          plus_ones?: number
           promo_code?: string | null
+          rsvp_token?: string
           status?: Database["public"]["Enums"]["event_invite_status"]
+          wave?: number
         }
         Relationships: [
           {
@@ -638,6 +650,7 @@ export type Database = {
           shrine_event_id: string | null
           shrine_published_at: string | null
           starts_at: string | null
+          target_attendees: number | null
           ticket_price_cents: number | null
           ticket_url: string | null
           title: string
@@ -654,6 +667,7 @@ export type Database = {
           shrine_event_id?: string | null
           shrine_published_at?: string | null
           starts_at?: string | null
+          target_attendees?: number | null
           ticket_price_cents?: number | null
           ticket_url?: string | null
           title: string
@@ -670,6 +684,7 @@ export type Database = {
           shrine_event_id?: string | null
           shrine_published_at?: string | null
           starts_at?: string | null
+          target_attendees?: number | null
           ticket_price_cents?: number | null
           ticket_url?: string | null
           title?: string
