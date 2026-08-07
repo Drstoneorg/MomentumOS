@@ -8,6 +8,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manueller Start — für verlorene Push-Events (GitHub-Ausfall 2026-08-06)
+  workflow_dispatch:
 
 jobs:
   build:
