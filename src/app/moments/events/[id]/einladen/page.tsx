@@ -7,6 +7,18 @@ import { InviteAssistant, type Eingeladen, type Kandidat } from "./InviteAssista
 
 export const dynamic = "force-dynamic"
 
+/** Wer ist seit 3+ Tagen ohne Antwort und nicht frisch erinnert — außerhalb der Komponente wegen react-hooks/purity. */
+function zaehleNachfassFaellige(eingeladen: Eingeladen[]): number {
+  const grenze = new Date(Date.now() - 3 * 86400_000).toISOString()
+  const sperre = new Date(Date.now() - 4 * 86400_000).toISOString()
+  return eingeladen.filter(
+    (i) =>
+      ["invited", "no_reply"].includes(i.status) &&
+      i.created_at < grenze &&
+      (!i.last_nudge_at || i.last_nudge_at < sperre)
+  ).length
+}
+
 /**
  * Einladungs-Assistent: alle Kontakte (Freunde, Matches, Recruit) nach Passung
  * zum Event sortiert, Historie über frühere Events fließt als Ermüdungsschutz
@@ -63,14 +75,7 @@ export default async function EinladenPage({ params }: { params: Promise<{ id: s
     last_nudge_at: i.last_nudge_at,
   }))
 
-  const grenze = new Date(Date.now() - 3 * 86400_000).toISOString()
-  const sperre = new Date(Date.now() - 4 * 86400_000).toISOString()
-  const nachfassFaellig = eingeladen.filter(
-    (i) =>
-      ["invited", "no_reply"].includes(i.status) &&
-      i.created_at < grenze &&
-      (!i.last_nudge_at || i.last_nudge_at < sperre)
-  ).length
+  const nachfassFaellig = zaehleNachfassFaellige(eingeladen)
 
   const stand = zusagenMitBegleitung(eingeladen)
   const ziel = event.target_attendees ?? event.capacity
