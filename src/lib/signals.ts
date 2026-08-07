@@ -76,6 +76,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
   const now = new Date()
   const nowIso = now.toISOString()
   const in7d = new Date(now.getTime() + 7 * 86400_000).toISOString()
+  const in14d = new Date(now.getTime() + 14 * 86400_000).toISOString()
   const jobCutoff = new Date(now.getTime() - 14 * 86400_000).toISOString()
   const dayAgo = new Date(now.getTime() - 86400_000).toISOString()
 
@@ -152,11 +153,11 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .limit(5),
     supabase
       .from("events")
-      .select("id, title, starts_at")
+      .select("id, title, starts_at, capacity, target_attendees")
       .gte("starts_at", nowIso)
-      .lte("starts_at", in7d)
+      .lte("starts_at", in14d)
       .order("starts_at")
-      .limit(3),
+      .limit(4),
     supabase.from("signal_snoozes").select("key, until").gte("until", nowIso),
     supabase
       .from("recruit_applications")
@@ -361,19 +362,59 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       checkin: true,
     })
   }
-  for (const e of eventsRes.data ?? []) {
-    const inDays = e.starts_at
-      ? Math.floor((new Date(e.starts_at).getTime() - now.getTime()) / 86400_000)
-      : null
-    signals.push({
-      key: `event-${e.id}`,
-      module: "moments",
-      icon: "🎟",
-      title: `Event „${e.title}" ${inDays === 0 ? "heute" : `in ${inDays}d`}`,
-      detail: "Gästeliste, Lineup und Budget checken",
-      href: `/moments/events/${e.id}`,
-      prio: inDays != null && inDays <= 1 ? 1 : 2,
-    })
+  // Event-Cockpit: Zusagen (samt Begleitungen) gegen Ziel, Nachfass-Lage,
+  // Wellen-Empfehlung — ein Signal pro anstehendem Event mit echter Diagnose.
+  {
+    const eventIds = (eventsRes.data ?? []).map((e) => e.id)
+    const inviteMap = new Map<
+      string,
+      { status: string; plus_ones: number | null; created_at: string; last_nudge_at: string | null }[]
+    >()
+    if (eventIds.length) {
+      const { data: alleInvites } = await supabase
+        .from("event_invites")
+        .select("event_id, status, plus_ones, created_at, last_nudge_at")
+        .in("event_id", eventIds)
+      for (const i of alleInvites ?? []) {
+        const arr = inviteMap.get(i.event_id) ?? []
+        arr.push(i)
+        inviteMap.set(i.event_id, arr)
+      }
+    }
+    const { zusagenMitBegleitung } = await import("@/lib/inviteScore")
+    const grenze = new Date(now.getTime() - 3 * 86400_000).toISOString()
+    const sperre = new Date(now.getTime() - 4 * 86400_000).toISOString()
+
+    for (const e of eventsRes.data ?? []) {
+      const inDays = e.starts_at
+        ? Math.floor((new Date(e.starts_at).getTime() - now.getTime()) / 86400_000)
+        : null
+      const invites = inviteMap.get(e.id) ?? []
+      const stand = zusagenMitBegleitung(invites)
+      const ziel = e.target_attendees ?? e.capacity
+      const nachfass = invites.filter(
+        (i) =>
+          ["invited", "no_reply"].includes(i.status) &&
+          i.created_at < grenze &&
+          (!i.last_nudge_at || i.last_nudge_at < sperre)
+      ).length
+      const rueckstand = ziel != null && stand.gesamt < ziel
+
+      let detail = "Gästeliste, Lineup und Budget checken"
+      if (nachfass > 0) detail = `${nachfass} ohne Antwort — Nachfass-Entwürfe im Assistenten`
+      else if (rueckstand && invites.length > 0) detail = "unter Ziel — nächste Einladungswelle starten"
+      else if (invites.length === 0) detail = "noch niemand eingeladen — Assistent öffnen"
+
+      signals.push({
+        key: `event-${e.id}`,
+        module: "moments",
+        icon: "🎟",
+        title: `„${e.title}" ${inDays === 0 ? "heute" : `in ${inDays}d`} — ${stand.gesamt} kommen${ziel ? ` (Ziel ${ziel})` : ""}`,
+        detail,
+        href: `/moments/events/${e.id}/einladen`,
+        prio: (inDays != null && inDays <= 1) || (rueckstand && inDays != null && inDays <= 7) ? 1 : 2,
+      })
+    }
   }
 
   // --- JobOS ---

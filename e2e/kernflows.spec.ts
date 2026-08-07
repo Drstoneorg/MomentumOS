@@ -94,3 +94,22 @@ test.describe("eingeloggt", () => {
       .toBeGreaterThan(0)
   })
 })
+
+test.describe("Einladungs-Links (öffentlich)", () => {
+  test("Fantasie-Token zeigt neutrale Meldung, keine Event-Daten", async ({ page }) => {
+    await page.goto("/einladung/deadbeefdeadbeefdeadbeefdeadbeef")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByText(/Einladung nicht gefunden/i)).toBeVisible()
+  })
+
+  test("/api/rsvp: ungültiger Token wird nie ok, kaputter Body 400", async ({ request }) => {
+    // Prod: 404. Lokal ohne SUPABASE_SERVICE_ROLE_KEY: 500 („Server nicht
+    // konfiguriert“). Entscheidend: nie ok und nie ein Status geschrieben.
+    const nix = await request.post("/api/rsvp", {
+      data: { token: "deadbeefdeadbeefdeadbeefdeadbeef", antwort: "ja", plus_ones: 1 },
+    })
+    expect(nix.status()).toBeGreaterThanOrEqual(400)
+    const kaputt = await request.post("/api/rsvp", { data: { token: "x", antwort: "vielleicht" } })
+    expect(kaputt.status()).toBe(400)
+  })
+})
