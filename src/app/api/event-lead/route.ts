@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { rateLimitOk } from "@/lib/rateLimit"
+import { sendPushToAll } from "@/lib/push"
+import { leadPush } from "@/lib/pushTexte"
 
 /**
  * „Will kommen"-Einlauf der öffentlichen Event-Seite /e/[slug]: legt einen
@@ -79,6 +81,16 @@ export async function POST(req: Request) {
     .from("event_invites")
     .insert({ event_id: event.id, contact_id: contact.id, status: "lead" })
     .then(() => {})
+
+  // Neuer Lead sofort aufs Handy — Push-Fehler bleiben folgenlos
+  try {
+    await sendPushToAll({
+      ...leadPush(name, event.title),
+      url: `/moments/events/${event.id}/einladen`,
+    })
+  } catch {
+    /* Push ist Bonus */
+  }
 
   return NextResponse.json({ ok: true })
 }

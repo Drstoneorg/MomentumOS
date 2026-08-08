@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { rateLimitOk } from "@/lib/rateLimit"
+import { sendPushToAll } from "@/lib/push"
+import { bewerbungPush } from "@/lib/pushTexte"
 
 /**
  * Einziger öffentlicher Schreibweg von RecruitOS: nimmt Bewerbungen der
@@ -60,5 +62,16 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: "Speichern fehlgeschlagen" }, { status: 500 })
   }
+
+  // Neue Bewerbung sofort aufs Handy — Push-Fehler bleiben folgenlos
+  try {
+    await sendPushToAll({
+      ...bewerbungPush(name, str(body.city, 60) || null),
+      url: "/recruit/bewerbungen",
+    })
+  } catch {
+    /* Push ist Bonus */
+  }
+
   return NextResponse.json({ ok: true })
 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { rateLimitOk } from "@/lib/rateLimit"
 import { zusagenMitBegleitung } from "@/lib/inviteScore"
+import { sendPushToAll } from "@/lib/push"
+import { rsvpPush } from "@/lib/pushTexte"
 
 /**
  * Öffentliche Zusage/Absage über den persönlichen Einladungs-Link.
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
   const { data: invite } = await admin
     .from("event_invites")
     .select(
-      "id, status, contact_id, event_id, comment, feedback_at, events(id, title, starts_at, capacity)"
+      "id, status, contact_id, event_id, comment, feedback_at, contacts(name), events(id, title, starts_at, capacity)"
     )
     .eq("rsvp_token", token)
     .maybeSingle()
@@ -208,6 +210,20 @@ export async function POST(req: Request) {
       }
     } catch {
       // Nachrücken ist Bonus — die Absage selbst ist längst gespeichert
+    }
+  }
+
+  // Sofort aufs Handy: neue Antwort als Push (nur bei echtem Statuswechsel,
+  // damit ein zweiter Klick auf denselben Knopf nicht erneut klingelt).
+  // Fehler beim Push dürfen die Antwort nie scheitern lassen.
+  if (!statusFinal && zielStatus !== invite.status) {
+    try {
+      await sendPushToAll({
+        ...rsvpPush(invite.contacts?.name ?? "Jemand", event.title, zielStatus, plusOnes),
+        url: `/moments/events/${invite.event_id}/einladen`,
+      })
+    } catch {
+      /* Push ist Bonus */
     }
   }
 
