@@ -11,10 +11,12 @@ export default async function TuerPage({ params }: { params: Promise<{ id: strin
   const supabase = await createClient()
 
   const [{ data: event }, { data: invites }] = await Promise.all([
-    supabase.from("events").select("id, title, starts_at").eq("id", id).maybeSingle(),
+    supabase.from("events").select("id, title, starts_at, door_token").eq("id", id).maybeSingle(),
     supabase
       .from("event_invites")
-      .select("id, contact_id, status, plus_ones, promo_code, contacts(name, avatar_url)")
+      .select(
+        "id, contact_id, status, plus_ones, promo_code, rsvp_token, companion_names, contacts(name, avatar_url)"
+      )
       .eq("event_id", id)
       .in("status", ["yes", "ticket", "attended"]),
   ])
@@ -30,6 +32,8 @@ export default async function TuerPage({ params }: { params: Promise<{ id: strin
       status: i.status,
       plus_ones: i.plus_ones ?? 0,
       promo_code: i.promo_code,
+      rsvp_token: i.rsvp_token,
+      companion_names: i.companion_names,
     }))
 
   return (
@@ -40,7 +44,7 @@ export default async function TuerPage({ params }: { params: Promise<{ id: strin
         </Link>
         <h1 className="mt-1 text-xl font-bold">🚪 Tür</h1>
       </div>
-      <DoorList eventId={id} gaeste={gaeste} />
+      <DoorList eventId={id} gaeste={gaeste} doorToken={event.door_token} />
     </div>
   )
 }
