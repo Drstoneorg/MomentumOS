@@ -97,6 +97,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
     snoozesRes,
     recruitAppsRes,
     errorsRes,
+    remindersRes,
   ] = await Promise.all([
     supabase
       .from("contacts")
@@ -169,6 +170,13 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .gte("created_at", dayAgo)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("reminders")
+      .select("id, kind, note, due_at, contact_id, contacts(name)")
+      .is("done_at", null)
+      .lte("due_at", nowIso)
+      .order("due_at")
+      .limit(10),
   ])
 
   const signals: Signal[] = []
@@ -362,6 +370,20 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       checkin: true,
     })
   }
+  // Fällige Wiedervorlagen aus der Erinnerungs-Engine (reminders-Tabelle)
+  for (const r of remindersRes.data ?? []) {
+    signals.push({
+      key: `reminder-${r.id}`,
+      module: "moments",
+      icon: "⏰",
+      title: r.contacts?.name ? `Wiedervorlage: ${r.contacts.name}` : "Wiedervorlage fällig",
+      detail: r.note ?? "selbst gesetzte Erinnerung",
+      href: r.contact_id ? `/contacts/${r.contact_id}` : "/inbox",
+      prio: 1,
+      contactId: r.contact_id ?? undefined,
+    })
+  }
+
   // Event-Cockpit: Zusagen (samt Begleitungen) gegen Ziel, Nachfass-Lage,
   // Wellen-Empfehlung — ein Signal pro anstehendem Event mit echter Diagnose.
   {

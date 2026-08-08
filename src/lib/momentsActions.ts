@@ -93,63 +93,8 @@ export async function setInviteStatus(
   // Kontakt warm. Best-Effort, Statuswechsel gilt auch wenn KI hakt.
   if (status === "attended") {
     try {
-      const [{ data: invite }, { data: event }] = await Promise.all([
-        supabase.from("event_invites").select("contact_id").eq("id", id).single(),
-        supabase.from("events").select("title, starts_at").eq("id", eventId).single(),
-      ])
-      if (invite && event) {
-        const dateStr = event.starts_at
-          ? new Date(event.starts_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })
-          : null
-        await supabase.from("memories").insert({
-          contact_id: invite.contact_id,
-          kind: "fact",
-          content: `War bei meinem Event „${event.title}“${dateStr ? ` (${dateStr})` : ""} — persönlich getroffen`,
-        })
-        const { data: openFu } = await supabase
-          .from("followups")
-          .select("id")
-          .eq("contact_id", invite.contact_id)
-          .eq("done", false)
-          .ilike("reason", `%${event.title}%`)
-          .limit(1)
-          .maybeSingle()
-        if (!openFu) {
-          const due = new Date()
-          due.setDate(due.getDate() + 1)
-          due.setHours(10, 0, 0, 0)
-          await supabase.from("followups").insert({
-            contact_id: invite.contact_id,
-            due_at: due.toISOString(),
-            reason: `Nach Event „${event.title}“ anschreiben — war da 🎉`,
-          })
-        }
-        const { data: openDraft } = await supabase
-          .from("suggestions")
-          .select("id")
-          .eq("contact_id", invite.contact_id)
-          .in("status", ["draft", "approved"])
-          .limit(1)
-          .maybeSingle()
-        if (!openDraft) {
-          const { loadContactContext } = await import("@/lib/ai/context")
-          const { generateReplies } = await import("@/lib/ai/generateReplies")
-          const ctx = await loadContactContext(invite.contact_id, supabase)
-          if (ctx) {
-            const reply = await generateReplies(
-              ctx,
-              `Die Person war bei meinem Event „${event.title}“ und wir haben uns dort persönlich getroffen. Schreibe eine lockere Nachfass-Nachricht: freut mich dass du da warst, wie fandest du es. Kein Marketing, kein Ticket-Gerede, einfach warm und persönlich.`
-            )
-            await supabase.from("suggestions").insert({
-              contact_id: invite.contact_id,
-              situation: `Event-Nachbereitung „${event.title}“ (war da)`,
-              variants: reply.variants,
-              channel: "manual",
-              status: "draft",
-            })
-          }
-        }
-      }
+      const { eventNachbereitung } = await import("@/lib/eventNachbereitung")
+      await eventNachbereitung(supabase, id, eventId, { mitEntwurf: true })
     } catch {
       // Nachbereitung optional
     }
@@ -375,27 +320,49 @@ export async function inviteWaveWithDrafts(
         .in("contact_id", contactIds),
     ])
     if (event && invites?.length) {
-      const { buildInviteMessage } = await import("@/lib/inviteTemplates")
+      const { ladeVorlagen, waehleVorlage, buildInviteFromVorlage } = await import("@/lib/inviteTemplates")
       const { SITE_URL } = await import("@/lib/siteUrl")
-      const rows = invites
-        .filter((i) => i.contacts)
-        .map((i) => ({
-          contact_id: i.contact_id,
-          situation: `Event-Einladung: ${event.title}`,
-          channel: "manual",
-          status: "draft" as const,
-          variants: {
-            einladung: buildInviteMessage(
-              { name: i.contacts!.name, language: i.contacts!.language },
-              event,
-              "einladung",
-              `${SITE_URL}/einladung/${i.rsvp_token}`
-            ),
+      // Vorlagen aus der DB (Editor /vorlagen); gibt es A und B, wechseln sich
+      // die Varianten ab und template_variant hält fest, wer was bekam — die
+      // Antwortquote je Variante steht dann im Editor (A/B-Test).
+      const vorlagen = await ladeVorlagen(supabase)
+      const mitKontakt = invites.filter((i) => i.contacts)
+      const rows = mitKontakt.map((i, idx) => {
+        const lang: "de" | "en" = i.contacts!.language === "en" ? "en" : "de"
+        const vorlage = waehleVorlage(vorlagen, "einladung", lang, idx)
+        return {
+          suggestion: {
+            contact_id: i.contact_id,
+            situation: `Event-Einladung: ${event.title}`,
+            channel: "manual",
+            status: "draft" as const,
+            variants: {
+              einladung: buildInviteFromVorlage(
+                vorlage,
+                { name: i.contacts!.name, language: i.contacts!.language },
+                event,
+                `${SITE_URL}/einladung/${i.rsvp_token}`
+              ),
+            },
           },
-        }))
+          contactId: i.contact_id,
+          variant: vorlage.variant,
+        }
+      })
       if (rows.length) {
-        const { error: sErr } = await supabase.from("suggestions").insert(rows)
-        if (!sErr) drafts = rows.length
+        const { error: sErr } = await supabase.from("suggestions").insert(rows.map((r) => r.suggestion))
+        if (!sErr) {
+          drafts = rows.length
+          await Promise.all(
+            rows.map((r) =>
+              supabase
+                .from("event_invites")
+                .update({ template_variant: r.variant })
+                .eq("event_id", eventId)
+                .eq("contact_id", r.contactId)
+            )
+          )
+        }
       }
     }
   }
@@ -431,23 +398,27 @@ export async function nudgeUnanswered(eventId: string): Promise<{ drafts: number
   )
   if (!faellig.length) return { drafts: 0 }
 
-  const { buildInviteMessage } = await import("@/lib/inviteTemplates")
+  const { ladeVorlagen, waehleVorlage, buildInviteFromVorlage } = await import("@/lib/inviteTemplates")
   const { SITE_URL } = await import("@/lib/siteUrl")
+  const vorlagen = await ladeVorlagen(supabase)
   const { error } = await supabase.from("suggestions").insert(
-    faellig.map((i) => ({
-      contact_id: i.contact_id,
-      situation: `Event-Nachfass: ${event.title}`,
-      channel: "manual",
-      status: "draft" as const,
-      variants: {
-        nachfass: buildInviteMessage(
-          { name: i.contacts!.name, language: i.contacts!.language },
-          event,
-          "nachfass",
-          `${SITE_URL}/einladung/${i.rsvp_token}`
-        ),
-      },
-    }))
+    faellig.map((i, idx) => {
+      const lang: "de" | "en" = i.contacts!.language === "en" ? "en" : "de"
+      return {
+        contact_id: i.contact_id,
+        situation: `Event-Nachfass: ${event.title}`,
+        channel: "manual",
+        status: "draft" as const,
+        variants: {
+          nachfass: buildInviteFromVorlage(
+            waehleVorlage(vorlagen, "nachfass", lang, idx),
+            { name: i.contacts!.name, language: i.contacts!.language },
+            event,
+            `${SITE_URL}/einladung/${i.rsvp_token}`
+          ),
+        },
+      }
+    })
   )
   if (error) throw new Error(error.message)
 
@@ -460,4 +431,178 @@ export async function nudgeUnanswered(eventId: string): Promise<{ drafts: number
   revalidatePath(`/moments/events/${eventId}`)
   revalidatePath("/queue")
   return { drafts: faellig.length }
+}
+
+// ---------- R31: Segmente, Wächter, Chat-Zusagen, Klonen, Türsteher, Vorlagen ----------
+
+/** Aktuelle Auswahl als wiederverwendbares Gäste-Segment speichern. */
+export async function saveGuestSegment(name: string, contactIds: string[]) {
+  const supabase = await db()
+  const n = name.trim().slice(0, 60)
+  if (!n || !contactIds.length) throw new Error("Name und Auswahl nötig")
+  const { error } = await supabase
+    .from("guest_segments")
+    .insert({ name: n, contact_ids: contactIds })
+  if (error) throw new Error(error.message)
+  revalidatePath("/moments/events")
+}
+
+export async function deleteGuestSegment(id: string) {
+  const supabase = await db()
+  await supabase.from("guest_segments").delete().eq("id", id)
+  revalidatePath("/moments/events")
+}
+
+/**
+ * Wellen-Vorschlag des Wächters übernehmen: lädt die vorgeschlagenen Kontakte
+ * ein (mit Entwürfen in der Queue) und markiert den Vorschlag als angenommen.
+ */
+export async function acceptWaveProposal(proposalId: string): Promise<{ invited: number; drafts: number }> {
+  const supabase = await db()
+  const { data: p } = await supabase
+    .from("event_wave_proposals")
+    .select("id, event_id, wave, contact_ids")
+    .eq("id", proposalId)
+    .is("accepted_at", null)
+    .is("dismissed_at", null)
+    .maybeSingle()
+  if (!p) throw new Error("Vorschlag nicht mehr offen")
+
+  // Inzwischen Eingeladene rausfiltern — der Vorschlag kann Tage alt sein
+  const { data: schon } = await supabase
+    .from("event_invites")
+    .select("contact_id")
+    .eq("event_id", p.event_id)
+    .in("contact_id", p.contact_ids)
+  const schonIds = new Set((schon ?? []).map((s) => s.contact_id))
+  const frisch = p.contact_ids.filter((id) => !schonIds.has(id))
+
+  const res = frisch.length
+    ? await inviteWaveWithDrafts(p.event_id, frisch, p.wave, true)
+    : { invited: 0, drafts: 0 }
+  await supabase
+    .from("event_wave_proposals")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", p.id)
+  revalidatePath(`/moments/events/${p.event_id}/einladen`)
+  return res
+}
+
+export async function dismissWaveProposal(proposalId: string) {
+  const supabase = await db()
+  const { data: p } = await supabase
+    .from("event_wave_proposals")
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq("id", proposalId)
+    .select("event_id")
+    .maybeSingle()
+  if (p) revalidatePath(`/moments/events/${p.event_id}/einladen`)
+}
+
+/**
+ * Chat-Zusagen-Vermutung bestätigen oder verwerfen. Übernehmen setzt den
+ * Status (yes/no), Verwerfen löscht nur die Vermutung — nie automatisch.
+ */
+export async function bestaetigeChatVermutung(
+  inviteId: string,
+  eventId: string,
+  uebernehmen: boolean
+) {
+  const supabase = await db()
+  const { data: invite } = await supabase
+    .from("event_invites")
+    .select("suggested_status")
+    .eq("id", inviteId)
+    .maybeSingle()
+  if (!invite?.suggested_status) return
+
+  const patch: TablesUpdate<"event_invites"> = {
+    suggested_status: null,
+    suggested_quote: null,
+    suggested_at: null,
+  }
+  if (uebernehmen && ["yes", "no"].includes(invite.suggested_status)) {
+    patch.status = invite.suggested_status as Enums<"event_invite_status">
+  }
+  await supabase.from("event_invites").update(patch).eq("id", inviteId)
+  revalidatePath(`/moments/events/${eventId}`)
+  revalidatePath(`/moments/events/${eventId}/einladen`)
+}
+
+/**
+ * Event klonen: Stammdaten + neu terminierter Promo-Fahrplan (+28 Tage, wenn
+ * das Original ein Datum hat) und ein Gästelisten-Vorschlag aus allen, die
+ * beim Original zugesagt hatten oder da waren.
+ */
+export async function cloneEvent(eventId: string): Promise<string> {
+  const supabase = await db()
+  const { data: alt } = await supabase.from("events").select("*").eq("id", eventId).maybeSingle()
+  if (!alt) throw new Error("Event nicht gefunden")
+
+  const neuStart = alt.starts_at
+    ? new Date(new Date(alt.starts_at).getTime() + 28 * 86400_000).toISOString()
+    : null
+  const { data: neu, error } = await supabase
+    .from("events")
+    .insert({
+      title: alt.title,
+      starts_at: neuStart,
+      location: alt.location,
+      description: alt.description,
+      audience: alt.audience,
+      capacity: alt.capacity,
+      target_attendees: alt.target_attendees,
+      ticket_price_cents: alt.ticket_price_cents,
+      other_costs_cents: alt.other_costs_cents,
+      series_name: alt.series_name,
+    })
+    .select("id")
+    .single()
+  if (error || !neu) throw new Error(error?.message ?? "Klonen fehlgeschlagen")
+
+  if (neuStart) {
+    const { promoAufgaben } = await import("@/lib/promo")
+    const rows = promoAufgaben(neuStart).map((t) => ({ ...t, event_id: neu.id }))
+    if (rows.length) await supabase.from("event_promo_tasks").insert(rows)
+  }
+
+  const { data: gaeste } = await supabase
+    .from("event_invites")
+    .select("contact_id")
+    .eq("event_id", eventId)
+    .in("status", ["yes", "ticket", "attended"])
+  const ids = [...new Set((gaeste ?? []).map((g) => g.contact_id))]
+  if (ids.length) {
+    await supabase.from("event_wave_proposals").insert({
+      event_id: neu.id,
+      wave: 1,
+      contact_ids: ids,
+      reason: `waren bei „${alt.title}" dabei oder hatten zugesagt`,
+    })
+  }
+
+  revalidatePath("/moments/events")
+  return neu.id
+}
+
+/** Vorlage speichern (Editor /vorlagen). Leerer Text deaktiviert die Variante. */
+export async function saveTemplate(input: {
+  key: string
+  lang: string
+  variant: string
+  text: string
+}) {
+  const supabase = await db()
+  const key = input.key.trim()
+  const lang = input.lang === "en" ? "en" : "de"
+  const variant = input.variant === "B" ? "B" : "A"
+  const text = input.text.trim().slice(0, 1000)
+  const { error } = await supabase
+    .from("templates")
+    .upsert(
+      { key, lang, variant, text: text || " ", active: !!text, updated_at: new Date().toISOString() },
+      { onConflict: "key,lang,variant" }
+    )
+  if (error) throw new Error(error.message)
+  revalidatePath("/vorlagen")
 }

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "@/lib/database.types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { daysUntilBirthday, connectionScore, turningAge } from "@/lib/moments"
+import { gastScore, zusagenMitBegleitung } from "@/lib/inviteScore"
+import { removeStorageObjectByUrl } from "@/lib/storage"
 import { generateMomentMessages } from "@/lib/ai/momentMessage"
 import { generateImagePrompt } from "@/lib/ai/imagePrompt"
 import { generateImage, imageGenerationAvailable } from "@/lib/ai/generateImage"
@@ -188,6 +192,22 @@ export async function GET(req: Request) {
     results.push({ contactId: c.id, action: `reminder: ${reason}` })
   }
 
+  // --- Wellen-Wächter: unter Ziel + Event rückt näher → Vorschlag hinlegen ---
+  try {
+    const vorschlaege = await wellenWaechter(supabase)
+    for (const v of vorschlaege) results.push({ contactId: "-", action: v })
+  } catch (e) {
+    console.error("Wellen-Wächter fehlgeschlagen:", e)
+  }
+
+  // --- Papierkorb: Einträge älter als 30 Tage endgültig entsorgen ---
+  try {
+    const geleert = await trashLeeren(supabase)
+    if (geleert) results.push({ contactId: "-", action: `Papierkorb: ${geleert} endgültig gelöscht` })
+  } catch (e) {
+    console.error("Papierkorb-Leeren fehlgeschlagen:", e)
+  }
+
   if (results.length) {
     await sendPushToAll({
       title: "MomentOS",
@@ -201,4 +221,111 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ scanned: contacts?.length ?? 0, created: results.length, results })
+}
+
+/**
+ * Wellen-Wächter: für jedes Event der nächsten 10 Tage mit Ziel und Rückstand
+ * einen fertigen Welle-N-Vorschlag hinlegen (Top-Kandidaten nach Gast-Score).
+ * Nur ein offener Vorschlag je Event; nach Verwerfen ist 3 Tage Ruhe.
+ * Eingeladen wird ausschließlich per Klick im Assistenten.
+ */
+async function wellenWaechter(supabase: SupabaseClient<Database>): Promise<string[]> {
+  const now = Date.now()
+  const { data: events } = await supabase
+    .from("events")
+    .select("id, title, starts_at, location, audience, capacity, target_attendees")
+    .gte("starts_at", new Date(now).toISOString())
+    .lte("starts_at", new Date(now + 10 * 86400_000).toISOString())
+  if (!events?.length) return []
+
+  const [{ data: alleKontakte }, { data: alleInvites }] = await Promise.all([
+    supabase
+      .from("contacts")
+      .select("id, realm, intent, location, relationship_tags, interests")
+      .neq("pipeline_stage", "archived"),
+    supabase.from("event_invites").select("event_id, contact_id, status, plus_ones, wave"),
+  ])
+
+  const hist = new Map<string, { eingeladen: number; reagiert: number }>()
+  for (const i of alleInvites ?? []) {
+    const e = hist.get(i.contact_id) ?? { eingeladen: 0, reagiert: 0 }
+    e.eingeladen++
+    if (["yes", "no", "ticket", "attended"].includes(i.status)) e.reagiert++
+    hist.set(i.contact_id, e)
+  }
+
+  const meldungen: string[] = []
+  for (const event of events) {
+    const ziel = event.target_attendees ?? event.capacity
+    if (!ziel) continue
+    const invites = (alleInvites ?? []).filter((i) => i.event_id === event.id)
+    const stand = zusagenMitBegleitung(invites)
+    if (stand.gesamt >= ziel) continue
+
+    // Schon ein Vorschlag in den letzten 3 Tagen (offen ODER verworfen)? Ruhe.
+    const { data: letzter } = await supabase
+      .from("event_wave_proposals")
+      .select("id, accepted_at, dismissed_at, created_at")
+      .eq("event_id", event.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (letzter) {
+      const offen = !letzter.accepted_at && !letzter.dismissed_at
+      const frisch = new Date(letzter.created_at).getTime() > now - 3 * 86400_000
+      if (offen || frisch) continue
+    }
+
+    const eingeladenIds = new Set(invites.map((i) => i.contact_id))
+    const fehlen = ziel - stand.gesamt
+    const kandidaten = (alleKontakte ?? [])
+      .filter((c) => !eingeladenIds.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        score: gastScore(c, event, hist.get(c.id) ?? { eingeladen: 0, reagiert: 0 }).score,
+      }))
+      .filter((k) => k.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(Math.max(fehlen * 2, 5), 15))
+    if (!kandidaten.length) continue
+
+    const naechsteWelle = Math.min(9, Math.max(2, ...invites.map((i) => (i.wave ?? 1) + 1)))
+    const inDays = event.starts_at
+      ? Math.max(0, Math.floor((new Date(event.starts_at).getTime() - now) / 86400_000))
+      : 0
+    await supabase.from("event_wave_proposals").insert({
+      event_id: event.id,
+      wave: naechsteWelle,
+      contact_ids: kandidaten.map((k) => k.id),
+      reason: `unter Ziel (${stand.gesamt}/${ziel}), Event in ${inDays}d`,
+    })
+    meldungen.push(`Wellen-Vorschlag für „${event.title}": ${kandidaten.length} Kandidaten`)
+  }
+  return meldungen
+}
+
+/** Papierkorb-Einträge älter als 30 Tage endgültig löschen, samt Avatar-Datei. */
+async function trashLeeren(supabase: SupabaseClient<Database>): Promise<number> {
+  const grenze = new Date(Date.now() - 30 * 86400_000).toISOString()
+  const { data: alte } = await supabase
+    .from("trash")
+    .select("id, payload")
+    .lt("deleted_at", grenze)
+    .limit(50)
+  if (!alte?.length) return 0
+  for (const t of alte) {
+    const payload = t.payload as {
+      contact?: { avatar_url?: string | null }
+      children?: { moment_assets?: { content?: string | null }[] }
+    } | null
+    await removeStorageObjectByUrl(payload?.contact?.avatar_url)
+    for (const a of payload?.children?.moment_assets ?? []) {
+      await removeStorageObjectByUrl(a.content)
+    }
+  }
+  await supabase
+    .from("trash")
+    .delete()
+    .in("id", alte.map((t) => t.id))
+  return alte.length
 }

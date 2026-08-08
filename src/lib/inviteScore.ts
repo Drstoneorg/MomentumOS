@@ -19,6 +19,8 @@ export type EinladungsHistorie = {
   eingeladen: number
   /** davon mit irgendeiner Reaktion: Zusage, Absage, Ticket, da gewesen */
   reagiert: number
+  /** Schnitt des 1-Frage-Feedbacks (1–5) über alle Events, null ohne Feedback */
+  feedbackSchnitt?: number | null
 }
 
 export type GastScore = { score: number; gruende: string[] }
@@ -64,6 +66,18 @@ export function gastScore(
   } else if (historie.eingeladen >= 2 && historie.reagiert / historie.eingeladen >= 0.7) {
     score += 10
     gruende.push("reagiert zuverlässig")
+  }
+
+  // 1-Frage-Feedback nach Events: wem es gefiel, der kommt eher wieder
+  const fb = historie.feedbackSchnitt
+  if (fb != null) {
+    if (fb >= 4) {
+      score += 8
+      gruende.push(`Feedback ${fb.toFixed(1)}/5`)
+    } else if (fb <= 2) {
+      score -= 10
+      gruende.push(`Feedback nur ${fb.toFixed(1)}/5`)
+    }
   }
 
   return { score, gruende }

@@ -181,6 +181,40 @@ export async function POST(req: Request) {
         (groups.get(null) ?? []).map((m) => ({ direction: m.direction, content: m.content }))
       ).catch(() => {})
 
+      // Chat-Zusagen-Erkennung für Events: hat der Kontakt eine offene
+      // Einladung zu einem KOMMENDEN Event und klingt eine frische Nachricht
+      // nach Zusage/Absage, landet das als Vermutung am Invite — bestätigt
+      // wird ausschließlich per Klick im Einladungs-Assistenten.
+      try {
+        const frischeIn = (groups.get(null) ?? [])
+          .filter((m) => m.direction === "in")
+          .map((m) => m.content)
+        if (frischeIn.length) {
+          const { erkenneRsvpAusNachrichten } = await import("@/lib/rsvpDetect")
+          const vermutung = erkenneRsvpAusNachrichten(frischeIn)
+          if (vermutung) {
+            const { data: offene } = await supabase
+              .from("event_invites")
+              .select("id, events!inner(starts_at)")
+              .eq("contact_id", contactId)
+              .in("status", ["invited", "no_reply"])
+              .gte("events.starts_at", new Date().toISOString())
+            for (const inv of offene ?? []) {
+              await supabase
+                .from("event_invites")
+                .update({
+                  suggested_status: vermutung.status,
+                  suggested_quote: vermutung.zitat,
+                  suggested_at: new Date().toISOString(),
+                })
+                .eq("id", inv.id)
+            }
+          }
+        }
+      } catch {
+        // Vermutung optional — Sync-Ergebnis zählt
+      }
+
       // Outcome-Loop: neue ausgehende Nachrichten gegen offene Vorschläge matchen
       // (Vorschlag wurde offenbar gesendet), neue eingehende als Antwort auf den
       // letzten gesendeten Vorschlag werten. Fehler hier brechen den Sync nicht.
