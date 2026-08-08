@@ -56,6 +56,8 @@ export function staticCommands(): Command[] {
     { label: "Schnell erfassen (Screenshot/Text)", href: "/capture", module: "moments", icon: "📸" },
     { label: "Karte erstellen", href: "/cards", module: "moments", icon: "🃏" },
     { label: "Lebenslauf ansehen", href: "/jobs/cv", module: "jobs", icon: "📄" },
+    { label: "Vorlagen — Einladungstexte + A/B-Test", href: "/vorlagen", module: "moments", icon: "📝" },
+    { label: "Papierkorb — Gelöschtes wiederherstellen", href: "/papierkorb", module: null, icon: "🗑" },
     { label: `${PLATFORM.label} — Einstellungen`, href: "/settings", module: null, icon: "⚙️" },
   ]
   for (const m of MODULES) {

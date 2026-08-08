@@ -27,6 +27,9 @@ export type AskEvent =
   | { t: "delta"; text: string }
   | { t: "done"; schritte: AskStep[] }
   | { t: "error"; text: string }
+  // Schreib-Aktion vorgeschlagen — der Chat rendert eine Bestätigungs-Karte,
+  // ausgeführt wird erst nach Klick über /api/ask/aktion
+  | { t: "aktion"; aktion: string; params: Record<string, unknown>; beschreibung: string }
 
 /** Obergrenze gegen Endlosschleifen — mehr als vier Werkzeugrunden braucht keine Frage. */
 const MAX_RUNDEN = 4
@@ -66,7 +69,8 @@ Regeln:
 5. Hänge Links als Markdown an, wenn ein Werkzeug ein Feld link liefert.
 6. Fasse dich kurz. Zwei bis fünf Sätze, Listen wenn es mehrere Einträge sind. Keine Einleitungsfloskeln.
 7. Bei Fragen zu TradingOS immer dazusagen, dass es Spielgeld ist.
-8. Antworte auf Deutsch.`
+8. Antworte auf Deutsch.
+9. Will der Nutzer etwas ÄNDERN („leg an", „merk dir", „setz auf zugesagt", „erinnere mich"), nutze aktion_vorschlagen. Die Aktion wird dem Nutzer als Karte mit Bestätigungs-Knopf gezeigt — sage „liegt zur Bestätigung bereit", NIEMALS „erledigt" oder „angelegt". Ohne Bestätigung passiert nichts.`
 }
 
 export async function askStream(
@@ -174,6 +178,19 @@ export async function askStream(
           // Ein kaputtes Werkzeug darf die Frage nicht abbrechen — das Modell
           // bekommt den Fehler und kann es anders versuchen oder es sagen.
           ergebnis = { fehler: e instanceof Error ? e.message : String(e) }
+        }
+        // Aktionsvorschlag: als eigenes Ereignis an den Chat — dort erscheint
+        // die Bestätigungs-Karte, ausgeführt wird erst nach Klick
+        if (tool.name === "aktion_vorschlagen") {
+          const v = ergebnis as {
+            vorschlag?: boolean
+            aktion?: string
+            params?: Record<string, unknown>
+            beschreibung?: string
+          }
+          if (v?.vorschlag && v.aktion && v.params && v.beschreibung) {
+            emit({ t: "aktion", aktion: v.aktion, params: v.params, beschreibung: v.beschreibung })
+          }
         }
       }
       messages.push({

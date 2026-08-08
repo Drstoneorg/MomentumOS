@@ -111,7 +111,7 @@ export function ContactsTable({
             </button>
             <button
               onClick={() => {
-                if (!confirm(`${sel.size} Kontakt(e) endgültig löschen? Chats, Gedächtnis und Follow-ups gehen mit.`)) return
+                if (!confirm(`${sel.size} Kontakt(e) in den Papierkorb? 30 Tage wiederherstellbar (samt Chats und Gedächtnis).`)) return
                 start(async () => {
                   await bulkDeleteContacts([...sel])
                   setSel(new Set())

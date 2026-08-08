@@ -205,7 +205,7 @@ export function ContactHeader({ contact }: { contact: Tables<"contacts"> }) {
           </button>
           <button
             onClick={() => {
-              if (confirm(`${contact.name} wirklich löschen? Alle Daten gehen verloren.`)) {
+              if (confirm(`${contact.name} in den Papierkorb? 30 Tage wiederherstellbar.`)) {
                 start(async () => {
                   await deleteContact(contact.id)
                   router.push("/contacts")

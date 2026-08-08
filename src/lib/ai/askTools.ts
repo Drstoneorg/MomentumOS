@@ -1106,6 +1106,111 @@ export const ASK_TOOLS: AskTool[] = [
     },
   },
 
+  // ---- Schreib-Aktionen: NUR Vorschläge — ausgeführt wird per Klick im Chat ----
+  {
+    name: "aktion_vorschlagen",
+    description:
+      "Schlägt EINE Schreib-Aktion vor, die der Nutzer im Chat per Klick bestätigt. NIEMALS behaupten, die Aktion sei ausgeführt — sie ist nur vorgeschlagen. Aktionen: kontakt_anlegen (name, realm), notiz_speichern (kontakt_id, text), rsvp_setzen (kontakt_id, event_titel, antwort ja/nein), wiedervorlage (kontakt_id, in_tagen, grund). Für kontakt_id vorher finde_kontakt nutzen.",
+    parameters: {
+      type: "object",
+      properties: {
+        aktion: {
+          type: "string",
+          description: "Welche Aktion vorgeschlagen wird",
+          enum: ["kontakt_anlegen", "notiz_speichern", "rsvp_setzen", "wiedervorlage"],
+        },
+        name: { type: "string", description: "kontakt_anlegen: Name der Person" },
+        realm: {
+          type: "string",
+          description: "kontakt_anlegen: moment = Freunde, match = Kennenlernen",
+          enum: ["moment", "match"],
+        },
+        kontakt_id: { type: "string", description: "ID aus finde_kontakt" },
+        text: { type: "string", description: "notiz_speichern: der Merktext" },
+        event_titel: { type: "string", description: "rsvp_setzen: Titel des Events" },
+        antwort: { type: "string", description: "rsvp_setzen: ja oder nein", enum: ["ja", "nein"] },
+        in_tagen: { type: "number", description: "wiedervorlage: in wie vielen Tagen erinnern" },
+        grund: { type: "string", description: "wiedervorlage: woran erinnern" },
+      },
+      required: ["aktion"],
+    },
+    async run(db, args) {
+      const aktion = str(args.aktion)
+      // Hier wird NUR geprüft und aufgelöst — geschrieben wird erst nach dem
+      // Bestätigungs-Klick über /api/ask/aktion.
+      if (aktion === "kontakt_anlegen") {
+        const name = str(args.name).trim()
+        if (!name) return { fehler: "name fehlt" }
+        const realm = args.realm === "match" ? "match" : "moment"
+        return {
+          vorschlag: true,
+          aktion,
+          params: { name, realm },
+          beschreibung: `Kontakt „${name}" anlegen (${realm === "moment" ? "Freundeskreis" : "Matchbox"})`,
+        }
+      }
+      const kontaktId = str(args.kontakt_id).trim()
+      if (!/^[0-9a-f-]{36}$/.test(kontaktId)) {
+        return { fehler: "kontakt_id fehlt oder ist keine ID — erst finde_kontakt aufrufen" }
+      }
+      const { data: kontakt } = await db
+        .from("contacts")
+        .select("id, name")
+        .eq("id", kontaktId)
+        .maybeSingle()
+      if (!kontakt) return { fehler: "Kontakt nicht gefunden" }
+
+      if (aktion === "notiz_speichern") {
+        const text = str(args.text).trim().slice(0, 500)
+        if (!text) return { fehler: "text fehlt" }
+        return {
+          vorschlag: true,
+          aktion,
+          params: { kontakt_id: kontakt.id, text },
+          beschreibung: `Notiz bei ${kontakt.name} speichern: „${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
+        }
+      }
+      if (aktion === "wiedervorlage") {
+        const tage = Math.min(365, Math.max(1, Math.round(num(args.in_tagen, 3))))
+        const grund = str(args.grund).trim().slice(0, 200) || "melden"
+        return {
+          vorschlag: true,
+          aktion,
+          params: { kontakt_id: kontakt.id, in_tagen: tage, grund },
+          beschreibung: `Wiedervorlage für ${kontakt.name} in ${tage} Tagen: ${grund}`,
+        }
+      }
+      if (aktion === "rsvp_setzen") {
+        const titel = str(args.event_titel).trim()
+        const antwort = args.antwort === "nein" ? "no" : args.antwort === "ja" ? "yes" : null
+        if (!titel || !antwort) return { fehler: "event_titel und antwort (ja/nein) nötig" }
+        const { data: events } = await db
+          .from("events")
+          .select("id, title")
+          .ilike("title", `%${titel}%`)
+          .limit(3)
+        if (!events?.length) return { fehler: `Kein Event zu „${titel}" gefunden` }
+        if (events.length > 1) {
+          return { fehler: `Mehrere Events passen: ${events.map((e) => e.title).join(", ")} — genauer nennen` }
+        }
+        const { data: invite } = await db
+          .from("event_invites")
+          .select("id")
+          .eq("event_id", events[0].id)
+          .eq("contact_id", kontakt.id)
+          .maybeSingle()
+        if (!invite) return { fehler: `${kontakt.name} ist zu „${events[0].title}" nicht eingeladen` }
+        return {
+          vorschlag: true,
+          aktion,
+          params: { invite_id: invite.id, event_id: events[0].id, status: antwort },
+          beschreibung: `${kontakt.name} bei „${events[0].title}" auf ${antwort === "yes" ? "Zusage" : "Absage"} setzen`,
+        }
+      }
+      return { fehler: `Unbekannte Aktion: ${aktion}` }
+    },
+  },
+
   // Zweites Supabase-Projekt: AirbnbWorker (env-gated, sonst nur Status-Stub)
   ...SHRINE_TOOLS,
 ]
@@ -1126,6 +1231,7 @@ export const WERKZEUG_MODUL: Record<string, WerkzeugModul> = {
   finde_kontakt: "basis",
   kontakt_profil: "basis",
   kontakt_gedaechtnis: "basis",
+  aktion_vorschlagen: "basis",
   letzter_kontakt: "basis",
   letztes_treffen: "basis",
   nachrichten_suchen: "basis",

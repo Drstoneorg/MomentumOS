@@ -75,13 +75,104 @@ export async function setContactIntent(id: string, intent: "date" | "event_lead"
   revalidatePath("/pipeline")
 }
 
-export async function deleteContact(id: string) {
-  const supabase = await db()
-  const { data: alt } = await supabase.from("contacts").select("avatar_url").eq("id", id).maybeSingle()
+/**
+ * Papierkorb statt Endgültig-Löschen: Kontakt + Anhang (Nachrichten,
+ * Gedächtnis, Follow-ups, Dates, Einladungen, Kanäle …) wandern als
+ * JSON-Schnappschuss in die trash-Tabelle und sind 30 Tage wiederherstellbar.
+ * Der Cron entsorgt ältere Einträge endgültig (samt Avatar-Datei).
+ */
+const TRASH_KIND_TABLES = [
+  "contact_channels",
+  "messages",
+  "memories",
+  "followups",
+  "dates",
+  "event_invites",
+  "conversation_summaries",
+  "suggestions",
+  "occasions",
+  "moment_assets",
+  "reminders",
+] as const
+
+async function moveContactToTrash(supabase: Awaited<ReturnType<typeof db>>, id: string) {
+  const { data: contact } = await supabase.from("contacts").select("*").eq("id", id).maybeSingle()
+  if (!contact) throw new Error("Kontakt nicht gefunden")
+  const children: Record<string, unknown[]> = {}
+  for (const t of TRASH_KIND_TABLES) {
+    const { data } = await supabase
+      .from(t as "messages")
+      .select("*")
+      .eq("contact_id", id)
+    if (data?.length) children[t] = data
+  }
+  const { error: tErr } = await supabase.from("trash").insert({
+    kind: "contact",
+    label: contact.name,
+    payload: { contact, children } as never,
+  })
+  if (tErr) throw new Error(tErr.message)
   const { error } = await supabase.from("contacts").delete().eq("id", id)
   if (error) throw new Error(error.message)
-  await removeStorageObjectByUrl(alt?.avatar_url)
+}
+
+export async function deleteContact(id: string) {
+  const supabase = await db()
+  await moveContactToTrash(supabase, id)
   revalidatePath("/contacts")
+  revalidatePath("/papierkorb")
+}
+
+/** Kontakt aus dem Papierkorb zurückholen — Kinder-Zeilen so weit wie möglich mit. */
+export async function restoreFromTrash(trashId: string): Promise<{ name: string; hinweise: string[] }> {
+  const supabase = await db()
+  const { data: t } = await supabase.from("trash").select("*").eq("id", trashId).maybeSingle()
+  if (!t || t.kind !== "contact") throw new Error("Papierkorb-Eintrag nicht gefunden")
+  const payload = t.payload as {
+    contact?: Record<string, unknown> & { id?: string; name?: string }
+    children?: Record<string, unknown[]>
+  }
+  if (!payload.contact?.id) throw new Error("Schnappschuss unvollständig")
+
+  const { data: existiert } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("id", payload.contact.id)
+    .maybeSingle()
+  if (existiert) throw new Error("Kontakt existiert schon wieder — Eintrag kann weg")
+
+  const { error: cErr } = await supabase.from("contacts").insert(payload.contact as never)
+  if (cErr) throw new Error(cErr.message)
+
+  const hinweise: string[] = []
+  for (const [tabelle, rows] of Object.entries(payload.children ?? {})) {
+    if (!rows?.length) continue
+    const { error } = await supabase.from(tabelle as "messages").insert(rows as never)
+    if (error) {
+      // z. B. Event inzwischen gelöscht: Einladungen dieses Events fallen weg
+      hinweise.push(`${tabelle}: ${rows.length} Zeilen nicht wiederherstellbar`)
+    }
+  }
+  await supabase.from("trash").delete().eq("id", trashId)
+  revalidatePath("/contacts")
+  revalidatePath("/papierkorb")
+  return { name: String(payload.contact.name ?? "?"), hinweise }
+}
+
+/** Einzelnen Papierkorb-Eintrag sofort endgültig entsorgen (samt Avatar-Datei). */
+export async function purgeTrashItem(trashId: string) {
+  const supabase = await db()
+  const { data: t } = await supabase.from("trash").select("payload").eq("id", trashId).maybeSingle()
+  const payload = t?.payload as {
+    contact?: { avatar_url?: string | null }
+    children?: { moment_assets?: { content?: string | null }[] }
+  } | null
+  await supabase.from("trash").delete().eq("id", trashId)
+  await removeStorageObjectByUrl(payload?.contact?.avatar_url)
+  for (const a of payload?.children?.moment_assets ?? []) {
+    await removeStorageObjectByUrl(a.content)
+  }
+  revalidatePath("/papierkorb")
 }
 
 /**
@@ -688,9 +779,38 @@ export async function generateJobInterviewPrep(id: string): Promise<InterviewPre
 export async function bulkDeleteContacts(ids: string[]) {
   const supabase = await db()
   if (!ids.length) return
-  const { error } = await supabase.from("contacts").delete().in("id", ids)
-  if (error) throw new Error(error.message)
+  // Jeder Kontakt einzeln in den Papierkorb — Bulk-Löschen wird damit angstfrei
+  for (const id of ids) {
+    await moveContactToTrash(supabase, id)
+  }
   revalidatePath("/contacts")
   revalidatePath("/")
   revalidatePath("/pipeline")
+  revalidatePath("/papierkorb")
+}
+
+// ---------- Erinnerungs-Engine (reminders) ----------
+
+/** Wiedervorlage am Kontakt: „in N Tagen melden" — fällig als Cockpit-Signal. */
+export async function createReminder(contactId: string, inTagen: number, note: string) {
+  const supabase = await db()
+  const tage = Math.min(365, Math.max(1, Math.round(inTagen)))
+  const due = new Date(Date.now() + tage * 86400_000)
+  due.setHours(9, 0, 0, 0)
+  const { error } = await supabase.from("reminders").insert({
+    kind: "wiedervorlage",
+    contact_id: contactId,
+    due_at: due.toISOString(),
+    note: note.trim().slice(0, 200) || null,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath(`/contacts/${contactId}`)
+  revalidatePath("/inbox")
+}
+
+export async function doneReminder(id: string, contactId?: string) {
+  const supabase = await db()
+  await supabase.from("reminders").update({ done_at: new Date().toISOString() }).eq("id", id)
+  if (contactId) revalidatePath(`/contacts/${contactId}`)
+  revalidatePath("/inbox")
 }

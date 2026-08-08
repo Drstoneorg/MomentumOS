@@ -9,12 +9,21 @@ import Link from "next/link"
  * haben — eine falsch abgebogene Frage soll sichtbar sein, nicht unsichtbar.
  */
 
+type Aktion = {
+  aktion: string
+  params: Record<string, unknown>
+  beschreibung: string
+  /** null = offen, sonst Ergebnis-Text nach Ausführen/Fehler */
+  ergebnis?: { ok: boolean; text: string; href?: string } | null
+}
+
 type Nachricht = {
   role: "user" | "assistant"
   content: string
   schritte?: { werkzeug: string }[]
   fehler?: boolean
   status?: string | null
+  aktionen?: Aktion[]
 }
 
 const BEISPIELE = [
@@ -26,6 +35,7 @@ const BEISPIELE = [
 
 const WERKZEUG_LABELS: Record<string, string> = {
   finde_kontakt: "Kontaktsuche",
+  aktion_vorschlagen: "Aktionsvorschlag",
   kontakt_profil: "Profil",
   kontakt_gedaechtnis: "Gedächtnis",
   letzter_kontakt: "Nachrichtenverlauf",
@@ -147,13 +157,28 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
         puffer = zeilen.pop() ?? ""
         for (const zeile of zeilen) {
           if (!zeile.trim()) continue
-          let ev: { t: string; text?: string; schritte?: { werkzeug: string }[] }
+          let ev: {
+            t: string
+            text?: string
+            schritte?: { werkzeug: string }[]
+            aktion?: string
+            params?: Record<string, unknown>
+            beschreibung?: string
+          }
           try {
             ev = JSON.parse(zeile)
           } catch {
             continue
           }
-          if (ev.t === "status") setLetzte({ status: ev.text ?? null })
+          if (ev.t === "aktion" && ev.aktion && ev.params && ev.beschreibung) {
+            const neu: Aktion = {
+              aktion: ev.aktion,
+              params: ev.params,
+              beschreibung: ev.beschreibung,
+              ergebnis: null,
+            }
+            setLetzte((m) => ({ aktionen: [...(m.aktionen ?? []), neu] }))
+          } else if (ev.t === "status") setLetzte({ status: ev.text ?? null })
           else if (ev.t === "reset") setLetzte({ content: "", status: null })
           else if (ev.t === "delta")
             setLetzte((m) => ({ content: m.content + (ev.text ?? ""), status: null }))
@@ -173,6 +198,38 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
     } finally {
       setLaeuft(false)
       setTimeout(() => endeRef.current?.scrollIntoView({ behavior: "smooth" }), 50)
+    }
+  }
+
+  // Bestätigter Aktionsvorschlag: erst der Klick hier führt wirklich aus
+  async function aktionAusfuehren(nachrichtIdx: number, aktionIdx: number, a: Aktion) {
+    const setErgebnis = (ergebnis: Aktion["ergebnis"]) =>
+      setVerlauf((v) =>
+        v.map((m, i) =>
+          i === nachrichtIdx && m.aktionen
+            ? { ...m, aktionen: m.aktionen.map((x, xi) => (xi === aktionIdx ? { ...x, ergebnis } : x)) }
+            : m
+        )
+      )
+    try {
+      const res = await fetch("/api/ask/aktion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aktion: a.aktion, params: a.params }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        text?: string
+        href?: string
+        error?: string
+      }
+      if (!res.ok || !data.ok) {
+        setErgebnis({ ok: false, text: data.error || `Fehler ${res.status}` })
+        return
+      }
+      setErgebnis({ ok: true, text: data.text ?? "Erledigt", href: data.href })
+    } catch {
+      setErgebnis({ ok: false, text: "Netzwerkfehler — nochmal versuchen" })
     }
   }
 
@@ -211,6 +268,32 @@ export function AskPanel({ hoehe = "h-80" }: { hoehe?: string }) {
                 {m.status && (
                   <span className="block animate-pulse text-xs text-zinc-500">⚙ {m.status}</span>
                 )}
+                {m.aktionen?.map((a, ai) => (
+                  <div
+                    key={ai}
+                    className="mt-2 rounded-lg border border-amber-800/60 bg-amber-950/20 p-2.5"
+                  >
+                    <p className="text-xs font-medium text-amber-200">⚡ {a.beschreibung}</p>
+                    {a.ergebnis ? (
+                      <p className={`mt-1 text-xs ${a.ergebnis.ok ? "text-emerald-400" : "text-red-400"}`}>
+                        {a.ergebnis.ok ? "✓ " : "✕ "}
+                        {a.ergebnis.text}
+                        {a.ergebnis.href && (
+                          <Link href={a.ergebnis.href} className="ml-1 underline underline-offset-2">
+                            öffnen
+                          </Link>
+                        )}
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => aktionAusfuehren(i, ai, a)}
+                        className="mt-1.5 rounded border border-amber-700 px-2.5 py-1 text-xs font-medium text-amber-200 hover:bg-amber-900/40"
+                      >
+                        ✓ Ausführen
+                      </button>
+                    )}
+                  </div>
+                ))}
                 {!!m.schritte?.length && (
                   <div className="mt-2 flex flex-wrap gap-1 border-t border-zinc-800 pt-2">
                     {[...new Set(m.schritte.map((s) => s.werkzeug))].map((w) => (

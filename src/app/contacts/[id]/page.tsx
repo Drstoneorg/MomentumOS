@@ -11,6 +11,7 @@ import { FriendsPanel } from "./FriendsPanel"
 import { MomentGenerator } from "./MomentGenerator"
 import { Timeline, type TimelineItem } from "./Timeline"
 import { MatchScoreCard } from "./MatchScoreCard"
+import { ReminderPanel } from "./ReminderPanel"
 import { PhotoAnalyzeCard } from "./PhotoAnalyzeCard"
 import { datingScore, type ScoreMessage } from "@/lib/scoring"
 import { visionAvailable } from "@/lib/ai/vision"
@@ -25,7 +26,7 @@ export default async function ContactPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes, followupsRes, meetupsRes, invitesRes, nextEventRes] =
+  const [contactRes, messagesRes, memoriesRes, summaryRes, channelsRes, datesRes, followupsRes, meetupsRes, invitesRes, nextEventRes, remindersRes] =
     await Promise.all([
       supabase.from("contacts").select("*").eq("id", id).single(),
       supabase.from("messages").select("*").eq("contact_id", id).order("sent_at"),
@@ -49,6 +50,13 @@ export default async function ContactPage({
         .order("starts_at")
         .limit(1)
         .maybeSingle(),
+
+      supabase
+        .from("reminders")
+        .select("id, due_at, note")
+        .eq("contact_id", id)
+        .is("done_at", null)
+        .order("due_at"),
     ])
 
   const contact = contactRes.data
@@ -154,6 +162,7 @@ export default async function ContactPage({
           <FriendsPanel contact={contact} />
           <MemoryPanel contactId={id} memories={memoriesRes.data ?? []} />
           <ChannelPanel contactId={id} channels={channelsRes.data ?? []} />
+          <ReminderPanel contactId={id} reminders={remindersRes.data ?? []} />
           <DatePanel contactId={id} dates={datesRes.data ?? []} />
 
           {(invitesRes.data ?? []).length > 0 && (
