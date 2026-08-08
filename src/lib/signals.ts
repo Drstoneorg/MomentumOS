@@ -4,6 +4,7 @@ import type { SignalModule } from "@/lib/modules"
 import { daysUntilBirthday, connectionScore } from "@/lib/moments"
 import { gigStaleDays, GIG_STATUS_LABELS } from "@/lib/artists"
 import { scanWarnings } from "@/lib/jobScanHealth"
+import { gruppiereFehler } from "@/lib/fehlerGruppen"
 import { CRON_NAMES, CRON_MAX_AGE_HOURS } from "@/lib/cronHeartbeat"
 
 /**
@@ -169,7 +170,7 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       .select("message, created_at")
       .gte("created_at", dayAgo)
       .order("created_at", { ascending: false })
-      .limit(20),
+      .limit(100),
     supabase
       .from("reminders")
       .select("id, kind, note, due_at, contact_id, contacts(name)")
@@ -196,14 +197,32 @@ export async function collectSignals(supabase: SupabaseClient<Database>): Promis
       prio: 0,
     })
   }
-  // Frische Laufzeitfehler aus der Fehler-Telemetrie (letzte 24h)
+  // Frische Laufzeitfehler aus der Fehler-Telemetrie (letzte 24h) — gleiche
+  // Fehler werden über die normalisierte Meldung gruppiert: ab 3 Vorkommen
+  // bekommt die Gruppe ihr eigenes Signal (max 3 Gruppen), Einzelfälle bleiben
+  // ein Sammel-Signal.
   const fehler = errorsRes.data ?? []
-  if (fehler.length > 0) {
+  const fehlerGruppen = gruppiereFehler(fehler)
+    .filter((g) => g.anzahl >= 3)
+    .slice(0, 3)
+  for (const g of fehlerGruppen) {
+    signals.push({
+      key: `client-errors-${g.muster.slice(0, 40)}`,
+      module: "system",
+      icon: "🐞",
+      title: `${g.anzahl}× derselbe Browser-Fehler in 24h`,
+      detail: g.muster.slice(0, 110),
+      href: "/",
+      prio: 0,
+    })
+  }
+  const restFehler = fehler.length - fehlerGruppen.reduce((s, g) => s + g.anzahl, 0)
+  if (restFehler > 0) {
     signals.push({
       key: "client-errors",
       module: "system",
       icon: "🐞",
-      title: `${fehler.length}× Laufzeitfehler in 24h`,
+      title: `${restFehler}× Laufzeitfehler in 24h`,
       detail: `zuletzt: ${fehler[0].message.slice(0, 90)}`,
       href: "/",
       prio: 0,
