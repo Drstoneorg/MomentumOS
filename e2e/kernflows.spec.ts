@@ -112,4 +112,43 @@ test.describe("Einladungs-Links (öffentlich)", () => {
     const kaputt = await request.post("/api/rsvp", { data: { token: "x", antwort: "vielleicht" } })
     expect(kaputt.status()).toBe(400)
   })
+
+  test("ICS-Route: ungültiger Token liefert nie Kalenderdaten", async ({ request }) => {
+    const res = await request.get("/api/rsvp/ics?token=deadbeefdeadbeefdeadbeefdeadbeef")
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    expect(await res.text()).not.toContain("BEGIN:VCALENDAR")
+  })
+})
+
+test.describe("Öffentliche Event-Seite + Türsteher-Link (R31)", () => {
+  test("/e/[slug]: Fantasie-Slug zeigt neutrale Meldung ohne Login-Umleitung", async ({ page }) => {
+    await page.goto("/e/gibt-es-nicht")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByText(/Event nicht gefunden/i)).toBeVisible()
+  })
+
+  test("/tuer/[token]: Fantasie-Token zeigt neutrale Meldung, keine Gästenamen", async ({ page }) => {
+    await page.goto("/tuer/deadbeefdeadbeefdeadbeefdeadbeef")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByText(/Liste nicht gefunden/i)).toBeVisible()
+  })
+
+  test("/api/event-lead: Honeypot schluckt, fehlende Einwilligung 400, Check-in-API sperrt", async ({ request }) => {
+    const bot = await request.post("/api/event-lead", {
+      data: { slug: "x", name: "Bot", kontakt: "x", website: "spam.example", consent: true },
+    })
+    expect(bot.status()).toBe(200)
+    expect(await bot.json()).toEqual({ ok: true })
+
+    const ohneConsent = await request.post("/api/event-lead", {
+      data: { slug: "x", name: "E2E", kontakt: "insta" },
+    })
+    expect(ohneConsent.status()).toBe(400)
+
+    // Tür-Check-in ohne gültigen Token wird nie ok
+    const checkin = await request.post("/api/door-checkin", {
+      data: { door_token: "deadbeefdeadbeefdeadbeefdeadbeef", invite_id: "00000000-0000-0000-0000-000000000000" },
+    })
+    expect(checkin.status()).toBeGreaterThanOrEqual(400)
+  })
 })
