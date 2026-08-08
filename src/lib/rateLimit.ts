@@ -3,7 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin"
 /**
  * DB-basiertes Stunden-Fenster-Limit pro Bucket — überlebt Serverless-Kaltstarts.
  * Schutzziel: geleakter Extension-Token darf nicht unbegrenzt KI-Kosten erzeugen.
- * Single-User-App: Race-Conditions bei der Zählung sind verschmerzbar.
+ * Zählung läuft atomar in der DB (RPC bump_rate_limit: Upsert mit Fenster-Reset
+ * und Inkrement in einem Statement) — parallele Requests können sich nicht mehr
+ * am Limit vorbeizählen.
  */
 export async function rateLimitOk(
   bucket: string,
@@ -11,16 +13,13 @@ export async function rateLimitOk(
   windowMinutes = 60
 ): Promise<boolean> {
   const admin = createAdminClient()
-  const now = Date.now()
-  const { data } = await admin.from("rate_limits").select("*").eq("bucket", bucket).maybeSingle()
-
-  if (!data || now - new Date(data.window_start).getTime() >= windowMinutes * 60_000) {
-    await admin
-      .from("rate_limits")
-      .upsert({ bucket, window_start: new Date(now).toISOString(), count: 1 })
-    return true
-  }
-  if (data.count >= limit) return false
-  await admin.from("rate_limits").update({ count: data.count + 1 }).eq("bucket", bucket)
-  return true
+  const { data, error } = await admin.rpc("bump_rate_limit", {
+    p_bucket: bucket,
+    p_limit: limit,
+    p_window_minutes: windowMinutes,
+  })
+  // Fail-open wie zuvor: ein DB-Schluckauf darf legitime Nutzer nicht aussperren —
+  // das Limit ist Kostenschutz, keine Auth.
+  if (error) return true
+  return data === true
 }

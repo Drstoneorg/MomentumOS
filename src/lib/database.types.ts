@@ -1977,6 +1977,10 @@ export type Database = {
           p_lng: number
         }[]
       }
+      bump_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_minutes?: number }
+        Returns: boolean
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
