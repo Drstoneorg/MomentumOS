@@ -282,6 +282,28 @@ export default async function SettingsPage() {
         <CalendarFeedForm currentToken={typeof calToken?.value === "string" ? calToken.value : ""} />
       </Card>
 
+      <Card title="📦 Daten-Export">
+        <p className="mb-2 text-sm text-zinc-400">
+          Rohdaten je Modul als Datei — für Datenportabilität und DSGVO-Auskunft.
+          JSON ist vollständig, CSV öffnet direkt in Excel/Numbers.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {["kontakte", "nachrichten", "gedaechtnis", "jobs", "events", "trading"].map((m) => (
+            <span key={m} className="inline-flex overflow-hidden rounded-lg border border-zinc-700 text-sm">
+              <a href={`/api/export?modul=${m}&format=json`} className="px-2.5 py-1.5 text-zinc-300 hover:bg-zinc-800">
+                {m} JSON
+              </a>
+              <a
+                href={`/api/export?modul=${m}&format=csv`}
+                className="border-l border-zinc-700 px-2.5 py-1.5 text-zinc-400 hover:bg-zinc-800"
+              >
+                CSV
+              </a>
+            </span>
+          ))}
+        </div>
+      </Card>
+
       <Card title="Push-Benachrichtigungen">
         <p className="mb-2 text-sm text-zinc-400">
           Geburtstage, fällige Follow-ups und Queue-Entwürfe direkt aufs Gerät.

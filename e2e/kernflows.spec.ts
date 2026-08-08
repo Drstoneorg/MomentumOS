@@ -151,4 +151,11 @@ test.describe("Öffentliche Event-Seite + Türsteher-Link (R31)", () => {
     })
     expect(checkin.status()).toBeGreaterThanOrEqual(400)
   })
+
+  test("/api/export: ohne Login 401, kein Datenleck", async ({ request }) => {
+    const res = await request.get("/api/export?modul=kontakte&format=json")
+    expect(res.status()).toBe(401)
+    const body = await res.json()
+    expect(body).toEqual({ error: "unauthorized" })
+  })
 })
