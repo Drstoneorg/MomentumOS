@@ -42,3 +42,11 @@ if (typeof types !== "string" || !types.includes("export type Database")) {
 }
 writeFileSync(OUT, types.endsWith("\n") ? types : types + "\n")
 console.log(`${OUT} neu generiert (${types.length} Zeichen)`)
+
+// Hash für den CI-Drift-Check mitschreiben (scripts/check-types-drift.mjs)
+const { createHash } = await import("node:crypto")
+writeFileSync(
+  "scripts/types.hash",
+  createHash("sha256").update(readFileSync(OUT)).digest("hex") + "\n"
+)
+console.log("scripts/types.hash aktualisiert")

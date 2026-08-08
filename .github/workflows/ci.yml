@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Types-Drift
+        run: node scripts/check-types-drift.mjs
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Lint
