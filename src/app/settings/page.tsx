@@ -282,6 +282,15 @@ export default async function SettingsPage() {
         <CalendarFeedForm currentToken={typeof calToken?.value === "string" ? calToken.value : ""} />
       </Card>
 
+      <Card title="🩺 Systemstatus">
+        <p className="text-sm text-zinc-400">
+          Crons, KI-Kosten, Fehlergruppen und Tabellen-Wachstum auf einer Seite —{" "}
+          <a href="/status" className="text-amber-400 hover:underline">
+            /status öffnen
+          </a>
+        </p>
+      </Card>
+
       <Card title="📦 Daten-Export">
         <p className="mb-2 text-sm text-zinc-400">
           Rohdaten je Modul als Datei — für Datenportabilität und DSGVO-Auskunft.

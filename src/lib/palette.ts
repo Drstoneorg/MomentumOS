@@ -59,6 +59,7 @@ export function staticCommands(): Command[] {
     { label: "Vorlagen — Einladungstexte + A/B-Test", href: "/vorlagen", module: "moments", icon: "📝" },
     { label: "Papierkorb — Gelöschtes wiederherstellen", href: "/papierkorb", module: null, icon: "🗑" },
     { label: `${PLATFORM.label} — Einstellungen`, href: "/settings", module: null, icon: "⚙️" },
+    { label: "Systemstatus — Crons, Kosten, Fehler", href: "/status", module: null, icon: "🩺" },
   ]
   for (const m of MODULES) {
     for (const l of m.links) {

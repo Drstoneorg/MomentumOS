@@ -73,6 +73,17 @@ test.describe("eingeloggt", () => {
     await expect(page.getByText(/Dubletten/i).first()).toBeVisible()
   })
 
+  test("/status zeigt Crons, Kosten und Tabellen-Wachstum", async ({ page }) => {
+    await login(page, email!, password!)
+    await page.goto("/status")
+    await expect(page.getByText("Systemstatus").first()).toBeVisible()
+    await expect(page.getByText(/Crons \(Heartbeats\)/)).toBeVisible()
+    await expect(page.getByText("KI-Kosten diesen Monat")).toBeVisible()
+    await expect(page.getByText("Tabellen-Wachstum")).toBeVisible()
+    // Die Heartbeat-Liste nennt jeden Cron beim Namen
+    await expect(page.getByText("jobscan", { exact: true })).toBeVisible()
+  })
+
   test("Frage-Chat streamt eine Antwort-Blase", async ({ page }) => {
     await login(page, email!, password!)
     await page.goto("/ask")
