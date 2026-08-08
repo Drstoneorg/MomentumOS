@@ -51,6 +51,8 @@ export const RSVP_LABELS: Record<Enums<"event_invite_status">, string> = {
   no_reply: "Keine Antwort",
   ticket: "🎟 Ticket gekauft",
   attended: "✔ War da",
+  waitlist: "⏳ Warteliste",
+  lead: "✨ Will kommen (Lead)",
 }
 
 // Kontakt-Intent: wozu pflege ich diesen Kontakt (nur MatchOS-Realm relevant)

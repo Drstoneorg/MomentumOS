@@ -1,9 +1,17 @@
 import type { Metadata } from "next"
+import QRCode from "qrcode"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { zusagenMitBegleitung } from "@/lib/inviteScore"
+import { SITE_URL } from "@/lib/siteUrl"
 import { RsvpForm } from "./RsvpForm"
 
 export const dynamic = "force-dynamic"
 export const metadata: Metadata = { title: "Einladung", robots: { index: false } }
+
+/** Außerhalb der Komponente wegen react-hooks/purity (Date.now im Render). */
+function istVergangen(startsAt: string | null): boolean {
+  return !!startsAt && Date.now() > new Date(startsAt).getTime() + 6 * 3600_000
+}
 
 /**
  * Öffentliche Einladungs-Seite aus Gast-Sicht: Event hübsch, ein Tap zum
@@ -23,7 +31,10 @@ export default async function EinladungPage({
     status: string
     plus_ones: number
     promo_code: string | null
-    contacts: { name: string } | null
+    companion_names: string | null
+    comment: string | null
+    feedback_rating: number | null
+    contacts: { name: string; language: string | null } | null
     events: {
       id: string
       title: string
@@ -31,8 +42,10 @@ export default async function EinladungPage({
       location: string | null
       description: string | null
       ticket_url: string | null
+      capacity: number | null
     } | null
   } | null = null
+  let voll = false
 
   if (/^[a-f0-9]{32}$/.test(token)) {
     try {
@@ -40,11 +53,20 @@ export default async function EinladungPage({
       const { data } = await admin
         .from("event_invites")
         .select(
-          "id, status, plus_ones, promo_code, contacts(name), events(id, title, starts_at, location, description, ticket_url)"
+          "id, status, plus_ones, promo_code, companion_names, comment, feedback_rating, contacts(name, language), events(id, title, starts_at, location, description, ticket_url, capacity)"
         )
         .eq("rsvp_token", token)
         .maybeSingle()
       invite = data
+
+      // Volles Haus? Zusagen aller Gäste gegen die Kapazität
+      if (invite?.events?.capacity) {
+        const { data: alle } = await admin
+          .from("event_invites")
+          .select("status, plus_ones")
+          .eq("event_id", invite.events.id)
+        voll = zusagenMitBegleitung(alle ?? []).gesamt >= invite.events.capacity
+      }
     } catch {
       invite = null
     }
@@ -84,6 +106,20 @@ export default async function EinladungPage({
     ? new Date(event.starts_at).toLocaleString("de-DE", { dateStyle: "full", timeStyle: "short" })
     : "Datum folgt"
 
+  // Nach dem Event (6h Puffer) wird die Seite zur 1-Frage-Feedback-Karte
+  const vergangen = istVergangen(event.starts_at)
+
+  // Einlass-QR: der persönliche Link als Code — Tür-Modus scannt ihn
+  let qrDataUrl: string | null = null
+  try {
+    qrDataUrl = await QRCode.toDataURL(`${SITE_URL}/einladung/${token}`, {
+      width: 384,
+      margin: 1,
+    })
+  } catch {
+    qrDataUrl = null
+  }
+
   return (
     <div className="mx-auto max-w-md px-6 py-12">
       <p className="text-xs font-semibold uppercase tracking-widest text-fuchsia-400">
@@ -111,6 +147,13 @@ export default async function EinladungPage({
           status={invite.status}
           plusOnes={invite.plus_ones ?? 0}
           statusFinal={["ticket", "attended"].includes(invite.status)}
+          voll={voll}
+          vergangen={vergangen}
+          companionNames={invite.companion_names}
+          comment={invite.comment}
+          feedbackRating={invite.feedback_rating}
+          startLang={invite.contacts?.language === "en" ? "en" : "de"}
+          qrDataUrl={qrDataUrl}
         />
       </div>
 

@@ -544,9 +544,14 @@ export type Database = {
       }
       event_invites: {
         Row: {
+          comment: string | null
+          companion_names: string | null
           contact_id: string
           created_at: string
           event_id: string
+          feedback_at: string | null
+          feedback_comment: string | null
+          feedback_rating: number | null
           id: string
           invite_text: string | null
           last_nudge_at: string | null
@@ -554,12 +559,21 @@ export type Database = {
           promo_code: string | null
           rsvp_token: string
           status: Database["public"]["Enums"]["event_invite_status"]
+          suggested_at: string | null
+          suggested_quote: string | null
+          suggested_status: string | null
+          template_variant: string | null
           wave: number
         }
         Insert: {
+          comment?: string | null
+          companion_names?: string | null
           contact_id: string
           created_at?: string
           event_id: string
+          feedback_at?: string | null
+          feedback_comment?: string | null
+          feedback_rating?: number | null
           id?: string
           invite_text?: string | null
           last_nudge_at?: string | null
@@ -567,12 +581,21 @@ export type Database = {
           promo_code?: string | null
           rsvp_token?: string
           status?: Database["public"]["Enums"]["event_invite_status"]
+          suggested_at?: string | null
+          suggested_quote?: string | null
+          suggested_status?: string | null
+          template_variant?: string | null
           wave?: number
         }
         Update: {
+          comment?: string | null
+          companion_names?: string | null
           contact_id?: string
           created_at?: string
           event_id?: string
+          feedback_at?: string | null
+          feedback_comment?: string | null
+          feedback_rating?: number | null
           id?: string
           invite_text?: string | null
           last_nudge_at?: string | null
@@ -580,6 +603,10 @@ export type Database = {
           promo_code?: string | null
           rsvp_token?: string
           status?: Database["public"]["Enums"]["event_invite_status"]
+          suggested_at?: string | null
+          suggested_quote?: string | null
+          suggested_status?: string | null
+          template_variant?: string | null
           wave?: number
         }
         Relationships: [
@@ -637,16 +664,60 @@ export type Database = {
           },
         ]
       }
+      event_wave_proposals: {
+        Row: {
+          accepted_at: string | null
+          contact_ids: string[]
+          created_at: string
+          dismissed_at: string | null
+          event_id: string
+          id: string
+          reason: string | null
+          wave: number
+        }
+        Insert: {
+          accepted_at?: string | null
+          contact_ids?: string[]
+          created_at?: string
+          dismissed_at?: string | null
+          event_id: string
+          id?: string
+          reason?: string | null
+          wave?: number
+        }
+        Update: {
+          accepted_at?: string | null
+          contact_ids?: string[]
+          created_at?: string
+          dismissed_at?: string | null
+          event_id?: string
+          id?: string
+          reason?: string | null
+          wave?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_wave_proposals_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           audience: string | null
           capacity: number | null
           created_at: string
           description: string | null
+          door_token: string
           id: string
           image_prompt: string | null
           location: string | null
           other_costs_cents: number | null
+          public_slug: string | null
+          series_name: string | null
           shrine_event_id: string | null
           shrine_published_at: string | null
           starts_at: string | null
@@ -660,10 +731,13 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           description?: string | null
+          door_token?: string
           id?: string
           image_prompt?: string | null
           location?: string | null
           other_costs_cents?: number | null
+          public_slug?: string | null
+          series_name?: string | null
           shrine_event_id?: string | null
           shrine_published_at?: string | null
           starts_at?: string | null
@@ -677,10 +751,13 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           description?: string | null
+          door_token?: string
           id?: string
           image_prompt?: string | null
           location?: string | null
           other_costs_cents?: number | null
+          public_slug?: string | null
+          series_name?: string | null
           shrine_event_id?: string | null
           shrine_published_at?: string | null
           starts_at?: string | null
@@ -791,6 +868,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guest_segments: {
+        Row: {
+          contact_ids: string[]
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          contact_ids?: string[]
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          contact_ids?: string[]
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       job_applications: {
         Row: {
@@ -1307,6 +1405,57 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          done_at: string | null
+          due_at: string
+          event_id: string | null
+          id: string
+          kind: string
+          note: string | null
+          payload: Json
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          done_at?: string | null
+          due_at: string
+          event_id?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          payload?: Json
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          done_at?: string | null
+          due_at?: string
+          event_id?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reply_feedback: {
         Row: {
           contact_id: string | null
@@ -1503,6 +1652,36 @@ export type Database = {
           },
         ]
       }
+      templates: {
+        Row: {
+          active: boolean
+          id: string
+          key: string
+          lang: string
+          text: string
+          updated_at: string
+          variant: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          key: string
+          lang?: string
+          text: string
+          updated_at?: string
+          variant?: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          key?: string
+          lang?: string
+          text?: string
+          updated_at?: string
+          variant?: string
+        }
+        Relationships: []
+      }
       trading_digests: {
         Row: {
           created_at: string
@@ -1551,6 +1730,30 @@ export type Database = {
           day?: string
           ki_invested_eur?: number | null
           ki_value_eur?: number
+        }
+        Relationships: []
+      }
+      trash: {
+        Row: {
+          deleted_at: string
+          id: string
+          kind: string
+          label: string
+          payload: Json
+        }
+        Insert: {
+          deleted_at?: string
+          id?: string
+          kind?: string
+          label: string
+          payload?: Json
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          kind?: string
+          label?: string
+          payload?: Json
         }
         Relationships: []
       }
@@ -2604,6 +2807,8 @@ export type Database = {
         | "no_reply"
         | "ticket"
         | "attended"
+        | "waitlist"
+        | "lead"
       gig_status:
         | "idea"
         | "inquired"
@@ -2798,6 +3003,8 @@ export const Constants = {
         "no_reply",
         "ticket",
         "attended",
+        "waitlist",
+        "lead",
       ],
       gig_status: [
         "idea",
