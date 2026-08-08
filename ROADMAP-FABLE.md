@@ -8,7 +8,7 @@ Prompt kopieren reicht. Vorher immer: `CLAUDE.md` und `FUNKTIONSKATALOG.md` gelt
 
 ## Teil 1 — 20 Code-Konzepte
 
-### 1. Push-Benachrichtigung bei neuer Zusage / Bewerbung / Lead — **S**
+### 1. Push-Benachrichtigung bei neuer Zusage / Bewerbung / Lead — **S** — ✅ umgesetzt (R32, 2026-08-08)
 Web-Push (VAPID) ist fertig verdrahtet, aber nur Crons nutzen es. Die drei öffentlichen
 Einläufe (`/api/rsvp`, `/api/apply`, `/api/event-lead`) sollen nach erfolgreichem Schreiben
 eine Push-Nachricht schicken — das sind genau die Momente, in denen man es sofort wissen will.
@@ -20,7 +20,7 @@ eine Push-Nachricht schicken — das sind genau die Momente, in denen man es sof
 > Fehler beim Push dürfen die Route nie scheitern lassen (fire-and-forget mit catch).
 > Unit-Test für den Nachrichtentext, tsc+lint+tests grün, ein Commit.
 
-### 2. Schema-Drift-Check in CI — **S**
+### 2. Schema-Drift-Check in CI — **S** — ✅ umgesetzt (R32, 2026-08-08)
 `database.types.ts` ist generiert; vergisst eine Session nach einer Migration das
 Regenerieren, merkt es niemand. Ein CI-Schritt, der die Datei gegen einen Hash der letzten
 Generierung prüft (oder bei gesetztem `SUPABASE_ACCESS_TOKEN` frisch generiert und difft),
@@ -32,7 +32,7 @@ macht Drift zum roten Build.
 > Meldung fehlschlägt („npm run types:gen ausführen und Hash aktualisieren").
 > `npm run types:gen` soll den Hash automatisch mitschreiben. In `ci.yml` einhängen.
 
-### 3. Fehlergruppen-Signal aus der Telemetrie — **S**
+### 3. Fehlergruppen-Signal aus der Telemetrie — **S** — ✅ umgesetzt (R32, 2026-08-08)
 Browser-Fehler landen seit R28 in `client_errors`, aber niemand schaut hinein. Gruppieren
 nach Message-Fingerprint und ab N Vorkommen in 24 h ein Cockpit-Signal erzeugen — damit
 zahlt sich die Telemetrie endlich aus.
@@ -43,7 +43,7 @@ zahlt sich die Telemetrie endlich aus.
 > Gruppe, Anzahl und jüngstem Zeitstempel. Normalisierung als exportierte Funktion mit
 > Unit-Test in `tests/`.
 
-### 4. Daten-Export je Modul (JSON/CSV) — **S**
+### 4. Daten-Export je Modul (JSON/CSV) — **S** — ✅ umgesetzt (R32, 2026-08-08)
 Es gibt nur das verschlüsselte Voll-Backup und den Gästelisten-CSV. Ein Export-Knopf in
 `/settings` pro Modul (Kontakte, Nachrichten, Jobs, Events, Trades) schließt die
 DSGVO-Auskunftslücke und macht Daten portabel.
@@ -54,7 +54,7 @@ DSGVO-Auskunftslücke und macht Daten portabel.
 > Kopfzeile, UTF-8-BOM für Excel. In `/settings` eine Export-Karte mit den fünf Modulen.
 > E2E-Spec: Route ohne Login antwortet 401.
 
-### 5. `middleware.ts` → `proxy.ts` migrieren — **S**
+### 5. `middleware.ts` → `proxy.ts` migrieren — **S** — ✅ umgesetzt (R32, 2026-08-08)
 Seit Next 16.3 ist die middleware-Konvention deprecated (Build-Warnung). Der offizielle
 Codemod erledigt die Umbenennung; danach Verhalten verifizieren, bevor eine spätere
 Next-Version sie entfernt.
@@ -64,7 +64,7 @@ Next-Version sie entfernt.
 > /tuer/ müssen unverändert funktionieren), Build ohne Deprecation-Warnung, alle 16 E2E
 > grün, ein Commit.
 
-### 6. Rate-Limiter atomar machen — **S**
+### 6. Rate-Limiter atomar machen — **S** — ✅ umgesetzt (R32, 2026-08-08)
 `rateLimitOk()` zählt per Read-then-Write — zwei parallele Requests können sich am Limit
 vorbeimogeln. Eine Postgres-Funktion (`insert … on conflict … returning`) macht das Fenster
 atomar; bei öffentlichen Endpunkten zählt das.
@@ -98,7 +98,7 @@ sortieren — mehr Antworten für null zusätzliche Arbeit.
 > zuerst gelistet. Reine Lese-Logik, kein Auto-Versand. Modul-Level-Helfer statt
 > `Date.now()` im Render (react-hooks/purity).
 
-### 9. Health-Dashboard `/status` — **M**
+### 9. Health-Dashboard `/status` — **M** — ✅ umgesetzt (R32, 2026-08-08)
 Eine Seite mit allem Betriebszustand: 7 Cron-Heartbeats mit Ampel, letzte Backup-Zeit,
 Fehlergruppen, KI-Kosten des Monats gegen Budget, Rate-Limit-Auslastung, Storage-Größe.
 Heute ist das über Dashboard-Signale, Settings und SQL verstreut.

@@ -43,6 +43,9 @@ Produktions-URL: `https://momentumos-hq.vercel.app` · Supabase-Projekt: `ddxfeg
 | Rate-Limits | DB-basierte Stundenfenster pro Bucket (überleben Serverless-Kaltstarts) auf allen öffentlichen und Extension-Routen. | passiv |
 | Keepalive | Täglicher GitHub-Action-Ping auf `/api/keepalive` verhindert die 7-Tage-Pause des Supabase-Free-Tiers. | passiv |
 | Typen-Generierung | `database.types.ts` ist 100 % generiert; nie von Hand editieren. | `npm run types:gen` (braucht `SUPABASE_ACCESS_TOKEN`) |
+| Systemstatus | Crons-Ampel, KI-Kosten je Funktion, Fehlergruppen, Tabellen-Wachstum, Rate-Limit-Buckets auf einer Seite (R32). | `/status` (auch über ⌘K) |
+| Daten-Export | Rohdaten je Modul (Kontakte, Nachrichten, Gedächtnis, Jobs, Events, Trading) als JSON oder CSV (R32). | `/settings` → 📦 Daten-Export oder `/api/export?modul=…&format=…` |
+| Sofort-Push bei Einläufen | Neue Zusage/Absage/Warteliste, Model-Bewerbung und Event-Lead lösen eine Push-Nachricht aus (R32) — Push-Abo in `/settings` nötig. | passiv |
 
 ## 2. MomentOS — Freunde & Familie
 
@@ -213,12 +216,12 @@ Produktions-URL: `https://momentumos-hq.vercel.app` · Supabase-Projekt: `ddxfeg
 ### Vergessene/gewachsene Lücken (würde man erwarten, fehlt aber)
 - **Kein Passwort-Reset-Flow und kein 2FA** — wer das Passwort verliert, muss über das Supabase-Dashboard ran.
 - **Kein Restore-Drill** — das Restore-Skript existiert, wurde aber nie gegen eine leere DB geprobt; aktuell gibt es mangels `BACKUP_SECRET` gar keine Backups.
-- **Kein Daten-Export je Modul** (nur Gästeliste-CSV und das verschlüsselte Voll-Backup) — DSGVO-Auskunft wäre Handarbeit.
+- ~~Kein Daten-Export je Modul~~ — **seit R32 geschlossen**: `/api/export` + Karte in `/settings`.
 - **Keine Zeitzonen-Einstellung** — Europe/Vienna ist an mehreren Stellen fest verdrahtet.
 - **Kein Audit-Log** für Schreibaktionen (wer/was/wann bei Ask-Aktionen und Merges).
 - **Offline kann nur die Shell** — die PWA cached keine Daten (außer der Tür-Warteschlange).
 - **E2E läuft gegen die Dev-DB** — exakte Statuscodes öffentlicher Routen (404 vs 200) sind nur in Produktion prüfbar.
-- **`middleware.ts` ist ab Next 16.3 deprecated** (Warnung im Build; Codemod `middleware-to-proxy` steht aus).
+- ~~`middleware.ts` deprecated~~ — **seit R32 migriert** auf `src/proxy.ts` (Codemod, Verhalten identisch).
 
 ---
 
@@ -234,7 +237,7 @@ Architektur und Kernloop stehen im `README.md` (Signal-Engine, Module, Cron-Tabe
 4. **Läuft der Telegram-Worker wirklich?** — launchd-Setup existiert; ob Login (`telegram:login`) je durchgeführt wurde, weiß nur der Rechner.
 5. **Vercel-Cron-Realität** — 7 Crons konfiguriert; ob der Plan alle täglich feuert, verrät nur das Heartbeat-Signal.
 6. **jobscan-Portale** — Selbstheilung eingebaut, aber Portale ändern Markup; die Scraper-Metrik ist die einzige Wahrheit.
-7. **`middleware` → `proxy`** — Deprecation seit Next 16.3, Migration steht aus.
+7. ~~`middleware` → `proxy`~~ — in R32 migriert.
 8. **Restore ungetestet** — siehe oben.
 
 ### Unknown Knowns (implizites Wissen — hiermit explizit gemacht)
