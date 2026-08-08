@@ -36,7 +36,10 @@ export async function middleware(request: NextRequest) {
     isLogin ||
     request.nextUrl.pathname === "/model" ||
     // Persönliche Einladungs-Links: Gäste haben keinen Login
-    request.nextUrl.pathname.startsWith("/einladung")
+    request.nextUrl.pathname.startsWith("/einladung") ||
+    // Öffentliche Event-Seite (Insta-Bio-Link) und Türsteher-Ansicht (Token in der URL)
+    request.nextUrl.pathname.startsWith("/e/") ||
+    request.nextUrl.pathname.startsWith("/tuer/")
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"

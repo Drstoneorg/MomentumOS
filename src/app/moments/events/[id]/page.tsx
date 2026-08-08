@@ -7,8 +7,11 @@ import { EventLineup } from "./EventLineup"
 import { EventAudience } from "./EventAudience"
 import { EventPromoChecklist } from "./EventPromoChecklist"
 import { EventShrineCard } from "./EventShrineCard"
+import { EventTools } from "./EventTools"
 import { listShrineProfiles, shrineKonfiguriert, type ShrineProfil } from "@/lib/shrinePublish"
 import { audienceMatch } from "@/lib/artists"
+import { eventKonflikte } from "@/lib/eventKonflikte"
+import { serienStatistik } from "@/lib/serien"
 
 export const dynamic = "force-dynamic"
 
@@ -32,6 +35,60 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   const event = eventRes.data
   if (!event) notFound()
+
+  // Konflikt-Wächter: Events am selben Tag + Artists dieses Events, die am
+  // selben Tag woanders spielen. Serien-Statistik, wenn das Event Teil einer ist.
+  const gigsData = gigsRes.data ?? []
+  const eigeneArtistIds = gigsData.map((g) => g.artist_id)
+  let warnungen: string[] = []
+  let serie: ReturnType<typeof serienStatistik> | null = null
+  if (event.starts_at || event.series_name) {
+    const [andereRes, fremdeGigsRes, serieRes] = await Promise.all([
+      event.starts_at
+        ? supabase
+            .from("events")
+            .select("id, title, starts_at")
+            .neq("id", id)
+            .gte("starts_at", new Date(new Date(event.starts_at).getTime() - 2 * 86400_000).toISOString())
+            .lte("starts_at", new Date(new Date(event.starts_at).getTime() + 2 * 86400_000).toISOString())
+        : Promise.resolve({ data: [] as { id: string; title: string; starts_at: string | null }[] }),
+      event.starts_at && eigeneArtistIds.length
+        ? supabase
+            .from("gigs")
+            .select("event_id, artist_id, artists(name), events!inner(title, starts_at)")
+            .in("artist_id", eigeneArtistIds)
+            .neq("event_id", id)
+        : Promise.resolve({ data: [] }),
+      event.series_name
+        ? supabase
+            .from("events")
+            .select("id, title, starts_at, event_invites(contact_id, status, plus_ones)")
+            .eq("series_name", event.series_name)
+        : Promise.resolve({ data: null }),
+    ])
+    warnungen = eventKonflikte(
+      event,
+      andereRes.data ?? [],
+      eigeneArtistIds,
+      (fremdeGigsRes.data ?? []).map((g) => ({
+        event_id: g.event_id,
+        artist_id: g.artist_id,
+        artistName: g.artists?.name ?? "?",
+        eventTitle: g.events?.title ?? "?",
+        starts_at: g.events?.starts_at ?? null,
+      }))
+    )
+    if (serieRes.data && serieRes.data.length >= 2) {
+      serie = serienStatistik(
+        serieRes.data.map((e) => ({
+          id: e.id,
+          title: e.title,
+          starts_at: e.starts_at,
+          invites: e.event_invites ?? [],
+        }))
+      )
+    }
+  }
 
   // Shrine-Anbindung: Profile nur laden, wenn der Key da ist — sonst Hinweis-Karte
   const konfiguriert = shrineKonfiguriert()
@@ -117,7 +174,42 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             📋 Gästeliste als CSV
           </a>
         </div>
+        {warnungen.length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-700/60 bg-amber-950/20 p-2.5 text-xs text-amber-200">
+            {warnungen.map((w) => (
+              <p key={w}>⚠ {w}</p>
+            ))}
+          </div>
+        )}
+        <EventTools eventId={id} seriesName={event.series_name} publicSlug={event.public_slug} />
       </Card>
+
+      {serie && (
+        <Card title={`🔁 Serie „${event.series_name}" — ${serie.ausgaben.length} Ausgaben`}>
+          <div className="space-y-1 text-xs">
+            {serie.ausgaben.map((a) => (
+              <div key={a.id} className="flex items-center gap-2">
+                <a href={`/moments/events/${a.id}`} className={a.id === id ? "font-semibold text-white" : "text-zinc-300 hover:underline"}>
+                  {a.title}
+                </a>
+                <span className="text-zinc-500">
+                  {a.starts_at ? new Date(a.starts_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "offen"}
+                </span>
+                <span className="ml-auto tabular-nums text-emerald-300">{a.zusagen} zugesagt</span>
+                <span className="w-14 text-right tabular-nums text-zinc-200">{a.da} da</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            {serie.wiederkehrerQuote != null
+              ? `Wiederkehrer-Quote ${Math.round(serie.wiederkehrerQuote * 100)} %`
+              : "Wiederkehrer-Quote ab zwei Ausgaben mit Gästen"}
+            {serie.trend != null
+              ? ` · Trend ${serie.trend > 0 ? "+" : ""}${serie.trend} gegenüber der Vorausgabe`
+              : ""}
+          </p>
+        </Card>
+      )}
 
       <EventBudget
         eventId={id}

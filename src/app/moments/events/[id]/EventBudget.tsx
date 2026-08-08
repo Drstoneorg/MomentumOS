@@ -36,6 +36,9 @@ export function EventBudget({
   const revenueCents = ticketsSold * (ticketPriceCents ?? 0)
   const costsCents = fixedCents + (otherCostsCents ?? 0)
   const balanceCents = revenueCents - costsCents
+  // Break-even: ab wie vielen zahlenden Gästen die Kosten drin sind
+  const breakEven =
+    ticketPriceCents && costsCents > 0 ? Math.ceil(costsCents / ticketPriceCents) : null
 
   return (
     <Card title="💰 Budget">
@@ -66,6 +69,13 @@ export function EventBudget({
           </div>
         </div>
 
+        {breakEven != null && (
+          <p className="text-xs text-zinc-400">
+            🎯 Break-even bei <span className="font-semibold text-white">{breakEven}</span> zahlenden
+            Gästen — aktuell {ticketsSold}
+            {ticketsSold >= breakEven ? " ✓ Kosten drin" : ` (noch ${breakEven - ticketsSold})`}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
           <span>
             Sonstige Kosten (Location, Deko, Promo):{" "}
